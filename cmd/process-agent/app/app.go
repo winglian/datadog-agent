@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -6,14 +6,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"strings"
 	"time"
 
+	_ "net/http/pprof"
+
 	cmdconfig "github.com/DataDog/datadog-agent/cmd/agent/common/commands/config"
 	"github.com/DataDog/datadog-agent/cmd/manager"
 	"github.com/DataDog/datadog-agent/cmd/process-agent/api"
+	"github.com/DataDog/datadog-agent/cmd/process-agent/flags"
 	apiutil "github.com/DataDog/datadog-agent/pkg/api/util"
 	ddconfig "github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/config/settings"
@@ -149,6 +151,34 @@ process_config:
 to your datadog.yaml file.
 Exiting.`
 )
+
+func rootCmdRun(cmd *cobra.Command, args []string) {
+	exit := make(chan struct{})
+
+	// Invoke the Agent
+	runAgent(exit)
+}
+
+// Run starts the process-agent
+func Run() {
+	ignore := ""
+	rootCmd.PersistentFlags().StringVar(&opts.configPath, "config", flags.DefaultConfPath, "Path to datadog.yaml config")
+	rootCmd.PersistentFlags().StringVar(&ignore, "ddconfig", "", "[deprecated] Path to dd-agent config")
+
+	if flags.DefaultSysProbeConfPath != "" {
+		rootCmd.PersistentFlags().StringVar(&opts.sysProbeConfigPath, "sysprobe-config", flags.DefaultSysProbeConfPath, "Path to system-probe.yaml config")
+	}
+
+	rootCmd.PersistentFlags().StringVarP(&opts.pidfilePath, "pid", "p", "", "Path to set pidfile for process")
+	rootCmd.PersistentFlags().BoolVarP(&opts.info, "info", "i", false, "Show info about running process agent and exit")
+	rootCmd.PersistentFlags().BoolVarP(&opts.version, "version", "v", false, "Print the version and exit")
+	rootCmd.PersistentFlags().StringVar(&opts.check, "check", "", "Run a specific check and print the results. Choose from: process, connections, realtime")
+
+	fixDeprecatedFlags()
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(-1)
+	}
+}
 
 func runAgent(exit chan struct{}) {
 	if opts.version {
