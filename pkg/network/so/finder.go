@@ -5,9 +5,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-
-	"github.com/DataDog/datadog-agent/pkg/util/common"
 )
+
+type Library struct {
+	PIDPath string
+	LibPath string
+}
 
 type finder struct {
 	procRoot     string
@@ -24,31 +27,41 @@ func newFinder(procRoot string) *finder {
 	}
 }
 
-func (f *finder) Find(filter *regexp.Regexp) []string {
-	seen := make(map[key]struct{})
-	result := common.NewStringSet()
+func (f *finder) Find(filter *regexp.Regexp) []Library {
+	var result []Library
+	resolved := make(map[key]string)
+
 	iteratePIDS(f.procRoot, func(pidPath string, info os.FileInfo, mntNS ns) {
-		libs := getSharedLibraries(pidPath, f.buffer, filter)
+		var mountInfo *mountInfo
+		matches := getSharedLibraries(pidPath, f.buffer, filter)
+		for _, lib := range matches {
+			pathKey := key{mntNS, lib}
+			resolvedPath, ok := resolved[pathKey]
+			if ok {
+				result = append(result, Library{
+					PIDPath: pidPath,
+					LibPath: resolvedPath,
+				})
+				continue
+			}
 
-		// If we have already seen (mntNS, lib) we skip the path resolution process
-		libs = excludeAlreadySeen(seen, mntNS, libs)
+			if mountInfo == nil {
+				mountInfo = getMountInfo(pidPath, f.buffer)
+			}
+			if mountInfo == nil {
+				return
+			}
 
-		if len(libs) == 0 {
-			return
-		}
-
-		mountInfo := getMountInfo(pidPath, f.buffer)
-		if mountInfo == nil {
-			return
-		}
-
-		for _, lib := range libs {
-			if hostPath := f.pathResolver.Resolve(lib, mountInfo); hostPath != "" {
-				result.Add(hostPath)
+			if resolvedPath := f.pathResolver.Resolve(lib, mountInfo); resolvedPath != "" {
+				result = append(result, Library{
+					PIDPath: pidPath,
+					LibPath: resolvedPath,
+				})
+				resolved[pathKey] = resolvedPath
 			}
 		}
 	})
-	return result.GetAll()
+	return result
 }
 
 func iteratePIDS(procRoot string, fn callback) {
@@ -56,22 +69,8 @@ func iteratePIDS(procRoot string, fn callback) {
 	filepath.Walk(procRoot, filepath.WalkFunc(w.walk))
 }
 
-// key is used to keep track of which libraries we've seen
+// key is used to keep track of which libraries have been resolved
 type key struct {
 	ns   ns
 	name string
-}
-
-func excludeAlreadySeen(seen map[key]struct{}, ns ns, libs []string) []string {
-	var n int
-	for _, lib := range libs {
-		k := key{ns, lib}
-		if _, ok := seen[k]; !ok {
-			seen[k] = struct{}{}
-			libs[n] = lib
-			n++
-		}
-	}
-
-	return libs[0:n]
 }
