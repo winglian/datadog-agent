@@ -7,11 +7,6 @@ import (
 	"regexp"
 )
 
-type Library struct {
-	PIDPath string
-	LibPath string
-}
-
 type finder struct {
 	procRoot     string
 	pathResolver *pathResolver
@@ -27,21 +22,22 @@ func newFinder(procRoot string) *finder {
 	}
 }
 
-func (f *finder) Find(filter *regexp.Regexp) []Library {
-	var result []Library
+func (f *finder) Find(filter *regexp.Regexp) []*ByPID {
+	resultByPID := make(map[string]*ByPID)
 	resolved := make(map[key]string)
-
 	iteratePIDS(f.procRoot, func(pidPath string, info os.FileInfo, mntNS ns) {
-		var mountInfo *mountInfo
 		matches := getSharedLibraries(pidPath, f.buffer, filter)
+		if len(matches) == 0 {
+			return
+		}
+
+		byPID := &ByPID{PIDPath: pidPath, Libraries: make([]string, 0, len(matches))}
+		var mountInfo *mountInfo
 		for _, lib := range matches {
 			pathKey := key{mntNS, lib}
 			resolvedPath, ok := resolved[pathKey]
 			if ok {
-				result = append(result, Library{
-					PIDPath: pidPath,
-					LibPath: resolvedPath,
-				})
+				byPID.Libraries = append(byPID.Libraries, resolvedPath)
 				continue
 			}
 
@@ -53,14 +49,18 @@ func (f *finder) Find(filter *regexp.Regexp) []Library {
 			}
 
 			if resolvedPath := f.pathResolver.Resolve(lib, mountInfo); resolvedPath != "" {
-				result = append(result, Library{
-					PIDPath: pidPath,
-					LibPath: resolvedPath,
-				})
+				byPID.Libraries = append(byPID.Libraries, resolvedPath)
 				resolved[pathKey] = resolvedPath
 			}
 		}
+		resultByPID[pidPath] = byPID
 	})
+
+	result := make([]*ByPID, len(resultByPID))
+	for _, r := range resultByPID {
+		result = append(result, r)
+	}
+
 	return result
 }
 

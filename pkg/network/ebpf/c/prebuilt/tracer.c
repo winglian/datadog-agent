@@ -55,6 +55,10 @@ int kprobe__tcp_sendmsg(struct pt_regs* ctx) {
         return 0;
     }
 
+    if (t.dport == 443) {
+        log_debug("https tcp_sendmsg sock=%p\n", (void *)skp);
+    }
+
     handle_tcp_stats(&t, skp);
     get_tcp_segment_counts(skp, &packets_in, &packets_out);
     return handle_message(&t, size, 0, CONN_DIRECTION_UNKNOWN, packets_out, packets_in, PACKET_COUNT_ABSOLUTE);
@@ -612,6 +616,8 @@ int kretprobe__sockfd_lookup_light(struct pt_regs* ctx) {
         .pid = pid_tgid >> 32,
         .fd = (*sockfd),
     };
+
+    log_debug("https indexing socket=%p pid=%d fd=%d\n", sock, pid_fd.pid, pid_fd.fd);
 
     // These entries are cleaned up by tcp_close
     bpf_map_update_elem(&pid_fd_by_sock, &sock, &pid_fd, BPF_ANY);

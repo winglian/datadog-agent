@@ -5,15 +5,12 @@ package http
 import (
 	"math"
 	"os"
-	"regexp"
-	"strings"
 
 	ddebpf "github.com/DataDog/datadog-agent/pkg/ebpf"
 	"github.com/DataDog/datadog-agent/pkg/ebpf/bytecode"
 	"github.com/DataDog/datadog-agent/pkg/network/config"
 	netebpf "github.com/DataDog/datadog-agent/pkg/network/ebpf"
 	"github.com/DataDog/datadog-agent/pkg/network/ebpf/probes"
-	"github.com/DataDog/datadog-agent/pkg/network/so"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/DataDog/ebpf"
 	"github.com/DataDog/ebpf/manager"
@@ -82,7 +79,7 @@ func newEBPFProgram(c *config.Config, offsets []manager.ConstantEditor, sockFD *
 		bytecode:    bytecode,
 		cfg:         c,
 	}
-	program.initSSL(offsets, sockFD)
+	program.subprograms = createSSLPrograms(program, offsets, sockFD)
 
 	return program, nil
 }
@@ -136,7 +133,10 @@ func (e *ebpfProgram) Start() error {
 	}
 
 	for _, subprogram := range e.subprograms {
-		subprogram.Start()
+		err := subprogram.Start()
+		if err != nil {
+			log.Errorf("error starting http subprogram: %s. ignoring it.", err)
+		}
 	}
 
 	return nil
@@ -148,28 +148,4 @@ func (e *ebpfProgram) Close() error {
 	}
 
 	return e.Manager.Stop(manager.CleanAll)
-}
-
-func (e *ebpfProgram) initSSL(offsets []manager.ConstantEditor, sockFD *ebpf.Map) {
-	// List of the OpenSSL .so files that should be traced
-	var paths []string
-
-	// TODO: Remove this once we can detect shared libraries being loaded during runtime
-	if fromEnv := os.Getenv("SSL_LIB_PATHS"); fromEnv != "" {
-		paths = append(paths, strings.Split(fromEnv, ",")...)
-	}
-
-	// Find all OpenSSL libraries already mapped into memory
-	inMemory := so.Find(e.cfg.ProcRoot, regexp.MustCompile(`libssl\.so`))
-	paths = append(paths, inMemory...)
-
-	for _, lib := range paths {
-		sslProgram, err := newSSLProgram(e, offsets, sockFD, lib)
-		if err != nil {
-			log.Errorf("error initializing ssl program for %s: %s", lib, err)
-			continue
-		}
-
-		e.subprograms = append(e.subprograms, sslProgram)
-	}
 }
