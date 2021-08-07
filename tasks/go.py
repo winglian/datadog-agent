@@ -21,7 +21,7 @@ from .modules import DEFAULT_MODULES, generate_dummy_package
 from .utils import get_build_flags
 
 # List of modules to ignore when running lint
-MODULE_WHITELIST = [
+MODULE_ALLOWLIST = [
     # Windows
     "doflare.go",
     "iostats_pdh_windows.go",
@@ -29,6 +29,7 @@ MODULE_WHITELIST = [
     "pdh.go",
     "pdh_amd64.go",
     "pdh_386.go",
+    "pdhformatter.go",
     "pdhhelper.go",
     "shutil.go",
     "tailer_windows.go",
@@ -99,7 +100,7 @@ def lint(ctx, targets):
         skipped_files = set()
         for line in (out for out in result.stdout.split('\n') if out):
             fname = os.path.basename(line.split(":")[0])
-            if fname in MODULE_WHITELIST:
+            if fname in MODULE_ALLOWLIST:
                 skipped_files.add(fname)
                 continue
             files.append(fname)
@@ -110,7 +111,7 @@ def lint(ctx, targets):
 
         if skipped_files:
             for skipped in skipped_files:
-                print("Allowed errors in whitelisted file {}".format(skipped))
+                print("Allowed errors in allowlisted file {}".format(skipped))
 
     print("revive found no issues")
 
