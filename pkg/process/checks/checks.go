@@ -16,10 +16,28 @@ type Check interface {
 	Run(cfg *config.AgentConfig, groupID int32) ([]model.MessageBody, error)
 }
 
+// RunOptions provides run options for checks
+type RunOptions struct {
+	RunRegular  bool
+	RunRealTime bool
+}
+
+// RunResult is a result for a check run
+type RunResult struct {
+	CheckName string
+	Messages  []model.MessageBody
+}
+
+// CheckWithRealTime provides an extended interface for running composite checks
+type CheckWithRealTime interface {
+	Check
+	RealTimeName() string
+	RunWithOptions(cfg *config.AgentConfig, groupID int32, options RunOptions) ([]RunResult, error)
+}
+
 // All is all the singleton check instances.
 var All = []Check{
 	Process,
-	RTProcess,
 	Container,
 	RTContainer,
 	Connections,
