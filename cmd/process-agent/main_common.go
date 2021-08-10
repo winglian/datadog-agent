@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/DataDog/agent-payload/process"
 	ddconfig "github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/metadata/host"
 	"github.com/DataDog/datadog-agent/pkg/pidfile"
@@ -239,24 +240,30 @@ func debugCheckResults(cfg *config.AgentConfig, check string) error {
 	}
 
 	// Connections check requires process-check to have occurred first (for process creation ts),
-	// RTProcess check requires process check to gather PIDs first
-	if check == checks.Connections.Name() || check == checks.RTProcess.Name() {
+	if check == checks.Connections.Name() {
 		checks.Process.Init(cfg, sysInfo)
 		checks.Process.Run(cfg, 0) //nolint:errcheck
 	}
 
 	names := make([]string, 0, len(checks.All))
 	for _, ch := range checks.All {
+		names = append(names, ch.Name())
+
 		if ch.Name() == check {
 			ch.Init(cfg, sysInfo)
-			return printResults(cfg, ch)
+			return runCheck(cfg, ch)
 		}
-		names = append(names, ch.Name())
+
+		withRealTime, ok := ch.(checks.CheckWithRealTime)
+		if ok && withRealTime.RealTimeName() == check {
+			withRealTime.Init(cfg, sysInfo)
+			return runCheckAsRealTime(cfg, withRealTime)
+		}
 	}
 	return fmt.Errorf("invalid check '%s', choose from: %v", check, names)
 }
 
-func printResults(cfg *config.AgentConfig, ch checks.Check) error {
+func runCheck(cfg *config.AgentConfig, ch checks.Check) error {
 	// Run the check once to prime the cache.
 	if _, err := ch.Run(cfg, 0); err != nil {
 		return fmt.Errorf("collection error: %s", err)
@@ -264,15 +271,48 @@ func printResults(cfg *config.AgentConfig, ch checks.Check) error {
 
 	time.Sleep(1 * time.Second)
 
-	fmt.Printf("-----------------------------\n\n")
-	fmt.Printf("\nResults for check %s\n", ch.Name())
-	fmt.Printf("-----------------------------\n\n")
+	printResultsBanner(ch.Name())
 
 	msgs, err := ch.Run(cfg, 1)
 	if err != nil {
 		return fmt.Errorf("collection error: %s", err)
 	}
+	return printResults(msgs)
+}
 
+func runCheckAsRealTime(cfg *config.AgentConfig, ch checks.CheckWithRealTime) error {
+	options := checks.RunOptions{
+		RunRegular:  true,
+		RunRealTime: true,
+	}
+	if _, err := ch.RunWithOptions(cfg, 0, options); err != nil {
+		return fmt.Errorf("collection error: %s", err)
+	}
+
+	time.Sleep(1 * time.Second)
+
+	printResultsBanner(ch.RealTimeName())
+
+	runs, err := ch.RunWithOptions(cfg, 1, options)
+	if err != nil {
+		return fmt.Errorf("collection error: %s", err)
+	}
+
+	for _, r := range runs {
+		if r.CheckName == ch.RealTimeName() {
+			return printResults(r.Messages)
+		}
+	}
+	return fmt.Errorf("collection error - missing results for: %s", ch.RealTimeName())
+}
+
+func printResultsBanner(name string) {
+	fmt.Printf("-----------------------------\n\n")
+	fmt.Printf("\nResults for check %s\n", name)
+	fmt.Printf("-----------------------------\n\n")
+}
+
+func printResults(msgs []process.MessageBody) error {
 	for _, m := range msgs {
 		b, err := json.MarshalIndent(m, "", "  ")
 		if err != nil {
