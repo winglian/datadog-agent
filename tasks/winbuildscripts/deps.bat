@@ -12,6 +12,8 @@ REM Section to pre-install libyajl2 gem with fix for gcc10 compatibility
 Powershell -C "ridk enable; ./tasks/winbuildscripts/libyajl2_install.ps1"
 Powershell -C "ridk enable; cd omnibus; bundle install"
 
+pip3 install -r requirements.txt || exit /b 102
+
 inv -e deps || exit /b 103
 
 cd \mnt
