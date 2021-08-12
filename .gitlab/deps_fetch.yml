@@ -38,7 +38,7 @@ linux_armhf_go_deps:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_armhf:$DATADOG_AGENT_ARMBUILDIMAGES
   tags: ["runner:docker-arm", "platform:arm64"]
 
-windows_arm64_go_deps:
+windows_amd64_go_deps:
   extends: .go_deps
   tags: ["runner:windows-docker", "windowsversion:1809"]
   script:
