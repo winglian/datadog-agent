@@ -15,7 +15,7 @@ inv -e deps || exit /b 103
 
 cd \mnt
 REM We don't want to archive agent itself, only other deps
-Powershell -C "Compress-Archive \gomodcache modcache.zip"
+Powershell -C "Compress-Archive \gomodcache modcache.zip -CompressionLevel fastest -Force"
 @echo Done compressing deps
 
 :nomntdir
