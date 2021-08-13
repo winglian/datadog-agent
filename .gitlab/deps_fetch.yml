@@ -41,6 +41,8 @@ linux_armhf_go_deps:
 windows_amd64_go_deps:
   extends: .go_deps
   tags: ["runner:windows-docker", "windowsversion:1809_test"]
+  variables:
+    CI_DEBUG_TRACE: "true"
   script:
     # TODO: do we need to do this on both x86 and x64? I don't think so, but let's verify
     - $ErrorActionPreference = "Stop"
