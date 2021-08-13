@@ -13,7 +13,7 @@ pip3 install -r requirements.txt || exit /b 102
 inv -e deps || exit /b 103
 @echo Done fetching deps
 
-cd \mnt
+cd \mnt\output
 REM We don't want to archive agent itself, only other deps
 Powershell -C "Compress-Archive \gomodcache modcache.zip -CompressionLevel fastest -Force"
 @echo Done compressing deps
