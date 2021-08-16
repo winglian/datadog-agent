@@ -469,7 +469,7 @@ func ScanLines(data []byte, atEOF bool) (advance int, token []byte, eol bool, er
 	return 0, nil, false, nil
 }
 
-func nextMessage(packet *[]byte, eolTermination bool, origin string) (message []byte) {
+func nextMessage(packet *[]byte, eolTermination bool, origin string, debugEnabled bool) (message []byte) {
 	if len(*packet) == 0 {
 		return nil
 	}
@@ -481,7 +481,9 @@ func nextMessage(packet *[]byte, eolTermination bool, origin string) (message []
 
 	if eolTermination && !eol {
 		dogstatsdUnterminatedMetricErrors.Add(1)
-		tlmUnterminatedMetricErrors.IncWithTags(map[string]string{"origin": origin})
+		if debugEnabled {
+			tlmUnterminatedMetricErrors.IncWithTags(map[string]string{"origin": origin})
+		}
 		return nil
 	}
 
@@ -502,10 +504,12 @@ func (s *Server) eolEnabled(sourceType packets.SourceType) bool {
 }
 
 func (s *Server) parsePackets(batcher *batcher, parser *parser, packets []*packets.Packet, samples []metrics.MetricSample) []metrics.MetricSample {
+
+	debugEnabled := atomic.LoadUint64(&s.Debug.Enabled) == 1
 	for _, packet := range packets {
 		log.Tracef("Dogstatsd receive: %q", packet.Contents)
 		for {
-			message := nextMessage(&packet.Contents, s.eolEnabled(packet.Source), packet.Origin)
+			message := nextMessage(&packet.Contents, s.eolEnabled(packet.Source), packet.Origin, debugEnabled)
 			if message == nil {
 				break
 			}
@@ -535,8 +539,6 @@ func (s *Server) parsePackets(batcher *batcher, parser *parser, packets []*packe
 			case metricSampleType:
 				var err error
 				samples = samples[0:0]
-
-				debugEnabled := atomic.LoadUint64(&s.Debug.Enabled) == 1
 
 				samples, err = s.parseMetricMessage(samples, parser, message, packet.Origin, debugEnabled)
 				if err != nil {
