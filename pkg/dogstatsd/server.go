@@ -47,9 +47,10 @@ var (
 
 	tlmProcessed = telemetry.NewCounter("dogstatsd", "processed",
 		[]string{"message_type", "state", "origin"}, "Count of service checks/events/metrics processed by dogstatsd")
-	tlmProcessedErrorTags       = map[string]string{"message_type": "metrics", "state": "error", "origin": ""}
-	tlmProcessedOkTags          = map[string]string{"message_type": "metrics", "state": "ok", "origin": ""}
-	tlmUnterminatedMetricErrors = telemetry.NewCounter("dogstatsd", "unterminated_metrics", []string{"origin"}, "Count of unterminated metrics")
+	tlmProcessedErrorTags             = map[string]string{"message_type": "metrics", "state": "error", "origin": ""}
+	tlmProcessedOkTags                = map[string]string{"message_type": "metrics", "state": "ok", "origin": ""}
+	tlmUnterminatedMetricOriginErrors = telemetry.NewCounter("dogstatsd", "unterminated_metrics_by_origin", nil, "Count of unterminated metrics")
+	tlmUnterminatedMetricErrors       = telemetry.NewCounter("dogstatsd", "unterminated_metrics", []string{"origin"}, "Count of unterminated metrics by origin")
 
 	// while we try to add the origin tag in the tlmProcessed metric, we want to
 	// avoid having it growing indefinitely, hence this safeguard to limit the
@@ -70,7 +71,8 @@ func init() {
 	dogstatsdExpvars.Set("MetricParseErrors", &dogstatsdMetricParseErrors)
 	dogstatsdExpvars.Set("MetricPackets", &dogstatsdMetricPackets)
 	dogstatsdExpvars.Set("UnterminatedMetricErrors", &dogstatsdUnterminatedMetricErrors)
-	tlmUnterminatedMetricErrors.Initialize("origin")
+	tlmUnterminatedMetricErrors.Initialize()
+	tlmUnterminatedMetricOriginErrors.Initialize("origin")
 }
 
 // used in debug mode to add the origin on the processed metric as a tag
@@ -482,8 +484,9 @@ func nextMessage(packet *[]byte, eolTermination bool, origin string, debugEnable
 
 	if eolTermination && !eol {
 		dogstatsdUnterminatedMetricErrors.Add(1)
+		tlmUnterminatedMetricErrors.Inc()
 		if debugEnabled {
-			tlmUnterminatedMetricErrors.IncWithTags(map[string]string{"origin": origin})
+			tlmUnterminatedMetricOriginErrors.IncWithTags(map[string]string{"origin": origin})
 		}
 		return nil
 	}
