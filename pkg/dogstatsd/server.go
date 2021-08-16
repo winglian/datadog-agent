@@ -70,6 +70,7 @@ func init() {
 	dogstatsdExpvars.Set("MetricParseErrors", &dogstatsdMetricParseErrors)
 	dogstatsdExpvars.Set("MetricPackets", &dogstatsdMetricPackets)
 	dogstatsdExpvars.Set("UnterminatedMetricErrors", &dogstatsdUnterminatedMetricErrors)
+	tlmUnterminatedMetricErrors.Initialize("origin")
 }
 
 // used in debug mode to add the origin on the processed metric as a tag
