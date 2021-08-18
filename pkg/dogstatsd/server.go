@@ -310,6 +310,7 @@ func NewServer(aggregator *aggregator.BufferedAggregator, extraTags []string) (*
 		if t == "nodegroup:logs-general_logs-topicstats" {
 			log.Info("found nodegroup:logs-general_logs-topicstats tag - forcing EOL termination on UDS")
 			eolTerminationUDS = true
+			break
 		}
 	}
 

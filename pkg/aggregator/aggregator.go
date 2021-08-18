@@ -831,6 +831,7 @@ func (agg *BufferedAggregator) tags(withVersion bool) []string {
 	return tags
 }
 
+// PubTags expose tags publicly
 func (agg *BufferedAggregator) PubTags(withVersion bool) []string {
 	return agg.tags(withVersion)
 }
