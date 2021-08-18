@@ -13,6 +13,8 @@ import (
 	"net"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
+
 	"github.com/DataDog/datadog-agent/pkg/util/containers"
 	"github.com/DataDog/datadog-agent/pkg/util/containers/metrics"
 	"github.com/DataDog/datadog-agent/pkg/util/ecs/metadata"
@@ -192,6 +194,8 @@ func convertMetaV2NetStats(s v2.NetStatsMap) []*metrics.InterfaceNetStats {
 	if len(s) == 0 {
 		return nil
 	}
+
+	log.Infof("fetching network metrics: %s", spew.Sdump(s))
 
 	ifStats := make([]*metrics.InterfaceNetStats, 0, len(s))
 	for name, stats := range s {
