@@ -303,6 +303,16 @@ func NewServer(aggregator *aggregator.BufferedAggregator, extraTags []string) (*
 		}
 	}
 
+	tags := aggregator.PubTags(false)
+	log.Info("Found the following agent tags: %v", tags)
+
+	for _, t := range tags {
+		if t == "nodegroup:logs-general_logs-topicstats" {
+			log.Info("found nodegroup:logs-general_logs-topicstats tag - forcing EOL termination on UDS")
+			eolTerminationUDS = true
+		}
+	}
+
 	s := &Server{
 		Started:                   true,
 		Statistics:                stats,

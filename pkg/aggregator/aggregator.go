@@ -830,3 +830,7 @@ func (agg *BufferedAggregator) tags(withVersion bool) []string {
 	}
 	return tags
 }
+
+func (agg *BufferedAggregator) PubTags(withVersion bool) []string {
+	return agg.tags(withVersion)
+}
