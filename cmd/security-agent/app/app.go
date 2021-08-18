@@ -247,7 +247,7 @@ func RunAgent(ctx context.Context) (err error) {
 	aggregatorInstance.AddAgentStartupTelemetry(fmt.Sprintf("%s - Datadog Security Agent", version.AgentVersion))
 
 	stopper = restart.NewSerialStopper()
-
+	
 	// Retrieve statsd host and port from the datadog agent configuration file
 	statsdHost := coreconfig.GetBindHost()
 	statsdPort := coreconfig.Datadog.GetInt("dogstatsd_port")

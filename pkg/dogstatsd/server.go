@@ -303,17 +303,6 @@ func NewServer(aggregator *aggregator.BufferedAggregator, extraTags []string) (*
 		}
 	}
 
-	tags := aggregator.PubTags(false)
-	log.Info("Found the following agent tags: %v", tags)
-
-	for _, t := range tags {
-		if t == "nodegroup:logs-general_logs-topicstats" {
-			log.Info("found nodegroup:logs-general_logs-topicstats tag - forcing EOL termination on UDS")
-			eolTerminationUDS = true
-			break
-		}
-	}
-
 	s := &Server{
 		Started:                   true,
 		Statistics:                stats,
@@ -519,6 +508,16 @@ func (s *Server) eolEnabled(sourceType packets.SourceType) bool {
 }
 
 func (s *Server) parsePackets(batcher *batcher, parser *parser, packets []*packets.Packet, samples []metrics.MetricSample) []metrics.MetricSample {
+	tags := s.aggregator.PubTags(false)
+	log.Info("Found the following agent tags: ", tags)
+
+	for _, t := range tags {
+		if t == "nodegroup:logs-general_logs-topicstats" {
+			log.Info("found nodegroup:logs-general_logs-topicstats tag - forcing EOL termination on UDS")
+			s.eolTerminationUDS = true
+			break
+		}
+	}
 
 	debugEnabled := atomic.LoadUint64(&s.Debug.Enabled) == 1
 	for _, packet := range packets {
