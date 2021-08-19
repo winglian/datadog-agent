@@ -511,7 +511,7 @@ func (s *Server) eolEnabled(sourceType packets.SourceType) bool {
 
 func (s *Server) parsePackets(batcher *batcher, parser *parser, packets []*packets.Packet, samples []metrics.MetricSample) []metrics.MetricSample {
 
-	if s.testTags != nil {
+	if s.testTags == nil {
 		tags := s.aggregator.PubTags(false)
 		if len(tags) > 0 {
 			s.testTags = tags
