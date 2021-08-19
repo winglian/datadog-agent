@@ -141,6 +141,7 @@ type Server struct {
 	histToDist                bool
 	histToDistPrefix          string
 	extraTags                 []string
+	testTags                  []string
 	Debug                     *dsdServerDebug
 	TCapture                  *replay.TrafficCapture
 	mapper                    *mapper.MetricMapper
@@ -320,6 +321,7 @@ func NewServer(aggregator *aggregator.BufferedAggregator, extraTags []string) (*
 		histToDist:                histToDist,
 		histToDistPrefix:          histToDistPrefix,
 		extraTags:                 extraTags,
+		testTags:                  nil,
 		eolTerminationUDP:         eolTerminationUDP,
 		eolTerminationUDS:         eolTerminationUDS,
 		eolTerminationNamedPipe:   eolTerminationNamedPipe,
@@ -508,14 +510,20 @@ func (s *Server) eolEnabled(sourceType packets.SourceType) bool {
 }
 
 func (s *Server) parsePackets(batcher *batcher, parser *parser, packets []*packets.Packet, samples []metrics.MetricSample) []metrics.MetricSample {
-	tags := s.aggregator.PubTags(false)
-	log.Info("Found the following agent tags: ", tags)
 
-	for _, t := range tags {
-		if t == "nodegroup:logs-general_logs-topicstats" {
-			log.Info("found nodegroup:logs-general_logs-topicstats tag - forcing EOL termination on UDS")
-			s.eolTerminationUDS = true
-			break
+	if s.testTags != nil {
+		tags := s.aggregator.PubTags(false)
+		if len(tags) > 0 {
+			s.testTags = tags
+		}
+		log.Info("Found the following agent tags: ", tags)
+
+		for _, t := range tags {
+			if t == "nodegroup:logs-general_logs-topicstats" {
+				log.Info("found nodegroup:logs-general_logs-topicstats tag - forcing EOL termination on UDS")
+				s.eolTerminationUDS = true
+				break
+			}
 		}
 	}
 
