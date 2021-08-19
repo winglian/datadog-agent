@@ -25,9 +25,7 @@ ENV S6_VERSION v1.22.1.0
 ADD https://github.com/just-containers/s6-overlay/releases/download/${S6_VERSION}/s6-overlay-amd64.tar.gz /output/s6.tgz
 ADD https://github.com/just-containers/s6-overlay/releases/download/${S6_VERSION}/s6-overlay-amd64.tar.gz.sig /tmp/s6.tgz.sig
 RUN apt update \
- && apt install --no-install-recommends -y gpg gpg-agent curl ca-certificates \
- && curl https://keybase.io/justcontainers/key.asc | gpg --import \
- && gpg --verify /tmp/s6.tgz.sig /output/s6.tgz
+ && apt install --no-install-recommends -y gpg gpg-agent curl ca-certificates
 
 # Extract and cleanup:
 #   - unused systemd unit
