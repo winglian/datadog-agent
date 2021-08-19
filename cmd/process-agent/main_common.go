@@ -4,11 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/DataDog/datadog-agent/pkg/forwarder"
+	"github.com/DataDog/datadog-agent/pkg/process/util/api/headers"
 	"net/http"
 	_ "net/http/pprof"
+	"net/url"
 	"os"
+	"strconv"
 	"time"
 
+	"github.com/DataDog/agent-payload/process"
 	"github.com/DataDog/datadog-agent/cmd/agent/common/commands"
 	"github.com/DataDog/datadog-agent/cmd/process-agent/api"
 	apiutil "github.com/DataDog/datadog-agent/pkg/api/util"
@@ -22,6 +27,8 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/process/heartbeat"
 	"github.com/DataDog/datadog-agent/pkg/process/statsd"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
+	processUtilApi "github.com/DataDog/datadog-agent/pkg/process/util/api"
+
 	apicfg "github.com/DataDog/datadog-agent/pkg/process/util/api/config"
 	"github.com/DataDog/datadog-agent/pkg/tagger"
 	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
@@ -46,6 +53,7 @@ var opts struct {
 	version            bool
 	check              string
 	info               bool
+	testIntake         bool
 }
 
 // version info sourced from build flags
@@ -278,6 +286,46 @@ func runAgent(exit chan struct{}) {
 			_ = log.Error(err)
 		}
 	}()
+
+	if opts.testIntake {
+		processEndpoint, err := url.Parse("https://process.datad0g.com")
+		if err != nil {
+			// This is a hardcoded URL so parsing it should not fail
+			panic(err)
+		}
+
+		processForwarderOpts := forwarder.NewOptions(apicfg.KeysPerDomains([]apicfg.Endpoint{{Endpoint: processEndpoint}}))
+		processForwarderOpts.DisableAPIKeyChecking = true
+		processForwarder := forwarder.NewDefaultForwarder(processForwarderOpts)
+
+		payloadBody := process.CollectorProcDiscovery{
+			HostName:  "test",
+			GroupId:   1,
+			GroupSize: 1,
+			ProcessDiscoveries: []*process.ProcessDiscovery{
+				{
+					Pid:   123,
+					NsPid: 234,
+					User: &process.ProcessUser{
+						Name: "testUser",
+					},
+				},
+			},
+		}
+
+		extraHeaders := make(http.Header)
+		extraHeaders.Set(headers.TimestampHeader, strconv.Itoa(int(time.Now().Unix())))
+		extraHeaders.Set(headers.HostHeader, "test")
+		extraHeaders.Set(headers.ProcessVersionHeader, Version)
+
+		body, err := processUtilApi.EncodePayload(&payloadBody)
+		if err != nil {
+			log.Errorf("Unable to encode message: %s", err)
+			cleanupAndExit(1)
+			return
+		}
+		processForwarder.SubmitProcessDiscoveryChecks(forwarder.Payloads{&body}, extraHeaders)
+	}
 
 	cl, err := NewCollector(cfg)
 	if err != nil {

@@ -40,12 +40,13 @@ const (
 
 // Name for check performed by process-agent or system-probe
 const (
-	ProcessCheckName     = "process"
-	RTProcessCheckName   = "rtprocess"
-	ContainerCheckName   = "container"
-	RTContainerCheckName = "rtcontainer"
-	ConnectionsCheckName = "connections"
-	PodCheckName         = "pod"
+	ProcessCheckName          = "process"
+	ProcessDiscoveryCheckName = "processDiscovery"
+	RTProcessCheckName        = "rtprocess"
+	ContainerCheckName        = "container"
+	RTContainerCheckName      = "rtcontainer"
+	ConnectionsCheckName      = "connections"
+	PodCheckName              = "pod"
 
 	NetworkCheckName        = "Network"
 	OOMKillCheckName        = "OOM Kill"
@@ -54,7 +55,7 @@ const (
 )
 
 var (
-	processChecks   = []string{ProcessCheckName, RTProcessCheckName}
+	processChecks   = []string{ProcessCheckName, RTProcessCheckName, ProcessDiscoveryCheckName}
 	containerChecks = []string{ContainerCheckName, RTContainerCheckName}
 
 	moduleCheckMap = map[sysconfig.ModuleName][]string{
