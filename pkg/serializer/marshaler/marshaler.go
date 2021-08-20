@@ -8,6 +8,7 @@ package marshaler
 import (
 	"bytes"
 
+	"github.com/gogo/protobuf/proto"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -17,6 +18,25 @@ type Marshaler interface {
 	Marshal() ([]byte, error)
 	SplitPayload(int) ([]Marshaler, error)
 	MarshalSplitCompress(*BufferContext) ([]*[]byte, error)
+}
+
+// StreamPBMarshaler is an interface for metrics that are able to serialize themselves to protobuf
+// in a streaming fashion.  This interface indexes "items" in the value by an integer index, and
+// will only serialize each item once.
+type StreamPBMarshaler interface {
+	Marshaler
+
+	// SliceMessage returns a message containing the sliced items.  The stream marhsaller will
+	// be "smart" about slice sizes, targeting a full payload, but may still call this function
+	// several times for overlapping slices.  Implementations should, where possible, use caching
+	// to make such repeated calls efficient.
+	SliceMessage(start, end int) proto.Message
+
+	// Len returns the number of items the marshaler will produce
+	Len() int
+
+	// DescribeItem describes an item for use in debugging and errormessages
+	DescribeItem(i int) string
 }
 
 // StreamJSONMarshaler is an interface for metrics that are able to serialize themselves in a stream

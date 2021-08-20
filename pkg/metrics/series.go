@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 
+	newagentpayload "github.com/DataDog/datadog-agent/apiv2"
+	"github.com/gogo/protobuf/proto"
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/DataDog/datadog-agent/pkg/aggregator/ckey"
@@ -62,6 +64,61 @@ type Series []*Serie
 // Marshal serialize timeseries using protobuf
 func (series Series) Marshal() ([]byte, error) {
 	return nil, fmt.Errorf("Series payload serialization is not implemented")
+}
+
+// SliceMessage returns a message for a slice of the items (serie's) in this
+// series.
+func (series Series) SliceMessage(start, stop int) proto.Message {
+	seriesPb := series.makePbSeries()
+	seriesPb = seriesPb[start:stop]
+	payload := &newagentpayload.MetricPayload{
+		Series: seriesPb,
+	}
+
+	return payload
+}
+
+// TODO: this is a pretty dumb way to do this, but good enough for getting perf info
+// Among other things, it's super non-threadsafe
+var lastSeries *Series
+var lastSeriesPb *[]*newagentpayload.MetricSeries
+
+// ResetCacheHack resets the above cache, for benchmarks.
+func ResetCacheHack() {
+	lastSeries = nil
+}
+
+// makePbSeries makes the `[]MetricPayload` for this series, caching it for later
+// re-use, if necessary.
+func (series *Series) makePbSeries() []*newagentpayload.MetricSeries {
+	if series != lastSeries {
+		seriesPb := make([]*newagentpayload.MetricSeries, 0, len(*series))
+		for _, serie := range *series {
+			seriesPb = append(seriesPb,
+				&newagentpayload.MetricSeries{
+					Metric: serie.Name,
+					Type:   serie.MType.MarshalPB(),
+					// TODO: Resource of some type
+					//Host:           serie.Host,
+					Points: func() []*newagentpayload.MetricPoint {
+						pointsPayload := make([]*newagentpayload.MetricPoint, 0, len(serie.Points))
+
+						for _, p := range serie.Points {
+							pointsPayload = append(pointsPayload, &newagentpayload.MetricPoint{
+								Timestamp: int64(p.Ts),
+								Value:     p.Value,
+							})
+						}
+						return pointsPayload
+					}(),
+					Tags:           serie.Tags,
+					SourceTypeName: serie.SourceTypeName,
+				})
+		}
+		lastSeries = series
+		lastSeriesPb = &seriesPb
+	}
+	return *lastSeriesPb
 }
 
 // MarshalStrings converts the timeseries to a sorted slice of string slices

@@ -85,17 +85,6 @@ func NewJSONPayloadBuilder(shareAndLockBuffers bool) *JSONPayloadBuilder {
 	}
 }
 
-// OnErrItemTooBigPolicy defines the behavior when OnErrItemTooBig occurs.
-type OnErrItemTooBigPolicy int
-
-const (
-	// DropItemOnErrItemTooBig skips the error and continues when ErrItemTooBig is encountered
-	DropItemOnErrItemTooBig OnErrItemTooBigPolicy = iota
-
-	// FailOnErrItemTooBig returns the error and stop when ErrItemTooBig is encountered
-	FailOnErrItemTooBig
-)
-
 // Build serializes a metadata payload and sends it to the forwarder
 func (b *JSONPayloadBuilder) Build(m marshaler.StreamJSONMarshaler) (forwarder.Payloads, error) {
 	return b.BuildWithOnErrItemTooBigPolicy(m, DropItemOnErrItemTooBig)

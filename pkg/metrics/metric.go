@@ -5,7 +5,11 @@
 
 package metrics
 
-import "fmt"
+import (
+	"fmt"
+
+	newagentpayload "github.com/DataDog/datadog-agent/apiv2"
+)
 
 // APIMetricType represents an API metric type
 type APIMetricType int
@@ -53,6 +57,19 @@ func (a *APIMetricType) UnmarshalText(buf []byte) error {
 		*a = APICountType
 	}
 	return nil
+}
+
+func (a APIMetricType) MarshalPB() newagentpayload.MetricType {
+	switch a {
+	case APIGaugeType:
+		return newagentpayload.MetricType_GAUGE
+	case APIRateType:
+		return newagentpayload.MetricType_RATE
+	case APICountType:
+		return newagentpayload.MetricType_COUNT
+	default:
+		panic("unknown APIMetricType")
+	}
 }
 
 // Metric is the interface of all metric types

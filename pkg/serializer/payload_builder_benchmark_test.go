@@ -43,9 +43,20 @@ func generateData(points int, items int, tags int) metrics.Series {
 }
 
 func benchmarkJSONPayloadBuilderUsage(b *testing.B, points int, items int, tags int) {
-
 	series := generateData(points, items, tags)
 	payloadBuilder := stream.NewJSONPayloadBuilder(true)
+
+	b.ResetTimer()
+
+	for n := 0; n < b.N; n++ {
+		payloadBuilder.Build(series)
+	}
+}
+
+func benchmarkPBPayloadBuilderUsage(b *testing.B, points int, items int, tags int) {
+	//metrics.ResetCacheHack()
+	series := generateData(points, items, tags)
+	payloadBuilder := stream.NewPBPayloadBuilder()
 
 	b.ResetTimer()
 
@@ -109,4 +120,61 @@ func BenchmarkJSONPayloadBuilderItems10000(b *testing.B) {
 }
 func BenchmarkJSONPayloadBuilderItems100000(b *testing.B) {
 	benchmarkJSONPayloadBuilderUsage(b, 1, 100000, 1)
+}
+
+func BenchmarkPBPayloadBuilderThroughputPoints0(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 0, 100, 1)
+}
+func BenchmarkPBPayloadBuilderThroughputPoints1(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 1, 100, 1)
+}
+func BenchmarkPBPayloadBuilderThroughputPoints2(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 2, 100, 1)
+}
+func BenchmarkPBPayloadBuilderThroughputPoints5(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 5, 100, 1)
+}
+func BenchmarkPBPayloadBuilderThroughputPoints10(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 10, 100, 1)
+}
+func BenchmarkPBPayloadBuilderThroughputPoints100(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 100, 100, 1)
+}
+
+func BenchmarkPBPayloadBuilderTags0(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 1, 100, 0)
+}
+func BenchmarkPBPayloadBuilderTags1(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 1, 100, 1)
+}
+func BenchmarkPBPayloadBuilderTags2(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 1, 100, 2)
+}
+func BenchmarkPBPayloadBuilderTags5(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 1, 100, 5)
+}
+func BenchmarkPBPayloadBuilderTags10(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 1, 100, 10)
+}
+func BenchmarkPBPayloadBuilderTags100(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 1, 100, 100)
+}
+
+func BenchmarkPBPayloadBuilderItems1(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 1, 1, 1)
+}
+func BenchmarkPBPayloadBuilderItems10(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 1, 10, 1)
+}
+func BenchmarkPBPayloadBuilderItems100(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 1, 100, 1)
+}
+func BenchmarkPBPayloadBuilderItems1000(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 1, 1000, 1)
+}
+func BenchmarkPBPayloadBuilderItems10000(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 1, 10000, 1)
+}
+func BenchmarkPBPayloadBuilderItems100000(b *testing.B) {
+	benchmarkPBPayloadBuilderUsage(b, 1, 100000, 1)
 }
