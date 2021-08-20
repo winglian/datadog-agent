@@ -2,24 +2,18 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/DataDog/datadog-agent/pkg/forwarder"
-	"github.com/DataDog/datadog-agent/pkg/process/util/api/headers"
-	"net/http"
-	_ "net/http/pprof"
-	"net/url"
-	"os"
-	"strconv"
-	"time"
-
 	"github.com/DataDog/agent-payload/process"
 	"github.com/DataDog/datadog-agent/cmd/agent/common/commands"
+	"github.com/DataDog/datadog-agent/cmd/manager"
 	"github.com/DataDog/datadog-agent/cmd/process-agent/api"
 	apiutil "github.com/DataDog/datadog-agent/pkg/api/util"
 	ddconfig "github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/config/settings"
 	settingshttp "github.com/DataDog/datadog-agent/pkg/config/settings/http"
+	"github.com/DataDog/datadog-agent/pkg/forwarder"
 	"github.com/DataDog/datadog-agent/pkg/metadata/host"
 	"github.com/DataDog/datadog-agent/pkg/pidfile"
 	"github.com/DataDog/datadog-agent/pkg/process/checks"
@@ -28,6 +22,13 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/process/statsd"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
 	processUtilApi "github.com/DataDog/datadog-agent/pkg/process/util/api"
+	"github.com/DataDog/datadog-agent/pkg/process/util/api/headers"
+	"net/http"
+	_ "net/http/pprof"
+	"net/url"
+	"os"
+	"strconv"
+	"time"
 
 	apicfg "github.com/DataDog/datadog-agent/pkg/process/util/api/config"
 	"github.com/DataDog/datadog-agent/pkg/tagger"
@@ -84,7 +85,6 @@ func getSettingsClient() (settings.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	httpClient := apiutil.GetClient(false)
 	ipcAddress, err := ddconfig.GetIPCAddress()
 	ipcAddressWithPort := fmt.Sprintf("http://%s:%d/config", ipcAddress, ddconfig.Datadog.GetInt("process_config.cmd_port"))
@@ -176,6 +176,14 @@ func runAgent(exit chan struct{}) {
 	cfg, err := config.NewAgentConfig(loggerName, opts.configPath, opts.sysProbeConfigPath)
 	if err != nil {
 		log.Criticalf("Error parsing config: %s", err)
+		cleanupAndExit(1)
+	}
+
+	mainCtx, mainCancel := context.WithCancel(context.Background())
+	defer mainCancel()
+	err = manager.ConfigureAutoExit(mainCtx)
+	if err != nil {
+		log.Criticalf("Unable to configure auto-exit, err: %w", err)
 		cleanupAndExit(1)
 	}
 
@@ -271,24 +279,9 @@ func runAgent(exit chan struct{}) {
 		return
 	}
 
-	// Run a profile & telemetry server.
-	go func() {
-		if ddconfig.Datadog.GetBool("telemetry.enabled") {
-			http.Handle("/telemetry", telemetry.Handler())
-		}
-		err := http.ListenAndServe(fmt.Sprintf("localhost:%d", cfg.ProcessExpVarPort), nil)
-		if err != nil && err != http.ErrServerClosed {
-			log.Errorf("Error creating expvar server on port %v: %v", cfg.ProcessExpVarPort, err)
-		}
-
-		err = api.StartServer()
-		if err != nil {
-			_ = log.Error(err)
-		}
-	}()
-
 	if opts.testIntake {
-		processEndpoint, err := url.Parse("https://process.datad0g.com")
+		log.Info("Starting end-to-end test for process-discovery payload")
+		processEndpoint, err := url.Parse("https://process.datad0g.com/api/v1/collector")
 		if err != nil {
 			// This is a hardcoded URL so parsing it should not fail
 			panic(err)
@@ -324,8 +317,42 @@ func runAgent(exit chan struct{}) {
 			cleanupAndExit(1)
 			return
 		}
-		processForwarder.SubmitProcessDiscoveryChecks(forwarder.Payloads{&body}, extraHeaders)
+		log.Info("Sending test-intake payload")
+		resp, err := processForwarder.SubmitProcessDiscoveryChecks(forwarder.Payloads{&body}, extraHeaders)
+
+		if err != nil {
+			log.Errorf("Error submitting payload: %s", err)
+			cleanupAndExit(1)
+			return
+		}
+		select {
+		case m, ok := <-resp:
+			if ok {
+				log.Info(m)
+			} else {
+				log.Info("No response received")
+			}
+		}
+		log.Info("Exiting test-intake")
+		cleanupAndExit(0)
+		return
 	}
+
+	// Run a profile & telemetry server.
+	go func() {
+		if ddconfig.Datadog.GetBool("telemetry.enabled") {
+			http.Handle("/telemetry", telemetry.Handler())
+		}
+		err := http.ListenAndServe(fmt.Sprintf("localhost:%d", cfg.ProcessExpVarPort), nil)
+		if err != nil && err != http.ErrServerClosed {
+			log.Errorf("Error creating expvar server on port %v: %v", cfg.ProcessExpVarPort, err)
+		}
+
+		err = api.StartServer()
+		if err != nil {
+			_ = log.Error(err)
+		}
+	}()
 
 	cl, err := NewCollector(cfg)
 	if err != nil {
@@ -340,7 +367,6 @@ func runAgent(exit chan struct{}) {
 	}
 
 	for range exit {
-
 	}
 }
 

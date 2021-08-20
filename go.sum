@@ -98,6 +98,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/DataDog/agent-payload v4.80.0+incompatible h1:fYmbV/oW3rQub6add/Ikldh8t/SyI47oVJsHg1PhqVw=
 github.com/DataDog/agent-payload v4.80.0+incompatible/go.mod h1:/2RW4IC/2z54jtB6RLgq5UtVI1TsX0joDRjKbkLT+mk=
+github.com/DataDog/agent-payload v4.81.0+incompatible h1:CCALFJ0VC5rO0PW9nLVh1fGPmBr7Ky4xHhk4WMJZJDI=
+github.com/DataDog/agent-payload v4.81.0+incompatible/go.mod h1:/2RW4IC/2z54jtB6RLgq5UtVI1TsX0joDRjKbkLT+mk=
 github.com/DataDog/cast v1.3.1-0.20190301154711-1ee8c8bd14a3 h1:SobA9WYm4K/MUtWlbKaomWTmnuYp1KhIm8Wlx3vmpsg=
 github.com/DataDog/cast v1.3.1-0.20190301154711-1ee8c8bd14a3/go.mod h1:Qx5cxh0v+4UWYiBimWS+eyWzqEqokIECu5etghLkUJE=
 github.com/DataDog/datadog-api-client-go v1.0.0-beta.18/go.mod h1:Gn0fZwIOBbSidO0OaPEh9nO5EmIPsxJrHfHvfVXEaoU=
@@ -287,8 +289,8 @@ github.com/cilium/ebpf v0.5.0/go.mod h1:4tRaxcgiL706VnOzHOdBlY8IEAIdxINsQBcU4xJJ
 github.com/clbanning/mxj v1.8.4 h1:HuhwZtbyvyOw+3Z1AowPkU87JkJUSv751ELWaiTpj8I=
 github.com/clbanning/mxj v1.8.4/go.mod h1:BVjHeAH+rl9rs6f+QIpeRl0tfu10SXn1pUSa5PVGJng=
 github.com/clbanning/x2j v0.0.0-20191024224557-825249438eec/go.mod h1:jMjuTZXRI4dUb/I5gc9Hdhagfvm9+RyrPryS/auMzxE=
-github.com/cloudfoundry-community/go-cfclient v0.0.0-20201123235753-4f46d6348a05 h1:5Hbn8fSLiRX8dje5E22dk/6SuJnbd+pnwjFCGyb8St0=
-github.com/cloudfoundry-community/go-cfclient v0.0.0-20201123235753-4f46d6348a05/go.mod h1:UGbOgL5sX52jB/PUVKOeRC17QYX4Afsq+bsIeMCD4VA=
+github.com/cloudfoundry-community/go-cfclient v0.0.0-20210621174645-7773f7e22665 h1:LDCKU3OIIsl7sX1KggC6zIHKk0PCeYbmOGbCHqNCSOQ=
+github.com/cloudfoundry-community/go-cfclient v0.0.0-20210621174645-7773f7e22665/go.mod h1:0FdHblxw7g3M2PPICOw9i8YZOHP9dZTHbJUtoxL7Z/E=
 github.com/clusterhq/flocker-go v0.0.0-20160920122132-2b8b7259d313/go.mod h1:P1wt9Z3DP8O6W3rvwCt0REIlshg1InHImaLW0t3ObY0=
 github.com/cobaugh/osrelease v0.0.0-20181218015638-a93a0a55a249 h1:R0IDH8daQ3lODvu8YtxnIqqth5qMGCJyADoUQvmLx4o=
 github.com/cobaugh/osrelease v0.0.0-20181218015638-a93a0a55a249/go.mod h1:EHKW9yNEYSBpTKzuu7Y9oOrft/UlzH57rMIB03oev6M=
@@ -1578,6 +1580,7 @@ golang.org/x/net v0.0.0-20210525063256-abc453219eb5/go.mod h1:9nx3DQGgdP8bBQD5qx
 golang.org/x/net v0.0.0-20210614182718-04defd469f4e h1:XpT3nA5TvE525Ne3hInMh6+GETgn27Zfm9dxsThnX2Q=
 golang.org/x/net v0.0.0-20210614182718-04defd469f4e/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/oauth2 v0.0.0-20180821212333-d2e6202438be/go.mod h1:N/0e6XlmueqKjAGxoOufVs8QHGRruUQn6yWY3a++T0U=
+golang.org/x/oauth2 v0.0.0-20190130055435-99b60b757ec1/go.mod h1:gOpvHmFTYa4IltrdGE7lF6nIHvwfUNPOp7c8zoXwtLw=
 golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421/go.mod h1:gOpvHmFTYa4IltrdGE7lF6nIHvwfUNPOp7c8zoXwtLw=
 golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45/go.mod h1:gOpvHmFTYa4IltrdGE7lF6nIHvwfUNPOp7c8zoXwtLw=
 golang.org/x/oauth2 v0.0.0-20191202225959-858c2ad4c8b6/go.mod h1:gOpvHmFTYa4IltrdGE7lF6nIHvwfUNPOp7c8zoXwtLw=
