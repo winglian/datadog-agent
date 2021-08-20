@@ -25,7 +25,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/process/util/api/headers"
 	"net/http"
 	_ "net/http/pprof"
-	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -281,15 +280,10 @@ func runAgent(exit chan struct{}) {
 
 	if opts.testIntake {
 		log.Info("Starting end-to-end test for process-discovery payload")
-		processEndpoint, err := url.Parse("https://process.datad0g.com/api/v1/collector")
-		if err != nil {
-			// This is a hardcoded URL so parsing it should not fail
-			panic(err)
-		}
-
-		processForwarderOpts := forwarder.NewOptions(apicfg.KeysPerDomains([]apicfg.Endpoint{{Endpoint: processEndpoint}}))
+		processForwarderOpts := forwarder.NewOptions(apicfg.KeysPerDomains(cfg.APIEndpoints))
 		processForwarderOpts.DisableAPIKeyChecking = true
 		processForwarder := forwarder.NewDefaultForwarder(processForwarderOpts)
+		processForwarder.Start()
 
 		payloadBody := process.CollectorProcDiscovery{
 			HostName:  "test",
@@ -318,21 +312,14 @@ func runAgent(exit chan struct{}) {
 			return
 		}
 		log.Info("Sending test-intake payload")
-		resp, err := processForwarder.SubmitProcessDiscoveryChecks(forwarder.Payloads{&body}, extraHeaders)
+		_, err = processForwarder.SubmitProcessDiscoveryChecks(forwarder.Payloads{&body}, extraHeaders)
 
 		if err != nil {
 			log.Errorf("Error submitting payload: %s", err)
 			cleanupAndExit(1)
 			return
 		}
-		select {
-		case m, ok := <-resp:
-			if ok {
-				log.Info(m)
-			} else {
-				log.Info("No response received")
-			}
-		}
+
 		log.Info("Exiting test-intake")
 		cleanupAndExit(0)
 		return
