@@ -9,13 +9,18 @@ package cgroup
 
 import (
 	"bufio"
+	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
 )
+
+var pctFailEnv = os.Getenv("DD_CGROUP_FAIL_PCT")
 
 // ContainerCgroup is a structure that stores paths and mounts for a cgroup.
 // It provides several methods for collecting stats about the cgroup using the
@@ -29,6 +34,15 @@ type ContainerCgroup struct {
 
 // readLines reads contents from a file and splits them by new lines.
 func readLines(filename string) ([]string, error) {
+	if pctFailEnv != "" {
+		pctFail, _ := strconv.Atoi(pctFailEnv)
+		rand.Seed(time.Now().UnixNano())
+		randomInt := rand.Intn(100)
+		if randomInt <= pctFail {
+			return []string{""}, fmt.Errorf("failing %d%% of cgroup file reads", pctFail)
+		}
+	}
+
 	f, err := os.Open(filename)
 	if err != nil {
 		return []string{""}, err
