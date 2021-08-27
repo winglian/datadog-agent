@@ -121,10 +121,6 @@ type ProcessResolver struct {
 	pidCacheMap      *lib.Map
 	cacheSize        int64
 	opts             ProcessResolverOpts
-	hitsStats        map[string]*int64
-	missStats        int64
-	addedEntries     int64
-	flushedEntries   int64
 
 	entryCache    map[uint32]*model.ProcessCacheEntry
 	argsEnvsCache *simplelru.LRU
@@ -217,7 +213,7 @@ func (p *ProcessResolver) DequeueExited() {
 
 	delEntry := func(pid uint32, exitTime time.Time) {
 		p.deleteEntry(pid, exitTime)
-		atomic.AddInt64(&p.flushedEntries, 1)
+		_ = p.client.Count(metrics.MetricProcessResolverFlushed, 1, []string{}, 1.0)
 	}
 
 	now := time.Now()
@@ -246,51 +242,12 @@ func (p *ProcessResolver) NewProcessCacheEntry() *model.ProcessCacheEntry {
 
 // SendStats sends process resolver metrics
 func (p *ProcessResolver) SendStats() error {
-	var err error
-	var count int64
-
-	if err = p.client.Gauge(metrics.MetricProcessResolverCacheSize, p.GetCacheSize(), []string{}, 1.0); err != nil {
+	if err := p.client.Gauge(metrics.MetricProcessResolverCacheSize, p.GetCacheSize(), []string{}, 1.0); err != nil {
 		return errors.Wrap(err, "failed to send process_resolver cache_size metric")
 	}
 
-	if err = p.client.Gauge(metrics.MetricProcessResolverReferenceCount, p.GetEntryCacheSize(), []string{}, 1.0); err != nil {
+	if err := p.client.Gauge(metrics.MetricProcessResolverReferenceCount, p.GetEntryCacheSize(), []string{}, 1.0); err != nil {
 		return errors.Wrap(err, "failed to send process_resolver reference_count metric")
-	}
-
-	if count = atomic.SwapInt64(p.hitsStats[metrics.CacheTag], 0); count > 0 {
-		if err = p.client.Count(metrics.MetricProcessResolverCacheHits, count, []string{metrics.CacheTag}, 1.0); err != nil {
-			return errors.Wrap(err, "failed to send process_resolver cache hits metric")
-		}
-	}
-
-	if count = atomic.SwapInt64(p.hitsStats[metrics.KernelMapsTag], 0); count > 0 {
-		if err = p.client.Count(metrics.MetricProcessResolverCacheHits, count, []string{metrics.KernelMapsTag}, 1.0); err != nil {
-			return errors.Wrap(err, "failed to send process_resolver kernel maps hits metric")
-		}
-	}
-
-	if count = atomic.SwapInt64(p.hitsStats[metrics.ProcFSTag], 0); count > 0 {
-		if err = p.client.Count(metrics.MetricProcessResolverCacheHits, count, []string{metrics.ProcFSTag}, 1.0); err != nil {
-			return errors.Wrap(err, "failed to send process_resolver procfs hits metric")
-		}
-	}
-
-	if count = atomic.SwapInt64(&p.missStats, 0); count > 0 {
-		if err = p.client.Count(metrics.MetricProcessResolverCacheMiss, count, []string{}, 1.0); err != nil {
-			return errors.Wrap(err, "failed to send process_resolver misses metric")
-		}
-	}
-
-	if count = atomic.SwapInt64(&p.addedEntries, 0); count > 0 {
-		if err = p.client.Count(metrics.MetricProcessResolverAdded, count, []string{}, 1.0); err != nil {
-			return errors.Wrap(err, "failed to send process_resolver added entries metric")
-		}
-	}
-
-	if count = atomic.SwapInt64(&p.flushedEntries, 0); count > 0 {
-		if err = p.client.Count(metrics.MetricProcessResolverFlushed, count, []string{}, 1.0); err != nil {
-			return errors.Wrap(err, "failed to send process_resolver flushed entries metric")
-		}
 	}
 
 	return nil
@@ -445,7 +402,7 @@ func (p *ProcessResolver) insertEntry(pid uint32, entry, prev *model.ProcessCach
 		prev.Release()
 	}
 
-	atomic.AddInt64(&p.addedEntries, 1)
+	_ = p.client.Count(metrics.MetricProcessResolverAdded, 1, []string{}, 1.0)
 	atomic.AddInt64(&p.cacheSize, 1)
 
 	return entry
@@ -502,7 +459,7 @@ func (p *ProcessResolver) Resolve(pid, tid uint32) *model.ProcessCacheEntry {
 
 	entry, exists := p.entryCache[pid]
 	if exists {
-		atomic.AddInt64(p.hitsStats[metrics.CacheTag], 1)
+		_ = p.client.Count(metrics.MetricProcessResolverCacheHits, 1, []string{metrics.CacheTag}, 1.0)
 		return entry
 	}
 
@@ -512,17 +469,17 @@ func (p *ProcessResolver) Resolve(pid, tid uint32) *model.ProcessCacheEntry {
 
 	// fallback to the kernel maps directly, the perf event may be delayed / may have been lost
 	if entry = p.resolveWithKernelMaps(pid, tid); entry != nil {
-		atomic.AddInt64(p.hitsStats[metrics.KernelMapsTag], 1)
+		_ = p.client.Count(metrics.MetricProcessResolverCacheHits, 1, []string{metrics.KernelMapsTag}, 1.0)
 		return entry
 	}
 
 	// fallback to /proc, the in-kernel LRU may have deleted the entry
 	if entry = p.resolveWithProcfs(pid, procResolveMaxDepth); entry != nil {
-		atomic.AddInt64(p.hitsStats[metrics.ProcFSTag], 1)
+		_ = p.client.Count(metrics.MetricProcessResolverCacheHits, 1, []string{metrics.ProcFSTag}, 1.0)
 		return entry
 	}
 
-	atomic.AddInt64(&p.missStats, 1)
+	_ = p.client.Count(metrics.MetricProcessResolverCacheMiss, 1, []string{}, 1.0)
 	return nil
 }
 
@@ -958,11 +915,6 @@ func NewProcessResolver(probe *Probe, resolvers *Resolvers, client *statsd.Clien
 		argsEnvsCache: argsEnvsCache,
 		state:         snapshotting,
 		argsEnvsPool:  NewArgsEnvsPool(),
-		hitsStats:     map[string]*int64{},
-	}
-	for _, t := range metrics.AllTypesTags {
-		zero := int64(0)
-		p.hitsStats[t] = &zero
 	}
 	p.processCacheEntryPool = NewProcessCacheEntryPool(p)
 
