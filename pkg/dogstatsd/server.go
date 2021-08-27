@@ -692,24 +692,21 @@ func (s *Server) Stop() {
 	s.Started = false
 }
 
-// storeMetricStats stores stats on the given metric sample.
-//
-// It can help troubleshooting clients with bad behaviors.
 func (s *Server) storeMetricStats(sample metrics.MetricSample) {
 	now := time.Now()
 	s.Debug.Lock()
 	defer s.Debug.Unlock()
 
 	// key
-	tags := util.NewTagsBuilderFromSlice(sample.Tags)
-	key := s.Debug.keyGen.Generate(sample.Name, "", tags)
+	util.SortUniqInPlace(sample.Tags)
+	key := s.Debug.keyGen.Generate(sample.Name, "", sample.Tags)
 
 	// store
 	ms := s.Debug.Stats[key]
 	ms.Count++
 	ms.LastSeen = now
 	ms.Name = sample.Name
-	ms.Tags = strings.Join(tags.Get(), " ") // we don't want/need to share the underlying array
+	ms.Tags = strings.Join(sample.Tags, " ") // we don't want/need to share the underlying array
 	s.Debug.Stats[key] = ms
 
 	s.Debug.metricsCounts.metricChan <- struct{}{}
