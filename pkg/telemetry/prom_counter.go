@@ -59,13 +59,3 @@ func (c *promCounter) Delete(tagsValue ...string) {
 func (c *promCounter) DeleteWithTags(tags map[string]string) {
 	c.pc.Delete(tags)
 }
-
-// WithValues returns SimpleCounter for this metric with the given tag values.
-func (c *promCounter) WithValues(tagsValue ...string) SimpleCounter {
-	return c.pc.WithLabelValues(tagsValue...)
-}
-
-// Withtags returns SimpleCounter for this metric with the given tag values.
-func (c *promCounter) WithTags(tags map[string]string) SimpleCounter {
-	return c.pc.With(tags)
-}

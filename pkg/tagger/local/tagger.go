@@ -38,7 +38,7 @@ type Tagger struct {
 	candidates map[string]collectors.CollectorFactory
 	pullers    map[string]collectors.Puller
 	streamers  map[string]collectors.Streamer
-	fetchers   map[string]fetcherEntry
+	fetchers   map[string]collectors.Fetcher
 
 	store       *tagStore
 	retryTicker *time.Ticker
@@ -53,11 +53,6 @@ type collectorReply struct {
 	instance collectors.Collector
 }
 
-type fetcherEntry struct {
-	fetcher   collectors.Fetcher
-	telemetry telemetry.FetcherTelemetry
-}
-
 // NewTagger returns an allocated tagger. You still have to run Init()
 // once the config package is ready.
 // You are probably looking for tagger.Tag() using the global instance
@@ -68,7 +63,7 @@ func NewTagger(catalog collectors.Catalog) *Tagger {
 		candidates: make(map[string]collectors.CollectorFactory),
 		pullers:    make(map[string]collectors.Puller),
 		streamers:  make(map[string]collectors.Streamer),
-		fetchers:   make(map[string]fetcherEntry),
+		fetchers:   make(map[string]collectors.Fetcher),
 
 		store: newTagStore(),
 
@@ -212,7 +207,7 @@ func (t *Tagger) registerCollectors(replies []collectorReply) {
 			pull, ok := c.instance.(collectors.Puller)
 			if ok {
 				t.pullers[c.name] = pull
-				t.addFetcher(c.name, pull)
+				t.fetchers[c.name] = pull
 			} else {
 				log.Errorf("error initializing collector %s: does not implement pull", c.name)
 			}
@@ -220,7 +215,7 @@ func (t *Tagger) registerCollectors(replies []collectorReply) {
 			stream, ok := c.instance.(collectors.Streamer)
 			if ok {
 				t.streamers[c.name] = stream
-				t.addFetcher(c.name, stream)
+				t.fetchers[c.name] = stream
 				go stream.Stream() //nolint:errcheck
 			} else {
 				log.Errorf("error initializing collector %s: does not implement stream", c.name)
@@ -228,20 +223,13 @@ func (t *Tagger) registerCollectors(replies []collectorReply) {
 		case collectors.FetchOnlyCollection:
 			fetch, ok := c.instance.(collectors.Fetcher)
 			if ok {
-				t.addFetcher(c.name, fetch)
+				t.fetchers[c.name] = fetch
 			} else {
 				log.Errorf("error initializing collector %s: does not implement fetch", c.name)
 			}
 		}
 	}
 	t.Unlock()
-}
-
-func (t *Tagger) addFetcher(name string, collector collectors.Fetcher) {
-	t.fetchers[name] = fetcherEntry{
-		fetcher:   collector,
-		telemetry: telemetry.NewFetcherTelemetry(name),
-	}
 }
 
 func (t *Tagger) pull(ctx context.Context) {
@@ -264,14 +252,14 @@ func (t *Tagger) Stop() error {
 // getTags returns a read only list of tags for a given entity.
 func (t *Tagger) getTags(entity string, cardinality collectors.TagCardinality) ([]string, error) {
 	if entity == "" {
-		telemetry.QueriesByCardinality(cardinality).EmptyEntityID.Inc()
+		telemetry.Queries.Inc(collectors.TagCardinalityToString(cardinality), telemetry.QueryEmptyEntityID)
 		return nil, fmt.Errorf("empty entity ID")
 	}
 
 	cachedTags, sources := t.store.lookup(entity, cardinality)
 
 	if len(sources) == len(t.fetchers) {
-		telemetry.QueriesByCardinality(cardinality).Success.Inc()
+		telemetry.Queries.Inc(collectors.TagCardinalityToString(cardinality), telemetry.QuerySuccess)
 		return cachedTags, nil
 	}
 
@@ -292,21 +280,21 @@ IterCollectors:
 
 		var cacheMiss bool
 		var expiryDate time.Time
-		low, orch, high, err := collector.fetcher.Fetch(t.ctx, entity)
+		low, orch, high, err := collector.Fetch(t.ctx, entity)
 		switch {
 		case errors.IsNotFound(err):
 			log.Debugf("entity %s not found in %s, skipping: %v", entity, name, err)
-			collector.telemetry.NotFound.Inc()
+			telemetry.Fetches.Inc(name, telemetry.FetchNotFound)
 
 			cacheMiss = true
 			expiryDate = time.Now().Add(notFoundTTL)
 		case err != nil:
 			log.Warnf("error collecting from %s: %s", name, err)
-			collector.telemetry.Error.Inc()
+			telemetry.Fetches.Inc(name, telemetry.FetchError)
 
 			expiryDate = time.Now().Add(errTTL)
 		default:
-			collector.telemetry.Success.Inc()
+			telemetry.Fetches.Inc(name, telemetry.FetchSuccess)
 		}
 
 		tagArrays = append(tagArrays, low)
@@ -335,9 +323,9 @@ IterCollectors:
 	tags := utils.ConcatenateTags(tagArrays)
 
 	if len(tags) > 0 {
-		telemetry.QueriesByCardinality(cardinality).Success.Inc()
+		telemetry.Queries.Inc(collectors.TagCardinalityToString(cardinality), telemetry.QuerySuccess)
 	} else {
-		telemetry.QueriesByCardinality(cardinality).EmptyTags.Inc()
+		telemetry.Queries.Inc(collectors.TagCardinalityToString(cardinality), telemetry.QueryEmptyTags)
 	}
 
 	return tags, nil
