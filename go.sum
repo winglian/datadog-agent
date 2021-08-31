@@ -721,8 +721,8 @@ github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 h1:Ovs26xHkKqVztRpIrF/92Bcuy
 github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0/go.mod h1:8NvIoxWQoOIhqOTXgfV/d3M/q6VIi02HzZEHgUlZvzk=
 github.com/grpc-ecosystem/grpc-gateway v1.12.2 h1:D0EVSTwQoQOyfY35QNSuPJA4jpZRtkoGYWQMB7XNg5o=
 github.com/grpc-ecosystem/grpc-gateway v1.12.2/go.mod h1:8XEsbTttt/W+VvjtQhLACqCisSPWTxCZ7sBRjU6iH9c=
-github.com/grpc/grpc-go v1.28.0 h1:ZlWcXCu7hg5JCZMV7rdfR35H1or2I96TsyoenceWSi0=
-github.com/grpc/grpc-go v1.28.0/go.mod h1:rpkK4SK4GF4Ach/+MFLZUBavHOvF2JJB5uozKKal+60=
+github.com/grpc/grpc-go v1.29.0 h1:KrwdtMFwj8W0sXbTwawB3HYjD7b/FvIwS0TBa/vPinQ=
+github.com/grpc/grpc-go v1.29.0/go.mod h1:itym6AZVZYACWQqET3MqgPpjcuV5QH3BxFS3IjizoKk=
 github.com/h2non/filetype v1.0.5/go.mod h1:isekKqOuhMj+s/7r3rIeTErIRy4Rub5uBWHfvMusLMU=
 github.com/h2non/filetype v1.1.0/go.mod h1:319b3zT68BvV+WRj7cwy856M2ehB3HqNOt6sy1HndBY=
 github.com/h2non/filetype v1.1.2-0.20210602110014-3305bbb7ac7b h1:nY107LvOu01hGfxFgSZNW5hw+zSCCfDONEADbmZXrpg=

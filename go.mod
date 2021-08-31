@@ -20,10 +20,10 @@ replace (
 	github.com/ugorji/go => github.com/ugorji/go v1.1.7
 )
 
-// pinned to grpc v1.28.0
+// pinned to grpc v1.29.0
 replace (
 	github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.12.2
-	google.golang.org/grpc => github.com/grpc/grpc-go v1.28.0
+	google.golang.org/grpc => github.com/grpc/grpc-go v1.29.0
 )
 
 replace (
