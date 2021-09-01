@@ -89,7 +89,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20190620071333-e64a0ec8b42a
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dgraph-io/ristretto v0.1.0
-	github.com/docker/docker v17.12.0-ce-rc1.0.20200916142827-bd33bbf0497b+incompatible
+	github.com/docker/docker v20.10.2+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/elastic/go-libaudit v0.4.0
@@ -144,7 +144,7 @@ require (
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852 // indirect
-	github.com/opencontainers/runtime-spec v1.0.3-0.20200929063507-e6143ca7d51d
+	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
 	github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pierrec/lz4/v4 v4.1.3 // indirect
@@ -191,47 +191,47 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	gopkg.in/zorkian/go-datadog-api.v2 v2.30.0
 	gotest.tools v2.2.0+incompatible
-	k8s.io/api v0.21.1
-	k8s.io/apimachinery v0.21.1
-	k8s.io/apiserver v0.20.5
+	k8s.io/api v0.21.4
+	k8s.io/apimachinery v0.21.4
+	k8s.io/apiserver v0.21.4
 	k8s.io/autoscaler/vertical-pod-autoscaler v0.9.2
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/cri-api v0.20.1
 	k8s.io/klog v1.0.1-0.20200310124935-4ad0115ba9e4 // Min version that includes fix for Windows Nano
 	k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
 	k8s.io/kube-state-metrics/v2 v2.0.1-0.20210419063836-dfab196f138a
-	k8s.io/kubernetes v1.20.5
-	k8s.io/metrics v0.20.5
+	k8s.io/kubernetes v1.21.4
+	k8s.io/metrics v0.21.4
 )
 
-// Pinned to kubernetes-v0.20.5
+// Pinned to kubernetes-v0.21.4
 replace (
-	k8s.io/api => k8s.io/api v0.20.5
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.20.5
-	k8s.io/apimachinery => k8s.io/apimachinery v0.20.5
-	k8s.io/apiserver => k8s.io/apiserver v0.20.5
-	k8s.io/cli-runtime => k8s.io/cli-runtime v0.20.5
-	k8s.io/client-go => k8s.io/client-go v0.20.5
-	k8s.io/cloud-provider => k8s.io/cloud-provider v0.20.5
-	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.20.5
-	k8s.io/code-generator => k8s.io/code-generator v0.20.5
-	k8s.io/component-base => k8s.io/component-base v0.20.5
-	k8s.io/component-helpers => k8s.io/component-helpers v0.20.5
-	k8s.io/controller-manager => k8s.io/controller-manager v0.20.5
-	k8s.io/cri-api => k8s.io/cri-api v0.20.5
-	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.20.5
-	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.20.5
-	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.20.5
-	k8s.io/kube-proxy => k8s.io/kube-proxy v0.20.5
-	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.20.5
-	k8s.io/kubectl => k8s.io/kubectl v0.20.5
-	k8s.io/kubelet => k8s.io/kubelet v0.20.5
-	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.20.5
-	k8s.io/metrics => k8s.io/metrics v0.20.5
-	k8s.io/mount-utils => k8s.io/mount-utils v0.20.5
-	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.20.5
-	k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.20.5
-	k8s.io/sample-controller => k8s.io/sample-controller v0.20.5
+	k8s.io/api => k8s.io/api v0.21.4
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.21.4
+	k8s.io/apimachinery => k8s.io/apimachinery v0.21.4
+	k8s.io/apiserver => k8s.io/apiserver v0.21.4
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.21.4
+	k8s.io/client-go => k8s.io/client-go v0.21.4
+	k8s.io/cloud-provider => k8s.io/cloud-provider v0.21.4
+	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.21.4
+	k8s.io/code-generator => k8s.io/code-generator v0.21.4
+	k8s.io/component-base => k8s.io/component-base v0.21.4
+	k8s.io/component-helpers => k8s.io/component-helpers v0.21.4
+	k8s.io/controller-manager => k8s.io/controller-manager v0.21.4
+	k8s.io/cri-api => k8s.io/cri-api v0.21.4
+	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.21.4
+	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.21.4
+	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.21.4
+	k8s.io/kube-proxy => k8s.io/kube-proxy v0.21.4
+	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.21.4
+	k8s.io/kubectl => k8s.io/kubectl v0.21.4
+	k8s.io/kubelet => k8s.io/kubelet v0.21.4
+	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.21.4
+	k8s.io/metrics => k8s.io/metrics v0.21.4
+	k8s.io/mount-utils => k8s.io/mount-utils v0.21.4
+	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.21.4
+	k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.21.4
+	k8s.io/sample-controller => k8s.io/sample-controller v0.21.4
 )
 
 replace gopkg.in/DataDog/dd-trace-go.v1 => gopkg.in/DataDog/dd-trace-go.v1 v1.30.0
