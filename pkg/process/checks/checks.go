@@ -18,21 +18,21 @@ type Check interface {
 
 // RunOptions provides run options for checks
 type RunOptions struct {
-	RunRegular  bool
+	RunStandard bool
 	RunRealTime bool
 }
 
 // RunResult is a result for a check run
 type RunResult struct {
-	CheckName string
-	Messages  []model.MessageBody
+	Standard []model.MessageBody
+	RealTime []model.MessageBody
 }
 
 // CheckWithRealTime provides an extended interface for running composite checks
 type CheckWithRealTime interface {
 	Check
 	RealTimeName() string
-	RunWithOptions(cfg *config.AgentConfig, groupID int32, options RunOptions) ([]RunResult, error)
+	RunWithOptions(cfg *config.AgentConfig, groupID int32, options RunOptions) (*RunResult, error)
 }
 
 // All is all the singleton check instances.
