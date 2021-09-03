@@ -1,6 +1,10 @@
 package dogstatsd
 
 import (
+	"math/bits"
+
+	"github.com/twmb/murmur3"
+
 	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	telemetry_utils "github.com/DataDog/datadog-agent/pkg/telemetry/utils"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
@@ -15,19 +19,31 @@ var (
 		nil, "Amount of resets of the string interner used in dogstatsd")
 )
 
+type stringInternerEntry struct {
+	hash uint64
+	data string
+}
+
 // stringInterner is a string cache providing a longer life for strings,
 // helping to avoid GC runs because they're re-used many times instead of
 // created every time.
 type stringInterner struct {
-	strings map[string]string
+	strings []*stringInternerEntry
+	mask    uint64
+	used    int
 	maxSize int
 	// telemetry
 	tlmEnabled bool
 }
 
 func newStringInterner(maxSize int) *stringInterner {
+	if maxSize <= 0 {
+		maxSize = 500
+	}
+	size := 1 << bits.Len(uint(maxSize+maxSize/8))
 	return &stringInterner{
-		strings:    make(map[string]string),
+		strings:    make([]*stringInternerEntry, size),
+		mask:       uint64(size - 1),
 		maxSize:    maxSize,
 		tlmEnabled: telemetry_utils.IsEnabled(),
 	}
@@ -38,22 +54,38 @@ func newStringInterner(maxSize int) *stringInterner {
 // If we need to store a new entry and the cache is at its maximum capacity,
 // it is reset.
 func (i *stringInterner) LoadOrStore(key []byte) string {
-	// here is the string interner trick: the map lookup using
-	// string(key) doesn't actually allocate a string, but is
-	// returning the string value -> no new heap allocation
-	// for this string.
-	// See https://github.com/golang/go/commit/f5f5a8b6209f84961687d993b93ea0d397f5d5bf
-	if s, found := i.strings[string(key)]; found {
-		return s
-	}
-	if len(i.strings) >= i.maxSize {
-		i.strings = make(map[string]string)
-		log.Debug("clearing the string interner cache")
-		if i.tlmEnabled {
-			tlmSIResets.Inc()
+	h := murmur3.Sum64(key)
+	pos := h & i.mask
+	beg := pos
+	var e *stringInternerEntry
+
+	for {
+		e = i.strings[pos]
+		if e == nil {
+			if i.used >= i.maxSize {
+				log.Debug("clearing the string interner cache")
+				if i.tlmEnabled {
+					tlmSIResets.Inc()
+				}
+				*i = *newStringInterner(i.maxSize)
+				return i.LoadOrStore(key)
+			}
+			e = &stringInternerEntry{
+				hash: h,
+				data: string(key),
+			}
+			i.strings[pos] = e
+			i.used++
+			break
+		}
+		if e.hash == h && e.data == string(key) {
+			break
+		}
+		pos = (pos + 1) & i.mask
+		if pos == beg {
+			panic("interner wrapped around, insufficient capacity")
 		}
 	}
-	s := string(key)
-	i.strings[s] = s
-	return s
+
+	return e.data
 }
