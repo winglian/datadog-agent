@@ -84,6 +84,7 @@ type MetricSample struct {
 	RawValue        string
 	Mtype           MetricType
 	Tags            []string
+	TagHashes        []uint64 // pre-computed hashes for Tags; may be nil to hash on demand.
 	Host            string
 	SampleRate      float64
 	Timestamp       float64
@@ -142,7 +143,11 @@ func EnrichTags(tb *util.TagsBuilder, originID string, k8sOriginID string, cardi
 
 // GetTags returns the metric sample tags
 func (m *MetricSample) GetTags(tb *util.TagsBuilder) {
-	tb.Append(m.Tags...)
+	if m.TagHashes == nil {
+		tb.Append(m.Tags...)
+	} else {
+		tb.AppendWithHashes(m.Tags, m.TagHashes)
+	}
 	EnrichTags(tb, m.OriginID, m.K8sOriginID, m.Cardinality)
 }
 
@@ -152,6 +157,10 @@ func (m *MetricSample) Copy() *MetricSample {
 	*dst = *m
 	dst.Tags = make([]string, len(m.Tags))
 	copy(dst.Tags, m.Tags)
+	if m.TagHashes != nil {
+		dst.TagHashes = make([]uint64, len(m.TagHashes))
+		copy(dst.TagHashes, m.TagHashes)
+	}
 	return dst
 }
 

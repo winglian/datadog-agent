@@ -64,12 +64,13 @@ func nextField(message []byte) ([]byte, []byte) {
 	return message[:sepIndex], message[sepIndex+1:]
 }
 
-func (p *parser) parseTags(rawTags []byte) []string {
+func (p *parser) parseTags(rawTags []byte) ([]string, []uint64) {
 	if len(rawTags) == 0 {
-		return nil
+		return nil, nil
 	}
 	tagsCount := bytes.Count(rawTags, commaSeparator)
 	tagsList := make([]string, tagsCount+1)
+	tagsHash := make([]uint64, tagsCount+1)
 
 	i := 0
 	for i < tagsCount {
@@ -77,12 +78,12 @@ func (p *parser) parseTags(rawTags []byte) []string {
 		if tagPos < 0 {
 			break
 		}
-		tagsList[i] = p.interner.LoadOrStore(rawTags[:tagPos])
+		tagsList[i], tagsHash[i] = p.interner.LoadOrStore(rawTags[:tagPos])
 		rawTags = rawTags[tagPos+len(commaSeparator):]
 		i++
 	}
-	tagsList[i] = p.interner.LoadOrStore(rawTags)
-	return tagsList
+	tagsList[i], tagsHash[i] = p.interner.LoadOrStore(rawTags)
+	return tagsList, tagsHash
 }
 
 func (p *parser) parseMetricSample(message []byte) (dogstatsdMetricSample, error) {
@@ -127,11 +128,12 @@ func (p *parser) parseMetricSample(message []byte) (dogstatsdMetricSample, error
 
 	sampleRate := 1.0
 	var tags []string
+	var tagHashes []uint64
 	var optionalField []byte
 	for message != nil {
 		optionalField, message = nextField(message)
 		if bytes.HasPrefix(optionalField, tagsFieldPrefix) {
-			tags = p.parseTags(optionalField[1:])
+			tags, tagHashes = p.parseTags(optionalField[1:])
 		} else if bytes.HasPrefix(optionalField, sampleRateFieldPrefix) {
 			sampleRate, err = parseMetricSampleSampleRate(optionalField[1:])
 			if err != nil {
@@ -140,14 +142,18 @@ func (p *parser) parseMetricSample(message []byte) (dogstatsdMetricSample, error
 		}
 	}
 
+	// FIXME(vickenty): could use hash too
+	nameString, _ := p.interner.LoadOrStore(name)
+
 	return dogstatsdMetricSample{
-		name:       p.interner.LoadOrStore(name),
+		name:       nameString,
 		value:      value,
 		values:     values,
 		setValue:   string(setValue),
 		metricType: metricType,
 		sampleRate: sampleRate,
 		tags:       tags,
+		tagHashes:  tagHashes,
 	}, nil
 }
 

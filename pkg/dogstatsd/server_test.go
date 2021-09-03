@@ -823,23 +823,23 @@ func TestNewServerExtraTags(t *testing.T) {
 
 	s, err := NewServer(mockAggregator(), nil)
 	require.NoError(err, "starting the DogStatsD server shouldn't fail")
-	require.Len(s.extraTags, 0, "no tags should have been read")
+	require.Equal(0, s.extraTags.Len(), "no tags should have been read")
 	s.Stop()
 
 	// when the extraTags parameter isn't used, the DogStatsD server is not reading this env var
 	os.Setenv("DD_TAGS", "hello:world")
 	s, err = NewServer(mockAggregator(), nil)
 	require.NoError(err, "starting the DogStatsD server shouldn't fail")
-	require.Len(s.extraTags, 0, "no tags should have been read")
+	require.Equal(0, s.extraTags.Len(), "no tags should have been read")
 	s.Stop()
 
 	// when the extraTags parameter isn't used, the DogStatsD server is automatically reading this env var for extra tags
 	os.Setenv("DD_DOGSTATSD_TAGS", "hello:world extra:tags")
 	s, err = NewServer(mockAggregator(), nil)
 	require.NoError(err, "starting the DogStatsD server shouldn't fail")
-	require.Len(s.extraTags, 2, "two tags should have been read")
-	require.Equal(s.extraTags[0], "hello:world", "the tag hello:world should be set")
-	require.Equal(s.extraTags[1], "extra:tags", "the tag extra:tags should be set")
+	require.Equal(2, s.extraTags.Len(), "two tags should have been read")
+	require.Equal(s.extraTags.Get()[0], "hello:world", "the tag hello:world should be set")
+	require.Equal(s.extraTags.Get()[1], "extra:tags", "the tag extra:tags should be set")
 	s.Stop()
 
 	// when the extraTags parameter is used, it should be used as the extraTags for the server
@@ -847,9 +847,9 @@ func TestNewServerExtraTags(t *testing.T) {
 	os.Setenv("DD_DOGSTATSD_TAGS", "hello:world") // this should be ignored
 	s, err = NewServer(mockAggregator(), []string{"extra:tags", "new:constructor"})
 	require.NoError(err, "starting the DogStatsD server shouldn't fail")
-	require.Len(s.extraTags, 2, "two tags should have been read")
-	require.Equal(s.extraTags[0], "extra:tags", "the tag extra:tags should be set")
-	require.Equal(s.extraTags[1], "new:constructor", "the tag new:constructor should be set")
+	require.Equal(2, s.extraTags.Len(), "two tags should have been read")
+	require.Equal(s.extraTags.Get()[0], "extra:tags", "the tag extra:tags should be set")
+	require.Equal(s.extraTags.Get()[1], "new:constructor", "the tag new:constructor should be set")
 	s.Stop()
 }
 

@@ -138,7 +138,7 @@ type Server struct {
 	defaultHostname           string
 	histToDist                bool
 	histToDistPrefix          string
-	extraTags                 []string
+	extraTags                 *util.TagsBuilder
 	Debug                     *dsdServerDebug
 	TCapture                  *replay.TrafficCapture
 	mapper                    *mapper.MetricMapper
@@ -317,7 +317,7 @@ func NewServer(aggregator *aggregator.BufferedAggregator, extraTags []string) (*
 		defaultHostname:           defaultHostname,
 		histToDist:                histToDist,
 		histToDistPrefix:          histToDistPrefix,
-		extraTags:                 extraTags,
+		extraTags:                 util.NewTagsBuilderFromSlice(extraTags),
 		eolTerminationUDP:         eolTerminationUDP,
 		eolTerminationUDS:         eolTerminationUDS,
 		eolTerminationNamedPipe:   eolTerminationNamedPipe,
@@ -630,6 +630,7 @@ func (s *Server) parseMetricMessage(metricSamples []metrics.MetricSample, parser
 			log.Tracef("Dogstatsd mapper: metric mapped from %q to %q with tags %v", sample.name, mapResult.Name, mapResult.Tags)
 			sample.name = mapResult.Name
 			sample.tags = append(sample.tags, mapResult.Tags...)
+			sample.tagHashes = nil // FIXME(vickenty)
 		}
 	}
 	metricSamples = enrichMetricSample(metricSamples, sample, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname, origin, s.entityIDPrecedenceEnabled, s.ServerlessMode)
@@ -642,9 +643,11 @@ func (s *Server) parseMetricMessage(metricSamples []metrics.MetricSample, parser
 		// All metricSamples already share the same Tags slice. We can
 		// extends the first one and reuse it for the rest.
 		if idx == 0 {
-			metricSamples[idx].Tags = append(metricSamples[idx].Tags, s.extraTags...)
+			metricSamples[idx].Tags = append(metricSamples[idx].Tags, s.extraTags.Get()...)
+			metricSamples[idx].TagHashes = append(metricSamples[idx].TagHashes, s.extraTags.Hashes()...)
 		} else {
 			metricSamples[idx].Tags = metricSamples[0].Tags
+			metricSamples[idx].TagHashes = metricSamples[0].TagHashes
 		}
 		dogstatsdMetricPackets.Add(1)
 		okCnt.Inc()
@@ -660,7 +663,7 @@ func (s *Server) parseEventMessage(parser *parser, message []byte, origin string
 		return nil, err
 	}
 	event := enrichEvent(sample, s.defaultHostname, origin, s.entityIDPrecedenceEnabled)
-	event.Tags = append(event.Tags, s.extraTags...)
+	event.Tags = append(event.Tags, s.extraTags.Get()...)
 	tlmProcessed.Inc("events", "ok", "")
 	dogstatsdEventPackets.Add(1)
 	return event, nil
@@ -674,7 +677,7 @@ func (s *Server) parseServiceCheckMessage(parser *parser, message []byte, origin
 		return nil, err
 	}
 	serviceCheck := enrichServiceCheck(sample, s.defaultHostname, origin, s.entityIDPrecedenceEnabled)
-	serviceCheck.Tags = append(serviceCheck.Tags, s.extraTags...)
+	serviceCheck.Tags = append(serviceCheck.Tags, s.extraTags.Get()...)
 	dogstatsdServiceCheckPackets.Add(1)
 	tlmProcessed.Inc("service_checks", "ok", "")
 	return serviceCheck, nil
@@ -845,5 +848,5 @@ func FormatDebugStats(stats []byte) (string, error) {
 
 // SetExtraTags sets extra tags. All metrics sent to the DogstatsD will be tagged with them.
 func (s *Server) SetExtraTags(tags []string) {
-	s.extraTags = tags
+	s.extraTags = util.NewTagsBuilderFromSlice(tags)
 }

@@ -15,12 +15,12 @@ var (
 	CardinalityTagPrefix = "dd.internal.card:"
 )
 
-func extractTagsMetadata(tags []string, defaultHostname string, originTags string, entityIDPrecedenceEnabled bool) ([]string, string, string, string, string) {
+func extractTagsMetadata(tags []string, tagHashes []uint64, defaultHostname string, originTags string, entityIDPrecedenceEnabled bool) ([]string, []uint64, string, string, string, string) {
 	host := defaultHostname
 
 	n := 0
 	entityIDValue, cardinality := "", ""
-	for _, tag := range tags {
+	for i, tag := range tags {
 		if strings.HasPrefix(tag, hostTagPrefix) {
 			host = tag[len(hostTagPrefix):]
 		} else if strings.HasPrefix(tag, entityIDTagPrefix) {
@@ -29,10 +29,16 @@ func extractTagsMetadata(tags []string, defaultHostname string, originTags strin
 			cardinality = tag[len(CardinalityTagPrefix):]
 		} else {
 			tags[n] = tag
+			if tagHashes != nil {
+				tagHashes[n] = tagHashes[i]
+			}
 			n++
 		}
 	}
 	tags = tags[:n]
+	if tagHashes != nil {
+		tagHashes = tagHashes[:n]
+	}
 
 	origin := ""
 	// We use the UDS socket origin if no origin ID was specify in the tags
@@ -52,7 +58,7 @@ func extractTagsMetadata(tags []string, defaultHostname string, originTags strin
 		k8sOrigin = kubelet.KubePodTaggerEntityPrefix + entityIDValue
 	}
 
-	return tags, host, origin, k8sOrigin, cardinality
+	return tags, tagHashes, host, origin, k8sOrigin, cardinality
 }
 
 func enrichMetricType(dogstatsdMetricType metricType) metrics.MetricType {
@@ -87,7 +93,7 @@ func isExcluded(metricName, namespace string, excludedNamespaces []string) bool 
 func enrichMetricSample(metricSamples []metrics.MetricSample, ddSample dogstatsdMetricSample, namespace string, excludedNamespaces []string,
 	defaultHostname string, origin string, entityIDPrecedenceEnabled bool, serverlessMode bool) []metrics.MetricSample {
 	metricName := ddSample.name
-	tags, hostnameFromTags, originID, k8sOriginID, cardinality := extractTagsMetadata(ddSample.tags, defaultHostname, origin, entityIDPrecedenceEnabled)
+	tags, tagHashes, hostnameFromTags, originID, k8sOriginID, cardinality := extractTagsMetadata(ddSample.tags, ddSample.tagHashes, defaultHostname, origin, entityIDPrecedenceEnabled)
 
 	if !isExcluded(metricName, namespace, excludedNamespaces) {
 		metricName = namespace + metricName
@@ -109,6 +115,7 @@ func enrichMetricSample(metricSamples []metrics.MetricSample, ddSample dogstatsd
 					Host:        hostnameFromTags,
 					Name:        metricName,
 					Tags:        tags,
+					TagHashes:   tagHashes,
 					Mtype:       mtype,
 					Value:       ddSample.values[idx],
 					SampleRate:  ddSample.sampleRate,
@@ -126,6 +133,7 @@ func enrichMetricSample(metricSamples []metrics.MetricSample, ddSample dogstatsd
 		Host:        hostnameFromTags,
 		Name:        metricName,
 		Tags:        tags,
+		TagHashes:   tagHashes,
 		Mtype:       mtype,
 		Value:       ddSample.value,
 		SampleRate:  ddSample.sampleRate,
@@ -161,7 +169,7 @@ func enrichEventAlertType(dogstatsdAlertType alertType) metrics.EventAlertType {
 }
 
 func enrichEvent(event dogstatsdEvent, defaultHostname string, origin string, entityIDPrecedenceEnabled bool) *metrics.Event {
-	tags, hostnameFromTags, originID, k8sOriginID, cardinality := extractTagsMetadata(event.tags, defaultHostname, origin, entityIDPrecedenceEnabled)
+	tags, _, hostnameFromTags, originID, k8sOriginID, cardinality := extractTagsMetadata(event.tags, nil, defaultHostname, origin, entityIDPrecedenceEnabled)
 
 	enrichedEvent := &metrics.Event{
 		Title:          event.title,
@@ -200,7 +208,7 @@ func enrichServiceCheckStatus(status serviceCheckStatus) metrics.ServiceCheckSta
 }
 
 func enrichServiceCheck(serviceCheck dogstatsdServiceCheck, defaultHostname string, origin string, entityIDPrecedenceEnabled bool) *metrics.ServiceCheck {
-	tags, hostnameFromTags, originID, k8sOriginID, cardinality := extractTagsMetadata(serviceCheck.tags, defaultHostname, origin, entityIDPrecedenceEnabled)
+	tags, _, hostnameFromTags, originID, k8sOriginID, cardinality := extractTagsMetadata(serviceCheck.tags, nil, defaultHostname, origin, entityIDPrecedenceEnabled)
 
 	enrichedServiceCheck := &metrics.ServiceCheck{
 		CheckName:   serviceCheck.name,

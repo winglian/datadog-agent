@@ -49,6 +49,17 @@ func (tb *TagsBuilder) Append(tags ...string) {
 	}
 }
 
+// AppendWithHashes appends tags and their hashes to the builder
+//
+// Panics if len(tags) != len(hashes)
+func (tb *TagsBuilder) AppendWithHashes(tags []string, hashes []uint64) {
+	if len(tags) != len(hashes) {
+		panic("tags and hash must have equal length")
+	}
+	tb.data = append(tb.data, tags...)
+	tb.hash = append(tb.hash, hashes...)
+}
+
 // AppendBuilder appends tags from src, re-using hashes.
 func (tb *TagsBuilder) AppendBuilder(src *TagsBuilder) {
 	tb.data = append(tb.data, src.data...)

@@ -53,7 +53,7 @@ func newStringInterner(maxSize int) *stringInterner {
 // cache if needed.
 // If we need to store a new entry and the cache is at its maximum capacity,
 // it is reset.
-func (i *stringInterner) LoadOrStore(key []byte) string {
+func (i *stringInterner) LoadOrStore(key []byte) (string, uint64) {
 	h := murmur3.Sum64(key)
 	pos := h & i.mask
 	beg := pos
@@ -87,5 +87,5 @@ func (i *stringInterner) LoadOrStore(key []byte) string {
 		}
 	}
 
-	return e.data
+	return e.data, e.hash
 }

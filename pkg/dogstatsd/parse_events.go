@@ -155,7 +155,7 @@ func (p *parser) applyEventOptionalField(event dogstatsdEvent, optionalField []b
 	case bytes.HasPrefix(optionalField, eventAlertTypePrefix):
 		newEvent.alertType, err = parseEventAlertType(optionalField[len(eventAlertTypePrefix):])
 	case bytes.HasPrefix(optionalField, eventTagsPrefix):
-		newEvent.tags = p.parseTags(optionalField[len(eventTagsPrefix):])
+		newEvent.tags, _ = p.parseTags(optionalField[len(eventTagsPrefix):])
 	}
 	if err != nil {
 		return event, err

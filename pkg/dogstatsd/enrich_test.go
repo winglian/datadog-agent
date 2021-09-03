@@ -1025,7 +1025,7 @@ func TestEnrichTags(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags, host, origin, k8sOrigin, cardinality := extractTagsMetadata(tt.args.tags, tt.args.defaultHostname, tt.args.originTags, tt.args.entityIDPrecendenceEnabled)
+			tags, _, host, origin, k8sOrigin, cardinality := extractTagsMetadata(tt.args.tags, nil, tt.args.defaultHostname, tt.args.originTags, tt.args.entityIDPrecendenceEnabled)
 			assert.Equal(t, tt.wantedTags, tags)
 			assert.Equal(t, tt.wantedHost, host)
 			assert.Equal(t, tt.wantedOrigin, origin)

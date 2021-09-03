@@ -39,6 +39,7 @@ type dogstatsdMetricSample struct {
 	metricType metricType
 	sampleRate float64
 	tags       []string
+	tagHashes  []uint64
 }
 
 // sanity checks a given message against the metric sample format
