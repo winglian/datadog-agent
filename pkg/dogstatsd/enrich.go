@@ -63,12 +63,12 @@ func extractHashedTagsMetadata(tags []util.Tag, defaultHostname string, originTa
 	n := 0
 	entityIDValue, cardinality := "", ""
 	for _, tag := range tags {
-		if strings.HasPrefix(tag.Data, hostTagPrefix) {
-			host = tag.Data[len(hostTagPrefix):]
-		} else if strings.HasPrefix(tag.Data, entityIDTagPrefix) {
-			entityIDValue = tag.Data[len(entityIDTagPrefix):]
-		} else if strings.HasPrefix(tag.Data, CardinalityTagPrefix) {
-			cardinality = tag.Data[len(CardinalityTagPrefix):]
+		if strings.HasPrefix(*tag.Data, hostTagPrefix) {
+			host = (*tag.Data)[len(hostTagPrefix):]
+		} else if strings.HasPrefix(*tag.Data, entityIDTagPrefix) {
+			entityIDValue = (*tag.Data)[len(entityIDTagPrefix):]
+		} else if strings.HasPrefix(*tag.Data, CardinalityTagPrefix) {
+			cardinality = (*tag.Data)[len(CardinalityTagPrefix):]
 		} else {
 			tags[n] = tag
 			n++

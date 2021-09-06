@@ -52,7 +52,7 @@ func newStringInterner(maxSize int) *stringInterner {
 
 // LoadOrStore is the string-only version of LoadOrStoreTag.
 func (i *stringInterner) LoadOrStore(key []byte) string {
-	return i.LoadOrStoreTag(key).Data
+	return *i.LoadOrStoreTag(key).Data
 }
 
 // LoadOrStoreTag always returns the string from the cache, adding it into the
@@ -94,7 +94,7 @@ func (i *stringInterner) LoadOrStoreTag(key []byte) util.Tag {
 	}
 
 	return util.Tag{
-		Data: e.data,
+		Data: &e.data,
 		Hash: e.hash,
 	}
 }

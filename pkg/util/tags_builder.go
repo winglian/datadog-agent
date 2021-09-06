@@ -13,8 +13,13 @@ import (
 
 // Tag is a string with a hash attached.
 type Tag struct {
-	Data string
+	Data *string
 	Hash uint64
+}
+
+// Text returns the tag string.
+func (t *Tag) Text() string {
+	return *t.Data
 }
 
 // NewTags creates new tags slice from a list of strings.
@@ -25,8 +30,9 @@ func NewTags(tags ...string) []Tag {
 
 	ts := make([]Tag, 0, len(tags))
 	for _, t := range tags {
+		tptr := t
 		ts = append(ts, Tag{
-			Data: t,
+			Data: &tptr,
 			Hash: murmur3.StringSum64(t),
 		})
 	}
@@ -35,7 +41,7 @@ func NewTags(tags ...string) []Tag {
 
 // SortTags sorts tags slice inplace.
 func SortTags(tags []Tag) {
-	sort.Slice(tags, func(i, j int) bool { return tags[i].Data < tags[j].Data })
+	sort.Slice(tags, func(i, j int) bool { return *tags[i].Data < *tags[j].Data })
 }
 
 // TagsBuilder allows to build a slice of tags to generate the context while
@@ -86,7 +92,7 @@ func (tb *TagsBuilder) Append(tags ...string) {
 // AppendTags appends tags and their hashes to the builder
 func (tb *TagsBuilder) AppendTags(tags []Tag) {
 	for _, t := range tags {
-		tb.data = append(tb.data, t.Data)
+		tb.data = append(tb.data, *t.Data)
 		tb.hash = append(tb.hash, t.Hash)
 	}
 }
@@ -95,7 +101,7 @@ func (tb *TagsBuilder) AppendTags(tags []Tag) {
 func (tb *TagsBuilder) AppendToTags(tags []Tag) []Tag {
 	for i := range tb.data {
 		tags = append(tags, Tag{
-			Data: tb.data[i],
+			Data: &tb.data[i],
 			Hash: tb.hash[i],
 		})
 	}
