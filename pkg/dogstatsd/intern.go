@@ -29,7 +29,8 @@ type stringInternerEntry struct {
 // helping to avoid GC runs because they're re-used many times instead of
 // created every time.
 type stringInterner struct {
-	strings []*stringInternerEntry
+	entries []stringInternerEntry
+	hashes  []uint16
 	mask    uint64
 	used    int
 	maxSize int
@@ -43,7 +44,8 @@ func newStringInterner(maxSize int) *stringInterner {
 	}
 	size := 1 << bits.Len(uint(maxSize+maxSize/8))
 	return &stringInterner{
-		strings:    make([]*stringInternerEntry, size),
+		entries:    make([]stringInternerEntry, size),
+		hashes:     make([]uint16, size),
 		mask:       uint64(size - 1),
 		maxSize:    maxSize,
 		tlmEnabled: telemetry_utils.IsEnabled(),
@@ -62,12 +64,12 @@ func (i *stringInterner) LoadOrStore(key []byte) string {
 func (i *stringInterner) LoadOrStoreTag(key []byte) util.Tag {
 	h := murmur3.Sum64(key)
 	pos := h & i.mask
+	hh := 0x8000 | (uint16(h) >> 1)
 	beg := pos
 	var e *stringInternerEntry
 
 	for {
-		e = i.strings[pos]
-		if e == nil {
+		if i.hashes[pos] == 0 {
 			if i.used >= i.maxSize {
 				log.Debug("clearing the string interner cache")
 				if i.tlmEnabled {
@@ -76,16 +78,18 @@ func (i *stringInterner) LoadOrStoreTag(key []byte) util.Tag {
 				*i = *newStringInterner(i.maxSize)
 				return i.LoadOrStoreTag(key)
 			}
-			e = &stringInternerEntry{
-				hash: h,
-				data: string(key),
-			}
-			i.strings[pos] = e
+			i.hashes[pos] = hh
+			e = &i.entries[pos]
+			e.hash = h
+			e.data = string(key)
 			i.used++
 			break
 		}
-		if e.hash == h && e.data == string(key) {
-			break
+		if i.hashes[pos] == hh {
+			e = &i.entries[pos]
+			if e.hash == h && e.data == string(key) {
+				break
+			}
 		}
 		pos = (pos + 1) & i.mask
 		if pos == beg {
