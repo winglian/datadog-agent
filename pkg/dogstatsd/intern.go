@@ -75,8 +75,9 @@ func (i *stringInterner) LoadOrStoreTag(key []byte) util.Tag {
 				if i.tlmEnabled {
 					tlmSIResets.Inc()
 				}
-				*i = *newStringInterner(i.maxSize)
-				return i.LoadOrStoreTag(key)
+				i.hashes = make([]uint16, i.mask+1)
+				i.used = 0
+				pos = h & i.mask
 			}
 			i.hashes[pos] = hh
 			e = &i.entries[pos]
