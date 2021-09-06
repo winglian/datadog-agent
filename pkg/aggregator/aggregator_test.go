@@ -26,6 +26,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/metrics"
 	"github.com/DataDog/datadog-agent/pkg/serializer"
 	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
+	"github.com/DataDog/datadog-agent/pkg/util"
 	"github.com/DataDog/datadog-agent/pkg/util/flavor"
 	"github.com/DataDog/datadog-agent/pkg/version"
 )
@@ -273,7 +274,7 @@ func TestDistributionsTooManyTags(t *testing.T) {
 				Name:  "test.sample",
 				Value: 13.0,
 				Mtype: metrics.DistributionType,
-				Tags:  tags,
+				Tags:  util.NewTags(tags...),
 				Host:  agg.hostname,
 			}
 			agg.addSample(samp, timeNowNano()-10000000)

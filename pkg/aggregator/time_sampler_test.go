@@ -41,7 +41,7 @@ func TestBucketSampling(t *testing.T) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       util.NewTags("foo", "bar"),
 		SampleRate: 1,
 	}
 	sampler.addSample(&mSample, 12345.0)
@@ -72,21 +72,21 @@ func TestContextSampling(t *testing.T) {
 		Name:       "my.metric.name1",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       util.NewTags("foo", "bar"),
 		SampleRate: 1,
 	}
 	mSample2 := metrics.MetricSample{
 		Name:       "my.metric.name2",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       util.NewTags("foo", "bar"),
 		SampleRate: 1,
 	}
 	mSample3 := metrics.MetricSample{
 		Name:       "my.metric.name3",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       util.NewTags("foo", "bar"),
 		Host:       "metric-hostname",
 		SampleRate: 1,
 	}
@@ -136,7 +136,7 @@ func TestCounterExpirySeconds(t *testing.T) {
 		Name:       "my.counter1",
 		Value:      1,
 		Mtype:      metrics.CounterType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       util.NewTags("foo", "bar"),
 		SampleRate: 1,
 	}
 	contextCounter1 := generateContextKey(sampleCounter1)
@@ -145,7 +145,7 @@ func TestCounterExpirySeconds(t *testing.T) {
 		Name:       "my.counter2",
 		Value:      2,
 		Mtype:      metrics.CounterType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       util.NewTags("foo", "bar"),
 		SampleRate: 1,
 	}
 	contextCounter2 := generateContextKey(sampleCounter2)
@@ -154,7 +154,7 @@ func TestCounterExpirySeconds(t *testing.T) {
 		Name:       "my.gauge",
 		Value:      2,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       util.NewTags("foo", "bar"),
 		SampleRate: 1,
 	}
 
@@ -206,7 +206,7 @@ func TestCounterExpirySeconds(t *testing.T) {
 		Name:       "my.counter1",
 		Value:      1,
 		Mtype:      metrics.CounterType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       util.NewTags("foo", "bar"),
 		SampleRate: 1,
 	}
 
@@ -274,7 +274,7 @@ func TestSketch(t *testing.T) {
 			for _, v := range values {
 				sampler.addSample(&metrics.MetricSample{
 					Name:       ctx.Name,
-					Tags:       ctx.Tags,
+					Tags:       util.NewTags(ctx.Tags...),
 					Host:       ctx.Host,
 					Value:      v,
 					Mtype:      metrics.DistributionType,
@@ -337,14 +337,14 @@ func TestSketchBucketSampling(t *testing.T) {
 		Name:       "test.metric.name",
 		Value:      1,
 		Mtype:      metrics.DistributionType,
-		Tags:       []string{"a", "b"},
+		Tags:       util.NewTags("a", "b"),
 		SampleRate: 1,
 	}
 	mSample2 := metrics.MetricSample{
 		Name:       "test.metric.name",
 		Value:      2,
 		Mtype:      metrics.DistributionType,
-		Tags:       []string{"a", "b"},
+		Tags:       util.NewTags("a", "b"),
 		SampleRate: 1,
 	}
 	sampler.addSample(&mSample1, 10001)
@@ -380,14 +380,14 @@ func TestSketchContextSampling(t *testing.T) {
 		Name:       "test.metric.name1",
 		Value:      1,
 		Mtype:      metrics.DistributionType,
-		Tags:       []string{"a", "b"},
+		Tags:       util.NewTags("a", "b"),
 		SampleRate: 1,
 	}
 	mSample2 := metrics.MetricSample{
 		Name:       "test.metric.name2",
 		Value:      1,
 		Mtype:      metrics.DistributionType,
-		Tags:       []string{"a", "c"},
+		Tags:       util.NewTags("a", "c"),
 		SampleRate: 1,
 	}
 	sampler.addSample(&mSample1, 10011)
@@ -430,7 +430,7 @@ func TestBucketSamplingWithSketchAndSeries(t *testing.T) {
 		Name:       "distribution.metric.name1",
 		Value:      1,
 		Mtype:      metrics.DistributionType,
-		Tags:       []string{"a", "b"},
+		Tags:       util.NewTags("a", "b"),
 		SampleRate: 1,
 	}
 	sampler.addSample(&dSample1, 12345.0)
@@ -441,7 +441,7 @@ func TestBucketSamplingWithSketchAndSeries(t *testing.T) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       util.NewTags("foo", "bar"),
 		SampleRate: 1,
 	}
 	sampler.addSample(&mSample, 12345.0)
@@ -485,7 +485,7 @@ func BenchmarkTimeSampler(b *testing.B) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       util.NewTags("foo", "bar"),
 		SampleRate: 1,
 		Timestamp:  12345.0,
 	}

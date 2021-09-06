@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/DataDog/datadog-agent/pkg/metrics"
+	"github.com/DataDog/datadog-agent/pkg/util"
 	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/kubelet"
 )
 
@@ -15,12 +16,12 @@ var (
 	CardinalityTagPrefix = "dd.internal.card:"
 )
 
-func extractTagsMetadata(tags []string, tagHashes []uint64, defaultHostname string, originTags string, entityIDPrecedenceEnabled bool) ([]string, []uint64, string, string, string, string) {
+func extractTagsMetadata(tags []string, defaultHostname string, originTags string, entityIDPrecedenceEnabled bool) ([]string, string, string, string, string) {
 	host := defaultHostname
 
 	n := 0
 	entityIDValue, cardinality := "", ""
-	for i, tag := range tags {
+	for _, tag := range tags {
 		if strings.HasPrefix(tag, hostTagPrefix) {
 			host = tag[len(hostTagPrefix):]
 		} else if strings.HasPrefix(tag, entityIDTagPrefix) {
@@ -29,16 +30,10 @@ func extractTagsMetadata(tags []string, tagHashes []uint64, defaultHostname stri
 			cardinality = tag[len(CardinalityTagPrefix):]
 		} else {
 			tags[n] = tag
-			if tagHashes != nil {
-				tagHashes[n] = tagHashes[i]
-			}
 			n++
 		}
 	}
 	tags = tags[:n]
-	if tagHashes != nil {
-		tagHashes = tagHashes[:n]
-	}
 
 	origin := ""
 	// We use the UDS socket origin if no origin ID was specify in the tags
@@ -58,7 +53,48 @@ func extractTagsMetadata(tags []string, tagHashes []uint64, defaultHostname stri
 		k8sOrigin = kubelet.KubePodTaggerEntityPrefix + entityIDValue
 	}
 
-	return tags, tagHashes, host, origin, k8sOrigin, cardinality
+	return tags, host, origin, k8sOrigin, cardinality
+}
+
+// FIXME(vickenty)
+func extractHashedTagsMetadata(tags []util.Tag, defaultHostname string, originTags string, entityIDPrecedenceEnabled bool) ([]util.Tag, string, string, string, string) {
+	host := defaultHostname
+
+	n := 0
+	entityIDValue, cardinality := "", ""
+	for _, tag := range tags {
+		if strings.HasPrefix(tag.Data, hostTagPrefix) {
+			host = tag.Data[len(hostTagPrefix):]
+		} else if strings.HasPrefix(tag.Data, entityIDTagPrefix) {
+			entityIDValue = tag.Data[len(entityIDTagPrefix):]
+		} else if strings.HasPrefix(tag.Data, CardinalityTagPrefix) {
+			cardinality = tag.Data[len(CardinalityTagPrefix):]
+		} else {
+			tags[n] = tag
+			n++
+		}
+	}
+	tags = tags[:n]
+
+	origin := ""
+	// We use the UDS socket origin if no origin ID was specify in the tags
+	// or 'dogstatsd_entity_id_precedence' is set to False (default false).
+	if entityIDValue == "" || !entityIDPrecedenceEnabled {
+		// Add origin tags only if the entity id tags is not provided
+		origin = originTags
+	}
+
+	k8sOrigin := ""
+	// We set k8sOriginID if the metrics contain a 'dd.internal.entity_id' tag different from 'none'.
+	if entityIDValue != "" && entityIDValue != entityIDIgnoreValue {
+		// Check if the value is not "none" in order to avoid calling
+		// the tagger for entity that doesn't exist.
+
+		// currently only supported for pods
+		k8sOrigin = kubelet.KubePodTaggerEntityPrefix + entityIDValue
+	}
+
+	return tags, host, origin, k8sOrigin, cardinality
 }
 
 func enrichMetricType(dogstatsdMetricType metricType) metrics.MetricType {
@@ -93,7 +129,7 @@ func isExcluded(metricName, namespace string, excludedNamespaces []string) bool 
 func enrichMetricSample(metricSamples []metrics.MetricSample, ddSample dogstatsdMetricSample, namespace string, excludedNamespaces []string,
 	defaultHostname string, origin string, entityIDPrecedenceEnabled bool, serverlessMode bool) []metrics.MetricSample {
 	metricName := ddSample.name
-	tags, tagHashes, hostnameFromTags, originID, k8sOriginID, cardinality := extractTagsMetadata(ddSample.tags, ddSample.tagHashes, defaultHostname, origin, entityIDPrecedenceEnabled)
+	tags, hostnameFromTags, originID, k8sOriginID, cardinality := extractHashedTagsMetadata(ddSample.tags, defaultHostname, origin, entityIDPrecedenceEnabled)
 
 	if !isExcluded(metricName, namespace, excludedNamespaces) {
 		metricName = namespace + metricName
@@ -115,7 +151,6 @@ func enrichMetricSample(metricSamples []metrics.MetricSample, ddSample dogstatsd
 					Host:        hostnameFromTags,
 					Name:        metricName,
 					Tags:        tags,
-					TagHashes:   tagHashes,
 					Mtype:       mtype,
 					Value:       ddSample.values[idx],
 					SampleRate:  ddSample.sampleRate,
@@ -133,7 +168,6 @@ func enrichMetricSample(metricSamples []metrics.MetricSample, ddSample dogstatsd
 		Host:        hostnameFromTags,
 		Name:        metricName,
 		Tags:        tags,
-		TagHashes:   tagHashes,
 		Mtype:       mtype,
 		Value:       ddSample.value,
 		SampleRate:  ddSample.sampleRate,
@@ -169,7 +203,7 @@ func enrichEventAlertType(dogstatsdAlertType alertType) metrics.EventAlertType {
 }
 
 func enrichEvent(event dogstatsdEvent, defaultHostname string, origin string, entityIDPrecedenceEnabled bool) *metrics.Event {
-	tags, _, hostnameFromTags, originID, k8sOriginID, cardinality := extractTagsMetadata(event.tags, nil, defaultHostname, origin, entityIDPrecedenceEnabled)
+	tags, hostnameFromTags, originID, k8sOriginID, cardinality := extractTagsMetadata(event.tags, defaultHostname, origin, entityIDPrecedenceEnabled)
 
 	enrichedEvent := &metrics.Event{
 		Title:          event.title,
@@ -208,7 +242,7 @@ func enrichServiceCheckStatus(status serviceCheckStatus) metrics.ServiceCheckSta
 }
 
 func enrichServiceCheck(serviceCheck dogstatsdServiceCheck, defaultHostname string, origin string, entityIDPrecedenceEnabled bool) *metrics.ServiceCheck {
-	tags, _, hostnameFromTags, originID, k8sOriginID, cardinality := extractTagsMetadata(serviceCheck.tags, nil, defaultHostname, origin, entityIDPrecedenceEnabled)
+	tags, hostnameFromTags, originID, k8sOriginID, cardinality := extractTagsMetadata(serviceCheck.tags, defaultHostname, origin, entityIDPrecedenceEnabled)
 
 	enrichedServiceCheck := &metrics.ServiceCheck{
 		CheckName:   serviceCheck.name,

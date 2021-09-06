@@ -7,6 +7,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	telemetry_utils "github.com/DataDog/datadog-agent/pkg/telemetry/utils"
+	"github.com/DataDog/datadog-agent/pkg/util"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
@@ -49,11 +50,16 @@ func newStringInterner(maxSize int) *stringInterner {
 	}
 }
 
-// LoadOrStore always returns the string from the cache, adding it into the
+// LoadOrStore is the string-only version of LoadOrStoreTag.
+func (i *stringInterner) LoadOrStore(key []byte) string {
+	return i.LoadOrStoreTag(key).Data
+}
+
+// LoadOrStoreTag always returns the string from the cache, adding it into the
 // cache if needed.
 // If we need to store a new entry and the cache is at its maximum capacity,
 // it is reset.
-func (i *stringInterner) LoadOrStore(key []byte) (string, uint64) {
+func (i *stringInterner) LoadOrStoreTag(key []byte) util.Tag {
 	h := murmur3.Sum64(key)
 	pos := h & i.mask
 	beg := pos
@@ -68,7 +74,7 @@ func (i *stringInterner) LoadOrStore(key []byte) (string, uint64) {
 					tlmSIResets.Inc()
 				}
 				*i = *newStringInterner(i.maxSize)
-				return i.LoadOrStore(key)
+				return i.LoadOrStoreTag(key)
 			}
 			e = &stringInternerEntry{
 				hash: h,
@@ -87,5 +93,8 @@ func (i *stringInterner) LoadOrStore(key []byte) (string, uint64) {
 		}
 	}
 
-	return e.data, e.hash
+	return util.Tag{
+		Data: e.data,
+		Hash: e.hash,
+	}
 }

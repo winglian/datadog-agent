@@ -9,6 +9,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/metrics"
 	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
+	"github.com/DataDog/datadog-agent/pkg/util"
 )
 
 var (
@@ -127,8 +128,8 @@ func TestConvertParseSingleWithTags(t *testing.T) {
 		assert.InEpsilon(t, 666.0, parsed[0].Value, epsilon)
 		assert.Equal(t, metricType, parsed[0].Mtype)
 		assert.Equal(t, 2, len(parsed[0].Tags))
-		assert.Equal(t, "protocol:http", parsed[0].Tags[0])
-		assert.Equal(t, "bench", parsed[0].Tags[1])
+		assert.Equal(t, "protocol:http", parsed[0].Tags[0].Data)
+		assert.Equal(t, "bench", parsed[0].Tags[1].Data)
 		assert.Equal(t, "default-hostname", parsed[0].Host)
 		assert.Equal(t, "", parsed[0].OriginID)
 		assert.Equal(t, "", parsed[0].K8sOriginID)
@@ -148,8 +149,8 @@ func TestConvertParseSingleWithHostTags(t *testing.T) {
 		assert.InEpsilon(t, 666.0, parsed[0].Value, epsilon)
 		assert.Equal(t, metricType, parsed[0].Mtype)
 		assert.Equal(t, 2, len(parsed[0].Tags))
-		assert.Equal(t, "protocol:http", parsed[0].Tags[0])
-		assert.Equal(t, "bench", parsed[0].Tags[1])
+		assert.Equal(t, "protocol:http", parsed[0].Tags[0].Data)
+		assert.Equal(t, "bench", parsed[0].Tags[1].Data)
 		assert.Equal(t, "custom-host", parsed[0].Host)
 		assert.Equal(t, "", parsed[0].OriginID)
 		assert.Equal(t, "", parsed[0].K8sOriginID)
@@ -169,8 +170,8 @@ func TestConvertParseSingleWithEmptyHostTags(t *testing.T) {
 		assert.InEpsilon(t, 666.0, parsed[0].Value, epsilon)
 		assert.Equal(t, metricType, parsed[0].Mtype)
 		assert.Equal(t, 2, len(parsed[0].Tags))
-		assert.Equal(t, "protocol:http", parsed[0].Tags[0])
-		assert.Equal(t, "bench", parsed[0].Tags[1])
+		assert.Equal(t, "protocol:http", parsed[0].Tags[0].Data)
+		assert.Equal(t, "bench", parsed[0].Tags[1].Data)
 		assert.Equal(t, "", parsed[0].Host)
 		assert.Equal(t, "", parsed[0].OriginID)
 		assert.Equal(t, "", parsed[0].K8sOriginID)
@@ -251,7 +252,7 @@ func TestConvertParseGaugeWithUnicode(t *testing.T) {
 	assert.InEpsilon(t, 666.0, parsed.Value, epsilon)
 	assert.Equal(t, metrics.GaugeType, parsed.Mtype)
 	require.Equal(t, 1, len(parsed.Tags))
-	assert.Equal(t, "intitulé:T0µ", parsed.Tags[0])
+	assert.Equal(t, "intitulé:T0µ", parsed.Tags[0].Data)
 	assert.Equal(t, "default-hostname", parsed.Host)
 	assert.Equal(t, "", parsed.OriginID)
 	assert.Equal(t, "", parsed.K8sOriginID)
@@ -814,8 +815,8 @@ func TestConvertEntityOriginDetectionNoTags(t *testing.T) {
 	assert.InEpsilon(t, 666.0, parsed.Value, epsilon)
 	assert.Equal(t, metrics.GaugeType, parsed.Mtype)
 	require.Equal(t, 2, len(parsed.Tags))
-	assert.Equal(t, "sometag1:somevalue1", parsed.Tags[0])
-	assert.Equal(t, "sometag2:somevalue2", parsed.Tags[1])
+	assert.Equal(t, "sometag1:somevalue1", parsed.Tags[0].Data)
+	assert.Equal(t, "sometag2:somevalue2", parsed.Tags[1].Data)
 	assert.Equal(t, "my-hostname", parsed.Host)
 	assert.Equal(t, "", parsed.OriginID)
 	assert.Equal(t, "kubernetes_pod_uid://foo", parsed.K8sOriginID)
@@ -830,7 +831,7 @@ func TestConvertEntityOriginDetectionTags(t *testing.T) {
 	assert.InEpsilon(t, 666.0, parsed.Value, epsilon)
 	assert.Equal(t, metrics.GaugeType, parsed.Mtype)
 	require.Equal(t, 2, len(parsed.Tags))
-	assert.ElementsMatch(t, []string{"sometag1:somevalue1", "sometag2:somevalue2"}, parsed.Tags)
+	assert.ElementsMatch(t, util.NewTags("sometag1:somevalue1", "sometag2:somevalue2"), parsed.Tags)
 	assert.Equal(t, "my-hostname", parsed.Host)
 	assert.Equal(t, "", parsed.OriginID)
 	assert.Equal(t, "kubernetes_pod_uid://foo", parsed.K8sOriginID)
@@ -845,8 +846,8 @@ func TestConvertEntityOriginDetectionTagsError(t *testing.T) {
 	assert.InEpsilon(t, 666.0, parsed.Value, epsilon)
 	assert.Equal(t, metrics.GaugeType, parsed.Mtype)
 	require.Equal(t, 2, len(parsed.Tags))
-	assert.Equal(t, "sometag1:somevalue1", parsed.Tags[0])
-	assert.Equal(t, "sometag2:somevalue2", parsed.Tags[1])
+	assert.Equal(t, "sometag1:somevalue1", parsed.Tags[0].Data)
+	assert.Equal(t, "sometag2:somevalue2", parsed.Tags[1].Data)
 	assert.Equal(t, "my-hostname", parsed.Host)
 	assert.Equal(t, "", parsed.OriginID)
 	assert.Equal(t, "kubernetes_pod_uid://foo", parsed.K8sOriginID)
@@ -1025,7 +1026,7 @@ func TestEnrichTags(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags, _, host, origin, k8sOrigin, cardinality := extractTagsMetadata(tt.args.tags, nil, tt.args.defaultHostname, tt.args.originTags, tt.args.entityIDPrecendenceEnabled)
+			tags, host, origin, k8sOrigin, cardinality := extractTagsMetadata(tt.args.tags, tt.args.defaultHostname, tt.args.originTags, tt.args.entityIDPrecendenceEnabled)
 			assert.Equal(t, tt.wantedTags, tags)
 			assert.Equal(t, tt.wantedHost, host)
 			assert.Equal(t, tt.wantedOrigin, origin)

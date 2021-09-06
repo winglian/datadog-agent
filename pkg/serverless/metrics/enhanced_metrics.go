@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/metrics"
+	"github.com/DataDog/datadog-agent/pkg/util"
 )
 
 // Latest Lambda pricing per https://aws.amazon.com/lambda/pricing/
@@ -39,7 +40,7 @@ func GenerateEnhancedMetricsFromFunctionLog(logString string, time time.Time, ta
 				Name:       "aws.lambda.enhanced.out_of_memory",
 				Value:      1.0,
 				Mtype:      metrics.DistributionType,
-				Tags:       tags,
+				Tags:       util.NewTags(tags...),
 				SampleRate: 1,
 				Timestamp:  float64(time.UnixNano()),
 			}}
@@ -57,35 +58,35 @@ func GenerateEnhancedMetricsFromReportLog(initDurationMs float64, durationMs flo
 		Name:       "aws.lambda.enhanced.max_memory_used",
 		Value:      float64(maxMemoryUsedMb),
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  timestamp,
 	}, {
 		Name:       "aws.lambda.enhanced.memorysize",
 		Value:      memorySize,
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  timestamp,
 	}, {
 		Name:       "aws.lambda.enhanced.billed_duration",
 		Value:      billedDuration * msToSec,
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  timestamp,
 	}, {
 		Name:       "aws.lambda.enhanced.duration",
 		Value:      durationMs * msToSec,
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  timestamp,
 	}, {
 		Name:       "aws.lambda.enhanced.estimated_cost",
 		Value:      calculateEstimatedCost(billedDuration, memorySize),
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  timestamp,
 	}}
@@ -94,7 +95,7 @@ func GenerateEnhancedMetricsFromReportLog(initDurationMs float64, durationMs flo
 			Name:       "aws.lambda.enhanced.init_duration",
 			Value:      initDurationMs * msToSec,
 			Mtype:      metrics.DistributionType,
-			Tags:       tags,
+			Tags:       util.NewTags(tags...),
 			SampleRate: 1,
 			Timestamp:  timestamp,
 		}
@@ -109,7 +110,7 @@ func SendTimeoutEnhancedMetric(tags []string, metricsChan chan []metrics.MetricS
 		Name:       "aws.lambda.enhanced.timeouts",
 		Value:      1.0,
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  float64(time.Now().UnixNano()),
 	}}

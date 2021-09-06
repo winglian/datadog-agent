@@ -7,6 +7,7 @@ import (
 	"unsafe"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
+	"github.com/DataDog/datadog-agent/pkg/util"
 )
 
 type messageType int
@@ -64,13 +65,12 @@ func nextField(message []byte) ([]byte, []byte) {
 	return message[:sepIndex], message[sepIndex+1:]
 }
 
-func (p *parser) parseTags(rawTags []byte) ([]string, []uint64) {
+func (p *parser) parseTags(rawTags []byte) []string {
 	if len(rawTags) == 0 {
-		return nil, nil
+		return nil
 	}
 	tagsCount := bytes.Count(rawTags, commaSeparator)
 	tagsList := make([]string, tagsCount+1)
-	tagsHash := make([]uint64, tagsCount+1)
 
 	i := 0
 	for i < tagsCount {
@@ -78,12 +78,33 @@ func (p *parser) parseTags(rawTags []byte) ([]string, []uint64) {
 		if tagPos < 0 {
 			break
 		}
-		tagsList[i], tagsHash[i] = p.interner.LoadOrStore(rawTags[:tagPos])
+		tagsList[i] = p.interner.LoadOrStore(rawTags[:tagPos])
 		rawTags = rawTags[tagPos+len(commaSeparator):]
 		i++
 	}
-	tagsList[i], tagsHash[i] = p.interner.LoadOrStore(rawTags)
-	return tagsList, tagsHash
+	tagsList[i] = p.interner.LoadOrStore(rawTags)
+	return tagsList
+}
+
+func (p *parser) parseTagsHash(rawTags []byte) []util.Tag {
+	if len(rawTags) == 0 {
+		return nil
+	}
+	tagsCount := bytes.Count(rawTags, commaSeparator)
+	tagsList := make([]util.Tag, tagsCount+1)
+
+	i := 0
+	for i < tagsCount {
+		tagPos := bytes.Index(rawTags, commaSeparator)
+		if tagPos < 0 {
+			break
+		}
+		tagsList[i] = p.interner.LoadOrStoreTag(rawTags[:tagPos])
+		rawTags = rawTags[tagPos+len(commaSeparator):]
+		i++
+	}
+	tagsList[i] = p.interner.LoadOrStoreTag(rawTags)
+	return tagsList
 }
 
 func (p *parser) parseMetricSample(message []byte) (dogstatsdMetricSample, error) {
@@ -127,13 +148,12 @@ func (p *parser) parseMetricSample(message []byte) (dogstatsdMetricSample, error
 	}
 
 	sampleRate := 1.0
-	var tags []string
-	var tagHashes []uint64
+	var tags []util.Tag
 	var optionalField []byte
 	for message != nil {
 		optionalField, message = nextField(message)
 		if bytes.HasPrefix(optionalField, tagsFieldPrefix) {
-			tags, tagHashes = p.parseTags(optionalField[1:])
+			tags = p.parseTagsHash(optionalField[1:])
 		} else if bytes.HasPrefix(optionalField, sampleRateFieldPrefix) {
 			sampleRate, err = parseMetricSampleSampleRate(optionalField[1:])
 			if err != nil {
@@ -142,8 +162,7 @@ func (p *parser) parseMetricSample(message []byte) (dogstatsdMetricSample, error
 		}
 	}
 
-	// FIXME(vickenty): could use hash too
-	nameString, _ := p.interner.LoadOrStore(name)
+	nameString := p.interner.LoadOrStore(name)
 
 	return dogstatsdMetricSample{
 		name:       nameString,
@@ -153,7 +172,6 @@ func (p *parser) parseMetricSample(message []byte) (dogstatsdMetricSample, error
 		metricType: metricType,
 		sampleRate: sampleRate,
 		tags:       tags,
-		tagHashes:  tagHashes,
 	}, nil
 }
 

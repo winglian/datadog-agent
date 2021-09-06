@@ -343,7 +343,7 @@ func (agg *BufferedAggregator) AddAgentStartupTelemetry(agentVersion string) {
 	metric := &metrics.MetricSample{
 		Name:       fmt.Sprintf("datadog.%s.started", agg.agentName),
 		Value:      1,
-		Tags:       agg.tags(true),
+		Tags:       util.NewTags(agg.tags(true)...),
 		Host:       agg.hostname,
 		Mtype:      metrics.CountType,
 		SampleRate: 1,
@@ -386,7 +386,7 @@ func (agg *BufferedAggregator) handleSenderSample(ss senderMetricSample) {
 		if ss.commit {
 			checkSampler.commit(timeNowNano())
 		} else {
-			ss.metricSample.Tags = util.SortUniqInPlace(ss.metricSample.Tags)
+			// ss.metricSample.Tags = util.SortUniqInPlace(ss.metricSample.Tags)
 			checkSampler.addSample(ss.metricSample)
 		}
 	} else {

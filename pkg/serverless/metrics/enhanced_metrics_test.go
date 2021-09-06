@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/metrics"
+	"github.com/DataDog/datadog-agent/pkg/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,7 +26,7 @@ func TestGenerateEnhancedMetricsFromFunctionLogOutOfMemory(t *testing.T) {
 		Name:       "aws.lambda.enhanced.out_of_memory",
 		Value:      1.0,
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  float64(reportLogTime.UnixNano()),
 	}})
@@ -52,42 +53,42 @@ func TestGenerateEnhancedMetricsFromReportLogColdStart(t *testing.T) {
 		Name:       "aws.lambda.enhanced.max_memory_used",
 		Value:      256.0,
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  float64(reportLogTime.UnixNano()),
 	}, {
 		Name:       "aws.lambda.enhanced.memorysize",
 		Value:      1024.0,
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  float64(reportLogTime.UnixNano()),
 	}, {
 		Name:       "aws.lambda.enhanced.billed_duration",
 		Value:      0.80,
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  float64(reportLogTime.UnixNano()),
 	}, {
 		Name:       "aws.lambda.enhanced.duration",
 		Value:      1.0,
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  float64(reportLogTime.UnixNano()),
 	}, {
 		Name:       "aws.lambda.enhanced.estimated_cost",
 		Value:      calculateEstimatedCost(800.0, 1024.0),
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  float64(reportLogTime.UnixNano()),
 	}, {
 		Name:       "aws.lambda.enhanced.init_duration",
 		Value:      0.1,
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  float64(reportLogTime.UnixNano()),
 	}})
@@ -106,35 +107,35 @@ func TestGenerateEnhancedMetricsFromReportLogNoColdStart(t *testing.T) {
 		Name:       "aws.lambda.enhanced.max_memory_used",
 		Value:      256.0,
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  float64(reportLogTime.UnixNano()),
 	}, {
 		Name:       "aws.lambda.enhanced.memorysize",
 		Value:      1024.0,
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  float64(reportLogTime.UnixNano()),
 	}, {
 		Name:       "aws.lambda.enhanced.billed_duration",
 		Value:      0.80,
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  float64(reportLogTime.UnixNano()),
 	}, {
 		Name:       "aws.lambda.enhanced.duration",
 		Value:      1.0,
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  float64(reportLogTime.UnixNano()),
 	}, {
 		Name:       "aws.lambda.enhanced.estimated_cost",
 		Value:      calculateEstimatedCost(800.0, 1024.0),
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		Timestamp:  float64(reportLogTime.UnixNano()),
 	}})
@@ -152,7 +153,7 @@ func TestSendTimeoutEnhancedMetric(t *testing.T) {
 		Name:       "aws.lambda.enhanced.timeouts",
 		Value:      1.0,
 		Mtype:      metrics.DistributionType,
-		Tags:       tags,
+		Tags:       util.NewTags(tags...),
 		SampleRate: 1,
 		// compare the generated timestamp to itself because we can't know its value
 		Timestamp: generatedMetrics[0].Timestamp,

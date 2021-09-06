@@ -18,6 +18,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/aggregator/ckey"
 	"github.com/DataDog/datadog-agent/pkg/metrics"
+	"github.com/DataDog/datadog-agent/pkg/util"
 )
 
 func TestGenerateContextKey(t *testing.T) {
@@ -25,7 +26,7 @@ func TestGenerateContextKey(t *testing.T) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       util.NewTags("foo", "bar"),
 		Host:       "metric-hostname",
 		SampleRate: 1,
 	}
@@ -39,35 +40,35 @@ func TestTrackContext(t *testing.T) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       util.NewTags("foo", "bar"),
 		SampleRate: 1,
 	}
 	mSample2 := metrics.MetricSample{
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar", "baz"},
+		Tags:       util.NewTags("foo", "bar", "baz"),
 		SampleRate: 1,
 	}
 	mSample3 := metrics.MetricSample{ // same as mSample2, with different Host
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar", "baz"},
+		Tags:       util.NewTags("foo", "bar", "baz"),
 		Host:       "metric-hostname",
 		SampleRate: 1,
 	}
 	expectedContext1 := Context{
 		Name: mSample1.Name,
-		Tags: mSample1.Tags,
+		Tags: []string{"foo", "bar"},
 	}
 	expectedContext2 := Context{
 		Name: mSample2.Name,
-		Tags: mSample2.Tags,
+		Tags: []string{"foo", "bar", "baz"},
 	}
 	expectedContext3 := Context{
 		Name: mSample3.Name,
-		Tags: mSample3.Tags,
+		Tags: []string{"foo", "bar", "baz"},
 		Host: mSample3.Host,
 	}
 	contextResolver := newContextResolver()
@@ -97,14 +98,14 @@ func TestExpireContexts(t *testing.T) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       util.NewTags("foo", "bar"),
 		SampleRate: 1,
 	}
 	mSample2 := metrics.MetricSample{
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar", "baz"},
+		Tags:       util.NewTags("foo", "bar", "baz"),
 		SampleRate: 1,
 	}
 	contextResolver := newTimestampContextResolver()
@@ -162,7 +163,7 @@ func TestTagDeduplication(t *testing.T) {
 
 	ckey := resolver.trackContext(&metrics.MetricSample{
 		Name: "foo",
-		Tags: []string{"bar", "bar"},
+		Tags: util.NewTags("bar", "bar"),
 	})
 
 	assert.Equal(t, len(resolver.contextsByKey[ckey].Tags), 1)

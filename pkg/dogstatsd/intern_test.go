@@ -17,13 +17,13 @@ func TestInternLoadOrStoreValue(t *testing.T) {
 
 	// first test that the good value is returned.
 
-	v, _ := sInterner.LoadOrStore(foo)
+	v := sInterner.LoadOrStore(foo)
 	assert.Equal("foo", v)
-	v, _ = sInterner.LoadOrStore(bar)
+	v = sInterner.LoadOrStore(bar)
 	assert.Equal("bar", v)
-	v, _ = sInterner.LoadOrStore(far)
+	v = sInterner.LoadOrStore(far)
 	assert.Equal("far", v)
-	v, _ = sInterner.LoadOrStore(boo)
+	v = sInterner.LoadOrStore(boo)
 	assert.Equal("boo", v)
 }
 
@@ -37,17 +37,17 @@ func TestInternLoadOrStorePointer(t *testing.T) {
 
 	// first test that the good value is returned.
 
-	v, _ := sInterner.LoadOrStore(foo)
+	v := sInterner.LoadOrStore(foo)
 	assert.Equal("foo", v)
-	v2, _ := sInterner.LoadOrStore(foo)
+	v2 := sInterner.LoadOrStore(foo)
 	// FIXME(vickenty) this doesn't compare addresses, and &v is wrong kind of pointer to compare anyway
 	assert.Equal(&v, &v2, "must point to the same address")
-	v2, _ = sInterner.LoadOrStore(bar)
+	v2 = sInterner.LoadOrStore(bar)
 	assert.NotEqual(&v, &v2, "must point to a different address")
-	v3, _ := sInterner.LoadOrStore(bar)
+	v3 := sInterner.LoadOrStore(bar)
 	assert.Equal(&v2, &v3, "must point to the same address")
 
-	v4, _ := sInterner.LoadOrStore(boo)
+	v4 := sInterner.LoadOrStore(boo)
 	assert.NotEqual(&v, &v4, "must point to a different address")
 	assert.NotEqual(&v2, &v4, "must point to a different address")
 	assert.NotEqual(&v3, &v4, "must point to a different address")

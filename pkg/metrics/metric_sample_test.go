@@ -24,7 +24,7 @@ func TestMetricSampleCopy(t *testing.T) {
 	src.Name = "metric.name"
 	src.RawValue = "0.1"
 	src.SampleRate = 1
-	src.Tags = []string{"a:b", "c:d"}
+	src.Tags = util.NewTags("a:b", "c:d")
 	src.Timestamp = 1234
 	src.Value = 0.1
 	dst := src.Copy()

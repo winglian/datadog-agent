@@ -11,6 +11,33 @@ import (
 	"github.com/twmb/murmur3"
 )
 
+// Tag is a string with a hash attached.
+type Tag struct {
+	Data string
+	Hash uint64
+}
+
+// NewTags creates new tags slice from a list of strings.
+func NewTags(tags ...string) []Tag {
+	if len(tags) == 0 {
+		return nil
+	}
+
+	ts := make([]Tag, 0, len(tags))
+	for _, t := range tags {
+		ts = append(ts, Tag{
+			Data: t,
+			Hash: murmur3.StringSum64(t),
+		})
+	}
+	return ts
+}
+
+// SortTags sorts tags slice inplace.
+func SortTags(tags []Tag) {
+	sort.Slice(tags, func(i, j int) bool { return tags[i].Data < tags[j].Data })
+}
+
 // TagsBuilder allows to build a slice of tags to generate the context while
 // reusing the same internal slice.
 type TagsBuilder struct {
@@ -41,6 +68,13 @@ func NewTagsBuilderFromSlice(tags []string) *TagsBuilder {
 	}
 }
 
+// NewTagsBuilderFromTags creates new TagsBuilder from a tags slice.
+func NewTagsBuilderFromTags(tags []Tag) *TagsBuilder {
+	tb := NewTagsBuilder()
+	tb.AppendTags(tags)
+	return tb
+}
+
 // Append appends tags to the builder
 func (tb *TagsBuilder) Append(tags ...string) {
 	for _, t := range tags {
@@ -49,15 +83,23 @@ func (tb *TagsBuilder) Append(tags ...string) {
 	}
 }
 
-// AppendWithHashes appends tags and their hashes to the builder
-//
-// Panics if len(tags) != len(hashes)
-func (tb *TagsBuilder) AppendWithHashes(tags []string, hashes []uint64) {
-	if len(tags) != len(hashes) {
-		panic("tags and hash must have equal length")
+// AppendTags appends tags and their hashes to the builder
+func (tb *TagsBuilder) AppendTags(tags []Tag) {
+	for _, t := range tags {
+		tb.data = append(tb.data, t.Data)
+		tb.hash = append(tb.hash, t.Hash)
 	}
-	tb.data = append(tb.data, tags...)
-	tb.hash = append(tb.hash, hashes...)
+}
+
+// AppendToTags appends contents of tb to a slice of tags.
+func (tb *TagsBuilder) AppendToTags(tags []Tag) []Tag {
+	for i := range tb.data {
+		tags = append(tags, Tag{
+			Data: tb.data[i],
+			Hash: tb.hash[i],
+		})
+	}
+	return tags
 }
 
 // AppendBuilder appends tags from src, re-using hashes.

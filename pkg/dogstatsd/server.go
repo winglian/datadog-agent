@@ -161,6 +161,8 @@ type Server struct {
 	// ServerlessMode is set to true if we're running in a serverless environment.
 	ServerlessMode     bool
 	UdsListenerRunning bool
+
+	statsTagsBuilder *util.TagsBuilder
 }
 
 // metricStat holds how many times a metric has been
@@ -336,6 +338,7 @@ func NewServer(aggregator *aggregator.BufferedAggregator, extraTags []string) (*
 		TCapture:           capture,
 		UdsListenerRunning: udsListenerRunning,
 		cachedTlmOriginIds: make(map[string]cachedTagsOriginMap),
+		statsTagsBuilder:   util.NewTagsBuilder(),
 	}
 
 	// packets forwarding
@@ -629,8 +632,7 @@ func (s *Server) parseMetricMessage(metricSamples []metrics.MetricSample, parser
 		if mapResult != nil {
 			log.Tracef("Dogstatsd mapper: metric mapped from %q to %q with tags %v", sample.name, mapResult.Name, mapResult.Tags)
 			sample.name = mapResult.Name
-			sample.tags = append(sample.tags, mapResult.Tags...)
-			sample.tagHashes = nil // FIXME(vickenty)
+			sample.tags = append(sample.tags, util.NewTags(mapResult.Tags...)...) // FIXME(vickenty)
 		}
 	}
 	metricSamples = enrichMetricSample(metricSamples, sample, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname, origin, s.entityIDPrecedenceEnabled, s.ServerlessMode)
@@ -643,11 +645,9 @@ func (s *Server) parseMetricMessage(metricSamples []metrics.MetricSample, parser
 		// All metricSamples already share the same Tags slice. We can
 		// extends the first one and reuse it for the rest.
 		if idx == 0 {
-			metricSamples[idx].Tags = append(metricSamples[idx].Tags, s.extraTags.Get()...)
-			metricSamples[idx].TagHashes = append(metricSamples[idx].TagHashes, s.extraTags.Hashes()...)
+			metricSamples[idx].Tags = s.extraTags.AppendToTags(metricSamples[idx].Tags)
 		} else {
 			metricSamples[idx].Tags = metricSamples[0].Tags
-			metricSamples[idx].TagHashes = metricSamples[0].TagHashes
 		}
 		dogstatsdMetricPackets.Add(1)
 		okCnt.Inc()
@@ -708,18 +708,20 @@ func (s *Server) storeMetricStats(sample metrics.MetricSample) {
 	defer s.Debug.Unlock()
 
 	// key
-	tags := util.NewTagsBuilderFromSlice(sample.Tags)
-	key := s.Debug.keyGen.Generate(sample.Name, "", tags)
+	sample.GetTags(s.statsTagsBuilder)
+	key := s.Debug.keyGen.Generate(sample.Name, "", s.statsTagsBuilder)
 
 	// store
 	ms := s.Debug.Stats[key]
 	ms.Count++
 	ms.LastSeen = now
 	ms.Name = sample.Name
-	ms.Tags = strings.Join(tags.Get(), " ") // we don't want/need to share the underlying array
+	ms.Tags = strings.Join(s.statsTagsBuilder.Get(), " ") // we don't want/need to share the underlying array
 	s.Debug.Stats[key] = ms
 
 	s.Debug.metricsCounts.metricChan <- struct{}{}
+
+	s.statsTagsBuilder.Reset()
 }
 
 // EnableMetricsStats enables the debug mode of the DogStatsD server and start

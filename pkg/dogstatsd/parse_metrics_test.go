@@ -79,8 +79,8 @@ func TestParseCounterWithTags(t *testing.T) {
 	require.Nil(t, sample.values)
 	assert.Equal(t, countType, sample.metricType)
 	assert.Equal(t, 2, len(sample.tags))
-	assert.Equal(t, "protocol:http", sample.tags[0])
-	assert.Equal(t, "bench", sample.tags[1])
+	assert.Equal(t, "protocol:http", sample.tags[0].Data)
+	assert.Equal(t, "bench", sample.tags[1].Data)
 	assert.InEpsilon(t, 1.0, sample.sampleRate, epsilon)
 }
 
@@ -211,8 +211,8 @@ func TestParseGaugeWithTags(t *testing.T) {
 	require.Nil(t, sample.values)
 	assert.Equal(t, gaugeType, sample.metricType)
 	require.Equal(t, 2, len(sample.tags))
-	assert.Equal(t, "sometag1:somevalue1", sample.tags[0])
-	assert.Equal(t, "sometag2:somevalue2", sample.tags[1])
+	assert.Equal(t, "sometag1:somevalue1", sample.tags[0].Data)
+	assert.Equal(t, "sometag2:somevalue2", sample.tags[1].Data)
 	assert.InEpsilon(t, 1.0, sample.sampleRate, epsilon)
 }
 
@@ -264,7 +264,7 @@ func TestParseGaugeWithUnicode(t *testing.T) {
 	require.Nil(t, sample.values)
 	assert.Equal(t, gaugeType, sample.metricType)
 	require.Equal(t, 1, len(sample.tags))
-	assert.Equal(t, "intitulé:T0µ", sample.tags[0])
+	assert.Equal(t, "intitulé:T0µ", sample.tags[0].Data)
 	assert.InEpsilon(t, 1.0, sample.sampleRate, epsilon)
 }
 

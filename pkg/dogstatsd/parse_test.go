@@ -34,7 +34,7 @@ func TestIdentifyRandomString(t *testing.T) {
 func TestParseTags(t *testing.T) {
 	p := newParser(newFloat64ListPool())
 	rawTags := []byte("tag:test,mytag,good:boy")
-	tags, _ := p.parseTags(rawTags)
+	tags := p.parseTags(rawTags)
 	expectedTags := []string{"tag:test", "mytag", "good:boy"}
 	assert.ElementsMatch(t, expectedTags, tags)
 }
@@ -42,7 +42,7 @@ func TestParseTags(t *testing.T) {
 func TestParseTagsEmpty(t *testing.T) {
 	p := newParser(newFloat64ListPool())
 	rawTags := []byte("")
-	tags, _ := p.parseTags(rawTags)
+	tags := p.parseTags(rawTags)
 	assert.Nil(t, tags)
 }
 

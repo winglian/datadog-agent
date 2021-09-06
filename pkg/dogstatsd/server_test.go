@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"sort"
+	// "sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -107,7 +107,7 @@ func TestUDPReceive(t *testing.T) {
 		assert.Equal(t, sample.Name, "daemon")
 		assert.EqualValues(t, sample.Value, 666.0)
 		assert.Equal(t, sample.Mtype, metrics.GaugeType)
-		assert.ElementsMatch(t, sample.Tags, []string{"sometag1:somevalue1", "sometag2:somevalue2"})
+		assert.ElementsMatch(t, sample.Tags, util.NewTags("sometag1:somevalue1", "sometag2:somevalue2"))
 	case <-time.After(100 * time.Second):
 		assert.FailNow(t, "Timeout on receive channel")
 	}
@@ -545,7 +545,7 @@ func TestExtraTags(t *testing.T) {
 		assert.Equal(t, sample.Name, "daemon")
 		assert.EqualValues(t, sample.Value, 666.0)
 		assert.Equal(t, sample.Mtype, metrics.GaugeType)
-		assert.ElementsMatch(t, sample.Tags, []string{"sometag1:somevalue1", "sometag2:somevalue2", "sometag3:somevalue3"})
+		assert.ElementsMatch(t, sample.Tags, util.NewTags("sometag1:somevalue1", "sometag2:somevalue2", "sometag3:somevalue3"))
 	case <-time.After(2 * time.Second):
 		assert.FailNow(t, "Timeout on receive channel")
 	}
@@ -559,7 +559,7 @@ func TestDebugStatsSpike(t *testing.T) {
 	defer s.Stop()
 
 	s.EnableMetricsStats()
-	sample := metrics.MetricSample{Name: "some.metric1", Tags: make([]string, 0)}
+	sample := metrics.MetricSample{Name: "some.metric1", Tags: make([]util.Tag, 0)}
 
 	send := func(count int) {
 		for i := 0; i < count; i++ {
@@ -604,16 +604,16 @@ func TestDebugStats(t *testing.T) {
 	keygen := ckey.NewKeyGenerator()
 
 	// data
-	sample1 := metrics.MetricSample{Name: "some.metric1", Tags: make([]string, 0)}
-	sample2 := metrics.MetricSample{Name: "some.metric2", Tags: []string{"a"}}
-	sample3 := metrics.MetricSample{Name: "some.metric3", Tags: make([]string, 0)}
-	sample4 := metrics.MetricSample{Name: "some.metric4", Tags: []string{"b", "c"}}
-	sample5 := metrics.MetricSample{Name: "some.metric4", Tags: []string{"c", "b"}}
-	hash1 := keygen.Generate(sample1.Name, "", util.NewTagsBuilderFromSlice(sample1.Tags))
-	hash2 := keygen.Generate(sample2.Name, "", util.NewTagsBuilderFromSlice(sample2.Tags))
-	hash3 := keygen.Generate(sample3.Name, "", util.NewTagsBuilderFromSlice(sample3.Tags))
-	hash4 := keygen.Generate(sample4.Name, "", util.NewTagsBuilderFromSlice(sample4.Tags))
-	hash5 := keygen.Generate(sample5.Name, "", util.NewTagsBuilderFromSlice(sample5.Tags))
+	sample1 := metrics.MetricSample{Name: "some.metric1", Tags: util.NewTags()}
+	sample2 := metrics.MetricSample{Name: "some.metric2", Tags: util.NewTags("a")}
+	sample3 := metrics.MetricSample{Name: "some.metric3", Tags: util.NewTags()}
+	sample4 := metrics.MetricSample{Name: "some.metric4", Tags: util.NewTags("b", "c")}
+	sample5 := metrics.MetricSample{Name: "some.metric4", Tags: util.NewTags("c", "b")}
+	hash1 := keygen.Generate(sample1.Name, "", util.NewTagsBuilderFromTags(sample1.Tags))
+	hash2 := keygen.Generate(sample2.Name, "", util.NewTagsBuilderFromTags(sample2.Tags))
+	hash3 := keygen.Generate(sample3.Name, "", util.NewTagsBuilderFromTags(sample3.Tags))
+	hash4 := keygen.Generate(sample4.Name, "", util.NewTagsBuilderFromTags(sample4.Tags))
+	hash5 := keygen.Generate(sample5.Name, "", util.NewTagsBuilderFromTags(sample5.Tags))
 
 	// test ingestion and ingestion time
 	s.storeMetricStats(sample1)
@@ -691,7 +691,7 @@ func TestNoMappingsConfig(t *testing.T) {
 type MetricSample struct {
 	Name  string
 	Value float64
-	Tags  []string
+	Tags  []util.Tag
 	Mtype metrics.MetricType
 }
 
@@ -727,8 +727,8 @@ dogstatsd_mapper_profiles:
 				"test.job.size.not_match:666|g",
 			},
 			expectedSamples: []MetricSample{
-				{Name: "test.job.duration", Tags: []string{"job_type:my_job_type", "job_name:my_job_name"}, Mtype: metrics.GaugeType, Value: 666.0},
-				{Name: "test.job.size", Tags: []string{"foo:my_job_type", "bar:my_job_name"}, Mtype: metrics.GaugeType, Value: 666.0},
+				{Name: "test.job.duration", Tags: util.NewTags("job_type:my_job_type", "job_name:my_job_name"), Mtype: metrics.GaugeType, Value: 666.0},
+				{Name: "test.job.size", Tags: util.NewTags("foo:my_job_type", "bar:my_job_name"), Mtype: metrics.GaugeType, Value: 666.0},
 				{Name: "test.job.size.not_match", Tags: nil, Mtype: metrics.GaugeType, Value: 666.0},
 			},
 			expectedCacheSize: 1000,
@@ -752,9 +752,9 @@ dogstatsd_mapper_profiles:
 				"test.job.duration.my_job_type.my_job_name:666|g|#some:tag,more:tags",
 			},
 			expectedSamples: []MetricSample{
-				{Name: "test.job.duration", Tags: []string{"job_type:my_job_type", "job_name:my_job_name"}, Mtype: metrics.GaugeType, Value: 666.0},
-				{Name: "test.job.duration", Tags: []string{"job_type:my_job_type", "job_name:my_job_name", "some:tag"}, Mtype: metrics.GaugeType, Value: 666.0},
-				{Name: "test.job.duration", Tags: []string{"job_type:my_job_type", "job_name:my_job_name", "some:tag", "more:tags"}, Mtype: metrics.GaugeType, Value: 666.0},
+				{Name: "test.job.duration", Tags: util.NewTags("job_type:my_job_type", "job_name:my_job_name"), Mtype: metrics.GaugeType, Value: 666.0},
+				{Name: "test.job.duration", Tags: util.NewTags("job_type:my_job_type", "job_name:my_job_name", "some:tag"), Mtype: metrics.GaugeType, Value: 666.0},
+				{Name: "test.job.duration", Tags: util.NewTags("job_type:my_job_type", "job_name:my_job_name", "some:tag", "more:tags"), Mtype: metrics.GaugeType, Value: 666.0},
 			},
 			expectedCacheSize: 1000,
 		},
@@ -803,11 +803,12 @@ dogstatsd_mapper_profiles:
 					actualSamples = append(actualSamples, MetricSample{Name: sample.Name, Tags: sample.Tags, Mtype: sample.Mtype, Value: sample.Value})
 				}
 			}
+			// FIXME(vickenty)
 			for _, sample := range scenario.expectedSamples {
-				sort.Strings(sample.Tags)
+				util.SortTags(sample.Tags)
 			}
 			for _, sample := range actualSamples {
-				sort.Strings(sample.Tags)
+				util.SortTags(sample.Tags)
 			}
 			assert.Equal(t, scenario.expectedSamples, actualSamples, "Case `%s` failed. `%s` should be `%s`", scenario.name, actualSamples, scenario.expectedSamples)
 			s.Stop()
