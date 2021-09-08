@@ -39,5 +39,6 @@ build do
     copy "#{ENV['NIKOS_PATH']}/sbin", "#{install_dir}/embedded/nikos/embedded/"
     copy "#{ENV['NIKOS_PATH']}/ssl", "#{install_dir}/embedded/nikos/embedded/"
     copy "#{ENV['NIKOS_PATH']}/libexec", "#{install_dir}/embedded/nikos/embedded/"
+    copy "#{ENV['NIKOS_PATH']}/lib", "#{install_dir}/embedded/nikos/embedded/"
   end
 end
