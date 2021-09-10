@@ -8,7 +8,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/logs/client"
@@ -29,9 +31,10 @@ const (
 
 // HTTP errors.
 var (
-	errClient = errors.New("client error")
-	errServer = errors.New("server error")
-	tlmSend   = telemetry.NewCounter("logs_client_http_destination", "send", []string{"endpoint_host", "error"}, "Payloads sent")
+	errClient            = errors.New("client error")
+	errServer            = errors.New("server error")
+	tlmSend              = telemetry.NewCounter("logs_client_http_destination", "send", []string{"endpoint_host", "error"}, "Payloads sent")
+	tlmConcurrentSenders = telemetry.NewCounter("logs_client_http_destination", "concurrent_sender", []string{"concurrent_senders"}, "Concurrent senders")
 )
 
 // emptyPayload is an empty payload used to check HTTP connectivity without sending logs.
@@ -54,6 +57,7 @@ type Destination struct {
 	blockedUntil        time.Time
 	protocol            config.IntakeProtocol
 	origin              config.IntakeOrigin
+	concurrentSenders   int32
 }
 
 // NewDestination returns a new Destination.
@@ -89,6 +93,7 @@ func newDestination(endpoint config.Endpoint, contentType string, destinationsCo
 		backoff:             policy,
 		protocol:            endpoint.Protocol,
 		origin:              endpoint.Origin,
+		concurrentSenders:   0,
 	}
 }
 
@@ -124,7 +129,11 @@ func (d *Destination) Send(payload []byte) error {
 }
 
 func (d *Destination) unconditionalSend(payload []byte) (err error) {
+	val := atomic.AddInt32(&d.concurrentSenders, 1)
+	tlmConcurrentSenders.Inc(strconv.Itoa(int(val)))
+
 	defer func() {
+		atomic.AddInt32(&d.concurrentSenders, -1)
 		tlmSend.Inc(d.host, errorToTag(err))
 	}()
 
