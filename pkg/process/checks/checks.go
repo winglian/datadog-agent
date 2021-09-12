@@ -32,7 +32,7 @@ type RunResult struct {
 type CheckWithRealTime interface {
 	Check
 	RealTimeName() string
-	RunWithOptions(cfg *config.AgentConfig, groupID int32, options RunOptions) (*RunResult, error)
+	RunWithOptions(cfg *config.AgentConfig, nextGroupID func() int32, options RunOptions) (*RunResult, error)
 }
 
 // All is all the singleton check instances.
