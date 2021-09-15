@@ -313,7 +313,8 @@ func runAgent(exit chan struct{}) {
 		}
 		log.Info("Sending test-intake payload")
 		_, err = processForwarder.SubmitProcessDiscoveryChecks(forwarder.Payloads{&body}, extraHeaders)
-
+		// The program closes before we can see the result, so wait 10 seconds.
+		time.Sleep(10 * time.Second)
 		if err != nil {
 			log.Errorf("Error submitting payload: %s", err)
 			cleanupAndExit(1)
