@@ -1,6 +1,6 @@
 {
     "7.29.x-beta-tls-update": {
-        "INTEGRATIONS_CORE_VERSION": "fanny/release-base-beta",
+        "INTEGRATIONS_CORE_VERSION": "7.29.x-tls-update",
         "OMNIBUS_SOFTWARE_VERSION": "7.29.x",
         "OMNIBUS_RUBY_VERSION": "7.29.x",
         "JMXFETCH_VERSION": "0.44.1",
