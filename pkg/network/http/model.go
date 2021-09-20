@@ -15,12 +15,15 @@ const (
 	HTTPBatchSize  = int(C.HTTP_BATCH_SIZE)
 	HTTPBatchPages = int(C.HTTP_BATCH_PAGES)
 	HTTPBufferSize = int(C.HTTP_BUFFER_SIZE)
+
+	ipV6 = C.CONN_V6
 )
 
 type httpTX C.http_transaction_t
 type httpNotification C.http_batch_notification_t
 type httpBatch C.http_batch_t
 type httpBatchKey C.http_batch_key_t
+type inet6Addr C.struct_in6_addr
 
 func toHTTPNotification(data []byte) httpNotification {
 	return *(*httpNotification)(unsafe.Pointer(&data[0]))

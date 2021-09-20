@@ -2,7 +2,11 @@
 
 package http
 
-import "sync/atomic"
+import (
+	"sync/atomic"
+
+	"inet.af/netaddr"
+)
 
 type httpStatKeeper struct {
 	stats      map[Key]RequestStats
@@ -62,15 +66,21 @@ func (h *httpStatKeeper) add(tx httpTX) {
 	h.stats[key] = stats
 }
 
+func ipFromAddr(addr inet6Addr, meta uint32) netaddr.IP {
+	if meta&ipV6 != 0 {
+		return netaddr.IPv6Raw(addr.in6_u)
+	}
+	return netaddr.IPv4(addr.in6_u[12], addr.in6_u[13], addr.in6_u[14], addr.in6_u[15])
+}
+
 // handleIncomplete is responsible for handling incomplete transactions
 // (eg. httpTX objects that have either only the request or response information)
 // this happens only in the context of localhost traffic with NAT and these disjoint
 // parts of the transactions are joined here by src port
 func (h *httpStatKeeper) handleIncomplete(tx httpTX) {
 	key := Key{
-		SrcIPHigh: uint64(tx.tup.saddr_h),
-		SrcIPLow:  uint64(tx.tup.saddr_l),
-		SrcPort:   uint16(tx.tup.sport),
+		SrcIP:   ipFromAddr(inet6Addr(tx.tup.saddr), uint32(tx.tup.metadata)),
+		SrcPort: uint16(tx.tup.sport),
 	}
 
 	otherHalf, ok := h.incomplete[key]
@@ -101,14 +111,12 @@ func (h *httpStatKeeper) newKey(tx httpTX) Key {
 	pathString := h.intern(path)
 
 	return Key{
-		SrcIPHigh: uint64(tx.tup.saddr_h),
-		SrcIPLow:  uint64(tx.tup.saddr_l),
-		SrcPort:   uint16(tx.tup.sport),
-		DstIPHigh: uint64(tx.tup.daddr_h),
-		DstIPLow:  uint64(tx.tup.daddr_l),
-		DstPort:   uint16(tx.tup.dport),
-		Path:      pathString,
-		Method:    Method(tx.request_method),
+		SrcIP:   ipFromAddr(inet6Addr(tx.tup.saddr), uint32(tx.tup.metadata)),
+		SrcPort: uint16(tx.tup.sport),
+		DstIP:   ipFromAddr(inet6Addr(tx.tup.daddr), uint32(tx.tup.metadata)),
+		DstPort: uint16(tx.tup.dport),
+		Path:    pathString,
+		Method:  Method(tx.request_method),
 	}
 }
 
