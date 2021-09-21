@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -110,6 +111,12 @@ func readAndPostFlareFile(archivePath, caseID, email, hostname string) (*http.Re
 	request.GetBody = func() (io.ReadCloser, error) {
 		return getFlareReader(boundaryWriter.Boundary(), archivePath, caseID, email, hostname), nil
 	}
+
+	dump, err := httputil.DumpRequestOut(request, false)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(string(dump))
 
 	client := mkHTTPClient()
 	return client.Do(request)
