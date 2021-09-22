@@ -13,6 +13,12 @@ message SecurityEventMessage {
     string Service = 4;
 }
 
+message GetProcessEventParams{}
+
+message SecurityProcessEventMessage {
+    bytes Data = 1;
+}
+
 message DumpProcessCacheParams{}
 
 message SecurityDumpProcessCacheMessage {
@@ -35,6 +41,7 @@ message SecuritySelfTestResultMessage {
 
 service SecurityModule {
     rpc GetEvents(GetEventParams) returns (stream SecurityEventMessage) {}
+    rpc GetProcessEvents(GetProcessEventParams) returns (stream SecurityProcessEventMessage) {}
     rpc DumpProcessCache(DumpProcessCacheParams) returns (SecurityDumpProcessCacheMessage) {}
     rpc GetConfig(GetConfigParams) returns (SecurityConfigMessage) {}
     rpc RunSelfTest(RunSelfTestParams) returns (SecuritySelfTestResultMessage) {}
