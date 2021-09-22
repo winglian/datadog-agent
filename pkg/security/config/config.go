@@ -86,6 +86,8 @@ type Config struct {
 	LogPatterns []string
 	// SelfTestEnabled defines if the self tester should be enabled (useful for tests for example)
 	SelfTestEnabled bool
+	// LiveProcessMonitoring defines if the live process monitoring feature should be enabled
+	LiveProcessMonitoring bool
 }
 
 // IsEnabled returns true if any feature is enabled. Has to be applied in config package too
@@ -125,6 +127,7 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 		RemoteTaggerEnabled:                aconfig.Datadog.GetBool("runtime_security_config.remote_tagger"),
 		LogPatterns:                        aconfig.Datadog.GetStringSlice("runtime_security_config.log_patterns"),
 		SelfTestEnabled:                    aconfig.Datadog.GetBool("runtime_security_config.self_test.enabled"),
+		LiveProcessMonitoring:              aconfig.Datadog.GetBool("runtime_security_config.live_process_monitoring.enabled"),
 	}
 
 	// if runtime is enabled then we force fim

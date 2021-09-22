@@ -8,14 +8,18 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/DataDog/datadog-agent/cmd/security-agent/common"
+	"github.com/DataDog/datadog-agent/pkg/aggregator"
 	"github.com/DataDog/datadog-agent/pkg/compliance/event"
 	coreconfig "github.com/DataDog/datadog-agent/pkg/config"
+	"github.com/DataDog/datadog-agent/pkg/forwarder"
 	"github.com/DataDog/datadog-agent/pkg/logs/auditor"
 	"github.com/DataDog/datadog-agent/pkg/logs/client"
 	"github.com/DataDog/datadog-agent/pkg/logs/config"
@@ -29,8 +33,11 @@ import (
 	sprobe "github.com/DataDog/datadog-agent/pkg/security/probe"
 	"github.com/DataDog/datadog-agent/pkg/security/rules"
 	"github.com/DataDog/datadog-agent/pkg/security/secl/eval"
+	"github.com/DataDog/datadog-agent/pkg/serializer"
 	"github.com/DataDog/datadog-agent/pkg/status/health"
+	"github.com/DataDog/datadog-agent/pkg/util"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+	"github.com/DataDog/datadog-agent/pkg/version"
 	ddgostatsd "github.com/DataDog/datadog-go/statsd"
 )
 
@@ -65,6 +72,12 @@ var (
 		RunE:  dumpProcessCache,
 	}
 
+	dumpProcessEventsCmd = &cobra.Command{
+		Use:   "process-events",
+		Short: "process events",
+		RunE:  dumpProcessEvents,
+	}
+
 	selfTestCmd = &cobra.Command{
 		Use:   "self-test",
 		Short: "Run runtime self test",
@@ -74,6 +87,7 @@ var (
 
 func init() {
 	dumpCmd.AddCommand(dumpProcessCacheCmd)
+	dumpCmd.AddCommand(dumpProcessEventsCmd)
 	runtimeCmd.AddCommand(dumpCmd)
 
 	runtimeCmd.AddCommand(checkPoliciesCmd)
@@ -95,6 +109,43 @@ func dumpProcessCache(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Dump written: %s\n", filename)
+
+	return nil
+}
+
+func dumpProcessEvents(cmd *cobra.Command, args []string) error {
+	// Read configuration files received from the command line arguments '-c'
+	if err := common.MergeConfigurationFiles("datadog", confPathArray, cmd.Flags().Lookup("cfgpath").Changed); err != nil {
+		return err
+	}
+
+	// get hostname
+	// FIXME: use gRPC cross-agent communication API to retrieve hostname
+	hostname, err := util.GetHostname(context.TODO())
+	if err != nil {
+		return log.Errorf("Error while getting hostname, exiting: %v", err)
+	}
+	log.Infof("Hostname is: %s", hostname)
+
+	// setup the forwarder
+	keysPerDomain, err := coreconfig.GetMultipleEndpoints()
+	if err != nil {
+		log.Error("Misconfiguration of agent endpoints: ", err)
+	}
+	f := forwarder.NewDefaultForwarder(forwarder.NewOptions(keysPerDomain))
+	f.Start() //nolint:errcheck
+	s := serializer.NewSerializer(f, nil)
+
+	aggregatorInstance := aggregator.InitAggregator(s, nil, hostname)
+	aggregatorInstance.AddAgentStartupTelemetry(fmt.Sprintf("%s - Datadog Security Agent", version.AgentVersion))
+
+	agent, err := secagent.NewRuntimeSecurityAgent("", nil)
+	if err != nil {
+		return errors.Wrap(err, "unable to create a runtime security agent instance")
+	}
+	agent.Start(true)
+
+	log.Info("See you !")
 
 	return nil
 }
@@ -208,7 +259,7 @@ func startRuntimeSecurity(hostname string, stopper restart.Stopper, statsdClient
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create a runtime security agent instance")
 	}
-	agent.Start()
+	agent.Start(false)
 
 	stopper.Add(agent)
 

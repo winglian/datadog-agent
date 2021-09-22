@@ -361,6 +361,12 @@ func (m *Module) HandleEvent(event *sprobe.Event) {
 	if ruleSet := m.GetRuleSet(); ruleSet != nil {
 		ruleSet.Evaluate(event)
 	}
+
+	if m.config.LiveProcessMonitoring {
+		if event.GetEventType() == model.ExecEventType {
+			m.apiServer.SendProcessEvent(event)
+		}
+	}
 }
 
 // HandleCustomEvent is called by the probe when an event should be sent to Datadog but doesn't need evaluation

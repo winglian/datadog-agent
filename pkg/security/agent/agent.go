@@ -7,11 +7,16 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	seclog "github.com/DataDog/datadog-agent/pkg/security/log"
+	"github.com/DataDog/datadog-agent/pkg/security/probe"
 
 	"github.com/cenkalti/backoff"
 	"github.com/pkg/errors"
@@ -52,7 +57,7 @@ func NewRuntimeSecurityAgent(hostname string, reporter event.Reporter) (*Runtime
 
 	tel, err := newTelemetry()
 	if err != nil {
-		return nil, errors.Errorf("failed to initialize the telemetry reporter")
+		return nil, errors.Errorf("failed to initialize the telemetry reporter: %s", err)
 	}
 
 	return &RuntimeSecurityAgent{
@@ -64,14 +69,19 @@ func NewRuntimeSecurityAgent(hostname string, reporter event.Reporter) (*Runtime
 }
 
 // Start the runtime security agent
-func (rsa *RuntimeSecurityAgent) Start() {
+func (rsa *RuntimeSecurityAgent) Start(processEventsMode bool) {
 	ctx, cancel := context.WithCancel(context.Background())
 	rsa.cancel = cancel
 
-	// Start the system-probe events listener
-	go rsa.StartEventListener()
 	// Send Runtime Security Agent telemetry
 	go rsa.telemetry.run(ctx)
+
+	if processEventsMode {
+		rsa.StartProcessEventListener()
+	} else {
+		// Start the system-probe events listener
+		go rsa.StartEventListener()
+	}
 }
 
 // Stop the runtime recurity agent
@@ -144,6 +154,66 @@ func (rsa *RuntimeSecurityAgent) GetStatus() map[string]interface{} {
 		"connected":     rsa.connected.Load(),
 		"eventReceived": atomic.LoadUint64(&rsa.eventReceived),
 	}
+}
+
+// StartProcessEventListener starts listening for new process events from system-probe
+func (rsa *RuntimeSecurityAgent) StartProcessEventListener() {
+	apiClient := api.NewSecurityModuleClient(rsa.conn)
+
+	rsa.connected.Store(false)
+
+	logTicker := newLogBackoffTicker()
+
+	rsa.running.Store(true)
+	for rsa.running.Load() == true {
+		stream, err := apiClient.GetProcessEvents(context.Background(), &api.GetProcessEventParams{})
+		if err != nil {
+			rsa.connected.Store(false)
+
+			select {
+			case <-logTicker.C:
+				log.Warnf("Error while connecting to the runtime security module: %v", err)
+			default:
+				// do nothing
+			}
+
+			// retry in 2 seconds
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		if rsa.connected.Load() != true {
+			rsa.connected.Store(true)
+
+			log.Info("Successfully connected to the runtime security module")
+		}
+
+		for {
+			// Get new event from stream
+			in, err := stream.Recv()
+			if err == io.EOF || in == nil {
+				break
+			}
+			log.Tracef("Got process message `%s`", string(in.Data))
+
+			atomic.AddUint64(&rsa.eventReceived, 1)
+
+			// Dispatch process event
+			rsa.DispatchProcessEvent(in)
+		}
+	}
+}
+
+// DispatchProcessEvent handles a new process event
+func (rsa *RuntimeSecurityAgent) DispatchProcessEvent(in *api.SecurityProcessEventMessage) {
+	// unmarshall the event
+	var event probe.EventSerializer
+	if err := json.Unmarshal(in.Data, &event); err != nil {
+		seclog.Errorf("couldn't unmarshall event: %s", err)
+		return
+	}
+
+	fmt.Println(event.ProcessContextSerializer.Args)
 }
 
 // newLogBackoffTicker returns a ticker based on an exponential backoff, used to trigger connect error logs
