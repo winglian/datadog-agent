@@ -31,6 +31,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/process/util"
 	apicfg "github.com/DataDog/datadog-agent/pkg/process/util/api/config"
 	sapi "github.com/DataDog/datadog-agent/pkg/security/api"
+	"github.com/DataDog/datadog-agent/pkg/security/probe"
 	"github.com/DataDog/datadog-agent/pkg/tagger"
 	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
 	"github.com/DataDog/datadog-agent/pkg/tagger/local"
@@ -323,7 +324,7 @@ func runAgent(exit chan struct{}) {
 		//TODO: Do we need this outer loop?
 		//TODO: Do we need 'running' and 'connected' atomic Values to better control the loop?
 		for {
-			stream, err := apiClient.GetEvents(context.Background(), &sapi.GetEventParams{})
+			stream, err := apiClient.GetProcessEvents(context.Background(), &sapi.GetProcessEventParams{})
 			if err != nil {
 				log.Errorf("error connecting to the security_runtime module")
 			}
@@ -335,9 +336,10 @@ func runAgent(exit chan struct{}) {
 					break
 				}
 				//log.Infof("Got message from rule `%s` for event `%s`", in.RuleID, string(in.Data))
-				log.Infof("Got message from rule `%s`", in.RuleID)
+				log.Tracef("Got process event `%s`", in.Data)
 
 				//TODO: how to unmarshal this message into a process ?
+				dispatchProcessEvent(in)
 			}
 		}
 
@@ -358,6 +360,19 @@ func runAgent(exit chan struct{}) {
 
 	for range exit {
 	}
+}
+
+
+func dispatchProcessEvent(in *sapi.SecurityProcessEventMessage) {
+	// unmarshall the event
+	var event probe.EventSerializer
+	if err := json.Unmarshal(in.Data, &event); err != nil {
+		log.Errorf("couldn't unmarshall event: %s", err)
+		return
+	}
+
+	log.Infof("started process PID: %d USER: %s CREATION_TIME: %s CMDLINE: %s",
+		event.ProcessContextSerializer.Pid, event.ProcessContextSerializer.User, event.ProcessContextSerializer.ExecTime, event.ProcessContextSerializer.Executable.Path + " " + strings.Join(event.ProcessContextSerializer.Args, " "))
 }
 
 func debugCheckResults(cfg *config.AgentConfig, check string) error {
