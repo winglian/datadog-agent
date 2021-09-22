@@ -378,14 +378,14 @@ func (m *Module) RuleMatch(rule *rules.Rule, event eval.Event) {
 	if event.GetType() == model.ExecEventType.String() {
 		//log.Infof("MATCHED A EXEC EVENT\n%v", event)
 
-		e := sprobe.NewEventSerializer(event)
-		proc := e.ProcessContextSerializer.ProcessCacheEntrySerializer
+		//TODO: Can we use something to unmarshal the process from an EXEC event?
+		//e := sprobe.NewEventSerializer(event)
+		//proc := e.ProcessContextSerializer.ProcessCacheEntrySerializer
 
-		pid := proc.Pid
-		//pid, err := event.GetFieldValue("process.pid")
-		//if err != nil {
-		//	log.Error("can't read cmdline")
-		//}
+		pid, err := event.GetFieldValue("process.pid")
+		if err != nil {
+			log.Error("can't read cmdline")
+		}
 
 		user, err := event.GetFieldValue("process.user")
 		if err != nil {

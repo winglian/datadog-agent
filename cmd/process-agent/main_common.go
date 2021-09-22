@@ -5,11 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"strings"
 	"time"
+
+	"google.golang.org/grpc"
 
 	cmdconfig "github.com/DataDog/datadog-agent/cmd/agent/common/commands/config"
 	"github.com/DataDog/datadog-agent/cmd/manager"
@@ -26,6 +30,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/process/statsd"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
 	apicfg "github.com/DataDog/datadog-agent/pkg/process/util/api/config"
+	sapi "github.com/DataDog/datadog-agent/pkg/security/api"
 	"github.com/DataDog/datadog-agent/pkg/tagger"
 	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
 	"github.com/DataDog/datadog-agent/pkg/tagger/local"
@@ -296,6 +301,48 @@ func runAgent(exit chan struct{}) {
 	if err != nil {
 		_ = log.Error(err)
 	}
+
+	// Run gRPC client to listen for security_runtime events
+	//socketPath := coreconfig.Datadog.GetString("runtime_security_config.socket")
+	socketPath := "/opt/datadog-agent/run/runtime-security.sock"
+	if socketPath == "" {
+		log.Errorf("runtime_security_config.socket must be set")
+		return
+	}
+
+	conn, err := grpc.Dial(socketPath, grpc.WithInsecure(), grpc.WithContextDialer(func(ctx context.Context, url string) (net.Conn, error) {
+		return net.Dial("unix", url)
+	}))
+	if err != nil {
+		log.Errorf("error creating security_runtime connection")
+		return
+	}
+
+	apiClient := sapi.NewSecurityModuleClient(conn)
+	go func(){
+		//TODO: Do we need this outer loop?
+		//TODO: Do we need 'running' and 'connected' atomic Values to better control the loop?
+		for {
+			stream, err := apiClient.GetEvents(context.Background(), &sapi.GetEventParams{})
+			if err != nil {
+				log.Errorf("error connecting to the security_runtime module")
+			}
+
+			for {
+				// Get new event from stream
+				in, err := stream.Recv()
+				if err == io.EOF || in == nil {
+					break
+				}
+				//log.Infof("Got message from rule `%s` for event `%s`", in.RuleID, string(in.Data))
+				log.Infof("Got message from rule `%s`", in.RuleID)
+
+				//TODO: how to unmarshal this message into a process ?
+			}
+		}
+
+		log.Error("STOPPING SECURITY_RUNTIME LISTENER")
+	}()
 
 	cl, err := NewCollector(cfg)
 	if err != nil {
