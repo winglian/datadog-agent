@@ -531,64 +531,71 @@ doneStartService:
 class serviceDef
 {
   private:
-    const wchar_t *svcName;
-    const wchar_t *displayName;
-    const wchar_t *displayDescription;
+    std::wstring svcName;
+    std::wstring displayName;
+    std::wstring displayDescription;
     DWORD access;
     DWORD serviceType;
     DWORD startType;
     DWORD dwErrorControl;
-    const wchar_t *lpBinaryPathName;
-    const wchar_t *lpLoadOrderGroup;
+    std::wstring lpBinaryPathName;
+    std::wstring lpLoadOrderGroup;
     LPDWORD lpdwTagId;
-    const wchar_t *lpDependencies; // list of single-null-terminated strings, double null at end
-    const wchar_t *lpServiceStartName;
-    const wchar_t *lpPassword;
+    std::wstring lpDependencies; // list of single-null-terminated strings, double null at end
+    std::wstring lpServiceStartName;
+    std::wstring lpPassword;
 
   public:
     serviceDef()
-        : svcName(NULL)
-        , displayName(NULL)
-        , displayDescription(NULL)
+        : svcName()
+        , displayName()
+        , displayDescription()
         , access(SERVICE_ALL_ACCESS)
         , serviceType(SERVICE_WIN32_OWN_PROCESS)
         , startType(SERVICE_DEMAND_START)
         , dwErrorControl(SERVICE_ERROR_NORMAL)
-        , lpBinaryPathName(NULL)
-        , lpLoadOrderGroup(NULL)
+        , lpBinaryPathName()
+        , lpLoadOrderGroup()
         , // not needed
         lpdwTagId(NULL)
         , // no tag identifier
-        lpDependencies(NULL)
+        lpDependencies()
         , // no dependencies to start
-        lpServiceStartName(NULL)
+        lpServiceStartName()
         ,                // will set to LOCAL_SYSTEM by default
-        lpPassword(NULL) // no password for LOCAL_SYSTEM
+        lpPassword() // no password for LOCAL_SYSTEM
     {
     }
-    serviceDef(const wchar_t *name)
+    serviceDef(const std::wstring &name)
         : svcName(name)
-        , displayName(NULL)
-        , displayDescription(NULL)
+        , displayName()
+        , displayDescription()
         , access(SERVICE_ALL_ACCESS)
         , serviceType(SERVICE_WIN32_OWN_PROCESS)
         , startType(SERVICE_DEMAND_START)
         , dwErrorControl(SERVICE_ERROR_NORMAL)
-        , lpBinaryPathName(NULL)
-        , lpLoadOrderGroup(NULL)
+        , lpBinaryPathName()
+        , lpLoadOrderGroup()
         , // not needed
         lpdwTagId(NULL)
         , // no tag identifier
-        lpDependencies(NULL)
+        lpDependencies()
         , // no dependencies to start
-        lpServiceStartName(NULL)
+        lpServiceStartName()
         ,                // will set to LOCAL_SYSTEM by default
-        lpPassword(NULL) // no password for LOCAL_SYSTEM
+        lpPassword() // no password for LOCAL_SYSTEM
     {
     }
 
-    serviceDef(const wchar_t *name, const wchar_t *display, const wchar_t *desc, const wchar_t *path,
-               const wchar_t *deps, DWORD st, const wchar_t *user, const wchar_t *pass)
+    serviceDef(
+        const std::wstring &name,
+        const std::wstring &display,
+        const std::wstring &desc,
+        const std::wstring &path,
+        const std::wstring &deps,
+        DWORD st,
+        const std::wstring &user,
+        const std::wstring &pass)
         : svcName(name)
         , displayName(display)
         , displayDescription(desc)
@@ -612,9 +619,9 @@ class serviceDef
         DWORD retval = 0;
         WcaLog(LOGMSG_STANDARD, "serviceDef::create()");
         SC_HANDLE hService =
-            CreateService(hMgr, this->svcName, this->displayName, this->access, this->serviceType, this->startType,
-                          this->dwErrorControl, this->lpBinaryPathName, this->lpLoadOrderGroup, this->lpdwTagId,
-                          this->lpDependencies, this->lpServiceStartName, this->lpPassword);
+            CreateService(hMgr, svcName.c_str(), displayName.c_str(), access, serviceType, startType, dwErrorControl,
+                          lpBinaryPathName.c_str(), lpLoadOrderGroup.c_str(), lpdwTagId, lpDependencies.c_str(),
+                          lpServiceStartName.c_str(), lpPassword.c_str());
         if (!hService)
         {
 
@@ -632,10 +639,10 @@ class serviceDef
             WcaLog(LOGMSG_STANDARD, "done setting to delayed auto start");
         }
         // set the description
-        if (this->displayDescription)
+        if (!displayDescription.empty())
         {
             WcaLog(LOGMSG_STANDARD, "setting description");
-            SERVICE_DESCRIPTION desc = {(LPWSTR)this->displayDescription};
+            SERVICE_DESCRIPTION desc = {(LPWSTR)displayDescription.c_str()};
             ChangeServiceConfig2(hService, SERVICE_CONFIG_DESCRIPTION, (LPVOID)&desc);
             WcaLog(LOGMSG_STANDARD, "done setting description");
         }
@@ -659,7 +666,7 @@ class serviceDef
 
     DWORD destroy(SC_HANDLE hMgr)
     {
-        SC_HANDLE hService = OpenService(hMgr, this->svcName, DELETE);
+        SC_HANDLE hService = OpenService(hMgr, svcName.c_str(), DELETE);
         if (!hService)
         {
             return GetLastError();
@@ -674,7 +681,7 @@ class serviceDef
     }
     DWORD verify(SC_HANDLE hMgr)
     {
-        SC_HANDLE hService = OpenService(hMgr, this->svcName, SC_MANAGER_ALL_ACCESS);
+        SC_HANDLE hService = OpenService(hMgr, svcName.c_str(), SC_MANAGER_ALL_ACCESS);
         if (!hService)
         {
             return GetLastError();
@@ -696,7 +703,7 @@ class serviceDef
             WcaLog(LOGMSG_STANDARD, "Failed to query service status %d\n", retval);
             goto done_verify;
         }
-        if (_wcsicmp(cfg->lpBinaryPathName, this->lpBinaryPathName) == 0)
+        if (_wcsicmp(cfg->lpBinaryPathName, lpBinaryPathName.c_str()) == 0)
         {
             // nothing to do, already correctly configured
             WcaLog(LOGMSG_STANDARD, "Service path already correct");
@@ -704,7 +711,7 @@ class serviceDef
         else
         {
             BOOL bRet = ChangeServiceConfigW(hService, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE,
-                                             this->lpBinaryPathName, NULL, NULL, NULL, NULL, NULL, NULL);
+                                             lpBinaryPathName.c_str(), NULL, NULL, NULL, NULL, NULL, NULL);
             if (!bRet)
             {
                 retval = GetLastError();
@@ -715,15 +722,16 @@ class serviceDef
         }
         {
             WcaLog(LOGMSG_STANDARD, "Resetting dependencies");
-            BOOL bRet = ChangeServiceConfigW(hService, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE,
-                                             NULL, NULL, NULL, this->lpDependencies, NULL, NULL, NULL);
+            BOOL bRet = ChangeServiceConfigW(hService, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, NULL,
+                                             NULL, NULL, lpDependencies.c_str(), NULL, NULL, NULL);
             if (!bRet)
             {
                 retval = GetLastError();
                 WcaLog(LOGMSG_STANDARD, "Failed to update service dependency config %d\n", retval);
                 goto done_verify;
             }
-            WcaLog(LOGMSG_STANDARD, "Updated dependencies for existing service, dependencies now %S", this->lpDependencies);
+            WcaLog(LOGMSG_STANDARD, "Updated dependencies for existing service, dependencies now %S",
+                   lpDependencies.c_str());
         }
 
     done_verify:
@@ -735,11 +743,11 @@ class serviceDef
 
         return retval;
     }
-    const wchar_t* getServiceName() const { return this->svcName;  }
+    const wchar_t *getServiceName() const
+    {
+        return svcName.c_str();
+    }
 };
-
-static    wchar_t * probeDepsNoNPM = L"datadogagent\0\0";
-static    wchar_t * probeDepsWithNPM = L"datadogagent\0ddnpm\0\0";
 
 int installServices(CustomActionData &data, PSID sid, const wchar_t *password)
 {
@@ -751,14 +759,14 @@ int installServices(CustomActionData &data, PSID sid, const wchar_t *password)
 #ifdef __REGISTER_ALL_SERVICES
 #define NUM_SERVICES 4
     serviceDef services[NUM_SERVICES] = {
-        serviceDef(agentService.c_str(), L"Datadog Agent", L"Send metrics to Datadog", agent_exe.c_str(), NULL,
-                   SERVICE_AUTO_START, data.Username().c_str(), password),
-        serviceDef(traceService.c_str(), L"Datadog Trace Agent", L"Send tracing metrics to Datadog", trace_exe.c_str(),
-                   L"datadogagent\0\0", SERVICE_DEMAND_START, data.Username().c_str(), password),
-        serviceDef(processService.c_str(), L"Datadog Process Agent", L"Send process metrics to Datadog",
-                   process_exe.c_str(), L"datadogagent\0\0", SERVICE_DEMAND_START, NULL, NULL),
-        serviceDef(systemProbeService.c_str(), L"Datadog System Probe", L"Send network metrics to Datadog",
-                   sysprobe_exe.c_str(), data.npmPresent() ? probeDepsWithNPM : probeDepsNoNPM, SERVICE_DEMAND_START, NULL, NULL)
+        serviceDef(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe, L"",
+                   SERVICE_AUTO_START, data.Username(), password),
+        serviceDef(traceService, L"Datadog Trace Agent", L"Send tracing metrics to Datadog", trace_exe,
+                   L"datadogagent", SERVICE_DEMAND_START, data.Username(), password),
+        serviceDef(processService, L"Datadog Process Agent", L"Send process metrics to Datadog",
+                   process_exe, L"datadogagent", SERVICE_DEMAND_START, NULL, NULL),
+        serviceDef(systemProbeService, L"Datadog System Probe", L"Send network metrics to Datadog",
+                   sysprobe_exe, data.npmPresent() ? probeDepsWithNPM : probeDepsNoNPM, SERVICE_DEMAND_START, NULL, NULL)
 
     };
     // by default, don't add sysprobe
@@ -775,8 +783,8 @@ int installServices(CustomActionData &data, PSID sid, const wchar_t *password)
 #else
 #define NUM_SERVICES 1
     serviceDef services[NUM_SERVICES] = {
-        serviceDef(agentService.c_str(), L"Datadog Agent", L"Send metrics to Datadog", agent_exe.c_str(), NULL,
-                   SERVICE_AUTO_START, data.Username().c_str(), password),
+        serviceDef(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe, NULL,
+                   SERVICE_AUTO_START, data.Username(), password),
     };
     int servicesToInstall = NUM_SERVICES;
 #endif
@@ -848,21 +856,21 @@ int uninstallServices(CustomActionData &data)
 #ifdef __REGISTER_ALL_SERVICES
 #define NUM_SERVICES 4
     serviceDef services[NUM_SERVICES] = {
-        serviceDef(agentService.c_str(), L"Datadog Agent", L"Send metrics to Datadog", agent_exe.c_str(),
-                   L"winmgmt\0\0", SERVICE_AUTO_START, data.Username().c_str(), NULL),
-        serviceDef(traceService.c_str(), L"Datadog Trace Agent", L"Send tracing metrics to Datadog", trace_exe.c_str(),
-                   L"datadogagent\0\0", SERVICE_DEMAND_START, data.Username().c_str(), NULL),
-        serviceDef(processService.c_str(), L"Datadog Process Agent", L"Send process metrics to Datadog",
-                   process_exe.c_str(), L"datadogagent\0\0", SERVICE_DEMAND_START, NULL, NULL),
-        serviceDef(systemProbeService.c_str(), L"Datadog System Probe", L"Send network metrics to Datadog",
-                   sysprobe_exe.c_str(), data.npmPresent() ? probeDepsWithNPM : probeDepsNoNPM, SERVICE_DEMAND_START, NULL, NULL)
+        serviceDef(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe,
+                   L"winmgmt\0\0", SERVICE_AUTO_START, data.Username(), NULL),
+        serviceDef(traceService, L"Datadog Trace Agent", L"Send tracing metrics to Datadog", trace_exe,
+                   L"datadogagent\0\0", SERVICE_DEMAND_START, data.Username(), NULL),
+        serviceDef(processService, L"Datadog Process Agent", L"Send process metrics to Datadog",
+                   process_exe, L"datadogagent\0\0", SERVICE_DEMAND_START, NULL, NULL),
+        serviceDef(systemProbeService, L"Datadog System Probe", L"Send network metrics to Datadog",
+                   sysprobe_exe, data.npmPresent() ? probeDepsWithNPM : probeDepsNoNPM, SERVICE_DEMAND_START, NULL, NULL)
 
     };
 #else
 #define NUM_SERVICES 1
     serviceDef services[NUM_SERVICES] = {
-        serviceDef(agentService.c_str(), L"Datadog Agent", L"Send metrics to Datadog", agent_exe.c_str(),
-                   L"winmgmt\0\0", SERVICE_AUTO_START, data.Username().c_str(), NULL),
+        serviceDef(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe,
+                   L"winmgmt\0\0", SERVICE_AUTO_START, data.Username(), NULL),
     };
 #endif
     WcaLog(LOGMSG_STANDARD, "Uninstalling services");
@@ -899,14 +907,14 @@ int verifyServices(CustomActionData &data)
 #define NUM_SERVICES 4
 #define SYSPROBE_INDEX 3
     serviceDef services[NUM_SERVICES] = {
-        serviceDef(agentService.c_str(), L"Datadog Agent", L"Send metrics to Datadog", agent_exe.c_str(),
-                   L"winmgmt\0\0", SERVICE_AUTO_START, data.Username().c_str(), NULL),
-        serviceDef(traceService.c_str(), L"Datadog Trace Agent", L"Send tracing metrics to Datadog", trace_exe.c_str(),
-                   L"datadogagent\0\0", SERVICE_DEMAND_START, data.Username().c_str(), NULL),
-        serviceDef(processService.c_str(), L"Datadog Process Agent", L"Send process metrics to Datadog",
-                   process_exe.c_str(), L"datadogagent\0\0", SERVICE_DEMAND_START, NULL, NULL),
-        serviceDef(systemProbeService.c_str(), L"Datadog System Probe", L"Send network metrics to Datadog",
-                   sysprobe_exe.c_str(), data.npmPresent() ? probeDepsWithNPM : probeDepsNoNPM, SERVICE_DEMAND_START, NULL, NULL)
+        serviceDef(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe,
+                   L"winmgmt\0\0", SERVICE_AUTO_START, data.Username(), NULL),
+        serviceDef(traceService, L"Datadog Trace Agent", L"Send tracing metrics to Datadog", trace_exe,
+                   L"datadogagent\0\0", SERVICE_DEMAND_START, data.Username(), NULL),
+        serviceDef(processService, L"Datadog Process Agent", L"Send process metrics to Datadog",
+                   process_exe, L"datadogagent\0\0", SERVICE_DEMAND_START, NULL, NULL),
+        serviceDef(systemProbeService, L"Datadog System Probe", L"Send network metrics to Datadog",
+                   sysprobe_exe, data.npmPresent() ? probeDepsWithNPM : probeDepsNoNPM, SERVICE_DEMAND_START, NULL, NULL)
 
     };
     // by default, don't add sysprobe
@@ -918,8 +926,8 @@ int verifyServices(CustomActionData &data)
 #else
 #define NUM_SERVICES 1
     serviceDef services[NUM_SERVICES] = {
-        serviceDef(agentService.c_str(), L"Datadog Agent", L"Send metrics to Datadog", agent_exe.c_str(),
-                   L"winmgmt\0\0", SERVICE_AUTO_START, data.Username().c_str(), NULL),
+        serviceDef(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe,
+                   L"winmgmt\0\0", SERVICE_AUTO_START, data.Username(), NULL),
     };
     int servicesToInstall = NUM_SERVICES;
 #endif
