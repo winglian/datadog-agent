@@ -358,6 +358,7 @@ func (m *Module) EventDiscarderFound(rs *rules.RuleSet, event eval.Event, field 
 
 // HandleEvent is called by the probe when an event arrives from the kernel
 func (m *Module) HandleEvent(event *sprobe.Event) {
+	//log.Infof("runtime-security module received event from kernel: %v", event)
 	if ruleSet := m.GetRuleSet(); ruleSet != nil {
 		ruleSet.Evaluate(event)
 	}
@@ -370,9 +371,45 @@ func (m *Module) HandleCustomEvent(rule *rules.Rule, event *sprobe.CustomEvent) 
 
 // RuleMatch is called by the ruleset when a rule matches
 func (m *Module) RuleMatch(rule *rules.Rule, event eval.Event) {
+	//log.Info("=== rule matched.\n====== rule: %v\n======event: %v", rule, event)
 	// prepare the event
 	m.probe.OnRuleMatch(rule, event.(*sprobe.Event))
 
+	if event.GetType() == model.ExecEventType.String() {
+		//log.Infof("MATCHED A EXEC EVENT\n%v", event)
+
+		e := sprobe.NewEventSerializer(event)
+		proc := e.ProcessContextSerializer.ProcessCacheEntrySerializer
+
+		pid := proc.Pid
+		//pid, err := event.GetFieldValue("process.pid")
+		//if err != nil {
+		//	log.Error("can't read cmdline")
+		//}
+
+		user, err := event.GetFieldValue("process.user")
+		if err != nil {
+			log.Error("can't read user")
+		}
+
+		execTime, err := event.GetFieldValue("process.exec_time")
+		if err != nil {
+			log.Error("can't read execTime")
+		}
+
+		exec, err := event.GetFieldValue("exec.file.name")
+		if err != nil {
+			log.Error("can't read exec")
+		}
+
+		args, err := event.GetFieldValue("process.args")
+		if err != nil {
+			log.Error("can't read args")
+		}
+
+		log.Infof("STARTED PROCESS: PID: %d, USER:%s, EXEC_TIME:%v, CMDLINE:%s %s\n",
+			pid, user, execTime, exec, args)
+	}
 	// needs to be resolved here, outside of the callback as using process tree
 	// which can be modified during queuing
 	service := event.(*sprobe.Event).GetProcessServiceTag()

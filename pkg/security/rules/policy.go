@@ -134,6 +134,10 @@ func LoadPolicies(policiesDir string, ruleSet *RuleSet) *multierror.Error {
 		ruleSet.AddPolicyVersion(filename, policy.Version)
 
 		macros, rules, mErr := policy.GetValidMacroAndRules()
+		ruleSet.logger.Errorf("PRINTING RULES: ")
+		for _, r := range rules {
+			ruleSet.logger.Errorf("rule: %v", r)
+		}
 		if mErr.ErrorOrNil() != nil {
 			result = multierror.Append(result, mErr)
 		}
