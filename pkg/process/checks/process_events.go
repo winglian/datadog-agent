@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-var ProcessEvents = &ProcessEventsCheck{probe: procutil.NewProcessProbe()}
+var ProcessEvents = &ProcessEventsCheck{probe: procutil.NewProcessProbe(procutil.WithProcessEventListener())}
 
 type ProcessEventsCheck struct {
 	probe      *procutil.Probe

@@ -87,6 +87,13 @@ func WithBootTimeRefreshInterval(bootTimeRefreshInterval time.Duration) Option {
 	}
 }
 
+// WithProcessEventListener starts Probe with a lister of processes events from the security_runtime module from system-probe
+func WithProcessEventListener() Option {
+	return func(p *Probe) {
+		p.startProcessEventsListener()
+	}
+}
+
 // Probe is a service that fetches process related info on current host
 type Probe struct {
 	procRootLoc         string // ProcFS
@@ -105,6 +112,8 @@ type Probe struct {
 }
 
 func (p *Probe) startProcessEventsListener() {
+	log.Info("Starting listening for process events from system-probe")
+
 	// Run gRPC client to listen for security_runtime events
 	//socketPath := coreconfig.Datadog.GetString("runtime_security_config.socket")
 	socketPath := "/opt/datadog-agent/run/runtime-security.sock"
@@ -205,7 +214,6 @@ func NewProcessProbe(options ...Option) *Probe {
 	}
 
 	go p.syncBootTime()
-	p.startProcessEventsListener()
 
 	return p
 }
