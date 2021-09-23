@@ -24,7 +24,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/DataDog/datadog-agent/pkg/ebpf/bytecode"
-	pconfig "github.com/DataDog/datadog-agent/pkg/process/config"
 	"github.com/DataDog/datadog-agent/pkg/security/config"
 	"github.com/DataDog/datadog-agent/pkg/security/ebpf"
 	"github.com/DataDog/datadog-agent/pkg/security/ebpf/kernel"
@@ -64,7 +63,7 @@ type Probe struct {
 	event     *Event
 	perfMap   *manager.PerfMap
 	reOrderer *ReOrderer
-	scrubber  *pconfig.DataScrubber
+	scrubber  *DataScrubber
 
 	// Approvers / discarders section
 	erpc               *ERPC
@@ -932,7 +931,7 @@ func NewProbe(config *config.Config, client *statsd.Client) (*Probe, error) {
 			MetricRate: 5 * time.Second,
 		})
 
-	p.scrubber = pconfig.NewDefaultDataScrubber()
+	p.scrubber = NewDefaultDataScrubber()
 	p.scrubber.AddCustomSensitiveWords(config.CustomSensitiveWords)
 
 	p.event = NewEvent(p.resolvers, p.scrubber)

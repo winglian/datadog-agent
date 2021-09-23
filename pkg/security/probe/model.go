@@ -15,7 +15,6 @@ import (
 	"syscall"
 	"time"
 
-	pconfig "github.com/DataDog/datadog-agent/pkg/process/config"
 	"github.com/DataDog/datadog-agent/pkg/security/model"
 	"github.com/DataDog/datadog-agent/pkg/security/secl/eval"
 )
@@ -44,7 +43,7 @@ type Event struct {
 	resolvers           *Resolvers
 	processCacheEntry   *model.ProcessCacheEntry
 	pathResolutionError error
-	scrubber            *pconfig.DataScrubber
+	scrubber            *DataScrubber
 }
 
 // Retain the event
@@ -474,7 +473,7 @@ func (ev *Event) GetProcessServiceTag() string {
 }
 
 // NewEvent returns a new event
-func NewEvent(resolvers *Resolvers, scrubber *pconfig.DataScrubber) *Event {
+func NewEvent(resolvers *Resolvers, scrubber *DataScrubber) *Event {
 	return &Event{
 		Event:     model.Event{},
 		resolvers: resolvers,
