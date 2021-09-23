@@ -5,15 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"strings"
 	"time"
-
-	"google.golang.org/grpc"
 
 	cmdconfig "github.com/DataDog/datadog-agent/cmd/agent/common/commands/config"
 	"github.com/DataDog/datadog-agent/cmd/manager"
@@ -30,8 +26,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/process/statsd"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
 	apicfg "github.com/DataDog/datadog-agent/pkg/process/util/api/config"
-	sapi "github.com/DataDog/datadog-agent/pkg/security/api"
-	"github.com/DataDog/datadog-agent/pkg/security/probe"
 	"github.com/DataDog/datadog-agent/pkg/tagger"
 	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
 	"github.com/DataDog/datadog-agent/pkg/tagger/local"
@@ -303,48 +297,48 @@ func runAgent(exit chan struct{}) {
 		_ = log.Error(err)
 	}
 
-	// Run gRPC client to listen for security_runtime events
-	//socketPath := coreconfig.Datadog.GetString("runtime_security_config.socket")
-	socketPath := "/opt/datadog-agent/run/runtime-security.sock"
-	if socketPath == "" {
-		log.Errorf("runtime_security_config.socket must be set")
-		return
-	}
-
-	conn, err := grpc.Dial(socketPath, grpc.WithInsecure(), grpc.WithContextDialer(func(ctx context.Context, url string) (net.Conn, error) {
-		return net.Dial("unix", url)
-	}))
-	if err != nil {
-		log.Errorf("error creating security_runtime connection")
-		return
-	}
-
-	apiClient := sapi.NewSecurityModuleClient(conn)
-	go func(){
-		//TODO: Do we need this outer loop?
-		//TODO: Do we need 'running' and 'connected' atomic Values to better control the loop?
-		for {
-			stream, err := apiClient.GetProcessEvents(context.Background(), &sapi.GetProcessEventParams{})
-			if err != nil {
-				log.Errorf("error connecting to the security_runtime module")
-			}
-
-			for {
-				// Get new event from stream
-				in, err := stream.Recv()
-				if err == io.EOF || in == nil {
-					break
-				}
-				//log.Infof("Got message from rule `%s` for event `%s`", in.RuleID, string(in.Data))
-				log.Tracef("Got process event `%s`", in.Data)
-
-				//TODO: how to unmarshal this message into a process ?
-				dispatchProcessEvent(in)
-			}
-		}
-
-		log.Error("STOPPING SECURITY_RUNTIME LISTENER")
-	}()
+	//// Run gRPC client to listen for security_runtime events
+	////socketPath := coreconfig.Datadog.GetString("runtime_security_config.socket")
+	//socketPath := "/opt/datadog-agent/run/runtime-security.sock"
+	//if socketPath == "" {
+	//	log.Errorf("runtime_security_config.socket must be set")
+	//	return
+	//}
+	//
+	//conn, err := grpc.Dial(socketPath, grpc.WithInsecure(), grpc.WithContextDialer(func(ctx context.Context, url string) (net.Conn, error) {
+	//	return net.Dial("unix", url)
+	//}))
+	//if err != nil {
+	//	log.Errorf("error creating security_runtime connection")
+	//	return
+	//}
+	//
+	//apiClient := sapi.NewSecurityModuleClient(conn)
+	//go func(){
+	//	//TODO: Do we need this outer loop?
+	//	//TODO: Do we need 'running' and 'connected' atomic Values to better control the loop?
+	//	for {
+	//		stream, err := apiClient.GetProcessEvents(context.Background(), &sapi.GetProcessEventParams{})
+	//		if err != nil {
+	//			log.Errorf("error connecting to the security_runtime module")
+	//		}
+	//
+	//		for {
+	//			// Get new event from stream
+	//			in, err := stream.Recv()
+	//			if err == io.EOF || in == nil {
+	//				break
+	//			}
+	//			//log.Infof("Got message from rule `%s` for event `%s`", in.RuleID, string(in.Data))
+	//			log.Tracef("Got process event `%s`", in.Data)
+	//
+	//			//TODO: how to unmarshal this message into a process ?
+	//			dispatchProcessEvent(in)
+	//		}
+	//	}
+	//
+	//	log.Error("STOPPING SECURITY_RUNTIME LISTENER")
+	//}()
 
 	cl, err := NewCollector(cfg)
 	if err != nil {
@@ -363,17 +357,17 @@ func runAgent(exit chan struct{}) {
 }
 
 
-func dispatchProcessEvent(in *sapi.SecurityProcessEventMessage) {
-	// unmarshall the event
-	var event probe.EventSerializer
-	if err := json.Unmarshal(in.Data, &event); err != nil {
-		log.Errorf("couldn't unmarshall event: %s", err)
-		return
-	}
-
-	log.Infof("started process PID: %d USER: %s CREATION_TIME: %s CMDLINE: %s",
-		event.ProcessContextSerializer.Pid, event.ProcessContextSerializer.User, event.ProcessContextSerializer.ExecTime, event.ProcessContextSerializer.Executable.Path + " " + strings.Join(event.ProcessContextSerializer.Args, " "))
-}
+//func dispatchProcessEvent(in *sapi.SecurityProcessEventMessage) {
+//	// unmarshall the event
+//	var event probe.EventSerializer
+//	if err := json.Unmarshal(in.Data, &event); err != nil {
+//		log.Errorf("couldn't unmarshall event: %s", err)
+//		return
+//	}
+//
+//	log.Infof("started process PID: %d USER: %s CREATION_TIME: %s CMDLINE: %s",
+//		event.ProcessContextSerializer.Pid, event.ProcessContextSerializer.User, event.ProcessContextSerializer.ExecTime, event.ProcessContextSerializer.Executable.Path + " " + strings.Join(event.ProcessContextSerializer.Args, " "))
+//}
 
 func debugCheckResults(cfg *config.AgentConfig, check string) error {
 	sysInfo, err := checks.CollectSystemInfo(cfg)

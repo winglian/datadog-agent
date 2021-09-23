@@ -4,8 +4,12 @@ package procutil
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,8 +20,12 @@ import (
 	"time"
 	"unicode"
 
+	"google.golang.org/grpc"
+
 	"github.com/DataDog/datadog-agent/pkg/process/util"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+	sapi "github.com/DataDog/datadog-agent/pkg/security/api"
+	"github.com/DataDog/datadog-agent/pkg/security/probe"
 )
 
 const (
@@ -81,18 +89,88 @@ func WithBootTimeRefreshInterval(bootTimeRefreshInterval time.Duration) Option {
 
 // Probe is a service that fetches process related info on current host
 type Probe struct {
-	procRootLoc  string // ProcFS
-	procRootFile *os.File
-	uid          uint32 // UID
-	euid         uint32 // Effective UID
-	clockTicks   float64
-	bootTime     uint64
-	exit         chan struct{}
+	procRootLoc         string // ProcFS
+	procRootFile        *os.File
+	uid                 uint32 // UID
+	euid                uint32 // Effective UID
+	clockTicks          float64
+	bootTime            uint64
+	exit                chan struct{}
+	processCreationChan chan *Process
 
 	// configurations
 	withPermission          bool
 	returnZeroPermStats     bool
 	bootTimeRefreshInterval time.Duration
+}
+
+func (p *Probe) startProcessEventsListener() {
+	// Run gRPC client to listen for security_runtime events
+	//socketPath := coreconfig.Datadog.GetString("runtime_security_config.socket")
+	socketPath := "/opt/datadog-agent/run/runtime-security.sock"
+	if socketPath == "" {
+		log.Errorf("runtime_security_config.socket must be set")
+		return
+	}
+
+	conn, err := grpc.Dial(socketPath, grpc.WithInsecure(), grpc.WithContextDialer(func(ctx context.Context, url string) (net.Conn, error) {
+		return net.Dial("unix", url)
+	}))
+	if err != nil {
+		log.Errorf("error creating security_runtime connection")
+		return
+	}
+
+	apiClient := sapi.NewSecurityModuleClient(conn)
+	go func() {
+		//TODO: Add 'running' and 'connected' atomic Values to better control the loop and when stop it
+		for {
+			stream, err := apiClient.GetProcessEvents(context.Background(), &sapi.GetProcessEventParams{})
+			if err != nil {
+				log.Errorf("error connecting to the security_runtime module")
+			}
+
+			for {
+				// Get new event from stream
+				in, err := stream.Recv()
+				if err == io.EOF || in == nil {
+					break
+				}
+				//log.Infof("Got message from rule `%s` for event `%s`", in.RuleID, string(in.Data))
+				log.Tracef("Got process event `%s`", in.Data)
+
+				//TODO: how to unmarshal this message into a process ?
+				p.dispatchProcessEvent(in)
+			}
+		}
+
+		log.Error("STOPPING SECURITY_RUNTIME LISTENER")
+	}()
+}
+
+func (p *Probe) dispatchProcessEvent(in *sapi.SecurityProcessEventMessage) {
+	// unmarshall the event
+	var event probe.EventSerializer
+	if err := json.Unmarshal(in.Data, &event); err != nil {
+		log.Errorf("couldn't unmarshall event: %s", err)
+		return
+	}
+
+	cmdline := make([]string, 0, len(event.ProcessContextSerializer.Args) + 1)
+	cmdline = append(cmdline, event.ProcessContextSerializer.Executable.Path)
+	cmdline = append(cmdline, event.ProcessContextSerializer.Args...)
+
+	p.processCreationChan <- &Process{
+		Pid:      int32(event.ProcessContextSerializer.Pid),
+		Cmdline:  cmdline,
+		Username: event.ProcessContextSerializer.User,
+		Stats: &Stats{
+			CreateTime: event.ProcessContextSerializer.ExecTime.Unix(),
+		},
+	}
+
+	log.Infof("started process PID: %d USER: %s CREATION_TIME: %s CMDLINE: %s",
+		event.ProcessContextSerializer.Pid, event.ProcessContextSerializer.User, event.ProcessContextSerializer.ExecTime, event.ProcessContextSerializer.Executable.Path+" "+strings.Join(event.ProcessContextSerializer.Args, " "))
 }
 
 // NewProcessProbe initializes a new Probe object
@@ -110,6 +188,7 @@ func NewProcessProbe(options ...Option) *Probe {
 		clockTicks:              getClockTicks(),
 		exit:                    make(chan struct{}),
 		bootTimeRefreshInterval: time.Minute,
+		processCreationChan:     make(chan *Process, 500),
 	}
 	atomic.StoreUint64(&p.bootTime, bootTime)
 
@@ -118,6 +197,7 @@ func NewProcessProbe(options ...Option) *Probe {
 	}
 
 	go p.syncBootTime()
+	p.startProcessEventsListener()
 
 	return p
 }
@@ -148,6 +228,10 @@ func (p *Probe) syncBootTime() {
 	case <-p.exit:
 		return
 	}
+}
+
+func (p *Probe) GetCreatedProcesses() (map[int32]*Stats, error) {
+	return nil, nil
 }
 
 // StatsForPIDs returns a map of stats info indexed by PID using the given PIDs
