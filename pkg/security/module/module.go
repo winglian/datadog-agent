@@ -393,28 +393,29 @@ func (m *Module) RuleMatch(rule *rules.Rule, event eval.Event) {
 			log.Error("can't read cmdline")
 		}
 
-		user, err := event.GetFieldValue("process.user")
-		if err != nil {
-			log.Error("can't read user")
-		}
+		//user, err := event.GetFieldValue("process.user")
+		//if err != nil {
+		//	log.Error("can't read user")
+		//}
+		//
+		//execTime, err := event.GetFieldValue("process.exec_time")
+		//if err != nil {
+		//	log.Error("can't read execTime")
+		//}
+		//
+		//exec, err := event.GetFieldValue("exec.file.name")
+		//if err != nil {
+		//	log.Error("can't read exec")
+		//}
+		//
+		//args, err := event.GetFieldValue("process.args")
+		//if err != nil {
+		//	log.Error("can't read args")
+		//}
 
-		execTime, err := event.GetFieldValue("process.exec_time")
-		if err != nil {
-			log.Error("can't read execTime")
-		}
-
-		exec, err := event.GetFieldValue("exec.file.name")
-		if err != nil {
-			log.Error("can't read exec")
-		}
-
-		args, err := event.GetFieldValue("process.args")
-		if err != nil {
-			log.Error("can't read args")
-		}
-
-		log.Infof("STARTED PROCESS: PID: %d, USER:%s, EXEC_TIME:%v, CMDLINE:%s %s\n",
-			pid, user, execTime, exec, args)
+		//log.Infof("STARTED PROCESS: PID: %d, USER:%s, EXEC_TIME:%v, CMDLINE:%s %s\n",
+		//	pid, user, execTime, exec, args)
+		log.Infof("Start Process Event: PID: %d\n", pid)
 	}
 	// needs to be resolved here, outside of the callback as using process tree
 	// which can be modified during queuing
