@@ -156,11 +156,14 @@ func (p *Probe) dispatchProcessEvent(in *sapi.SecurityProcessEventMessage) {
 		return
 	}
 
+	log.Infof("started process PID: %d USER: %s CREATION_TIME: %s CMDLINE: %s",
+		event.ProcessContextSerializer.Pid, event.ProcessContextSerializer.User, event.ProcessContextSerializer.ExecTime, event.ProcessContextSerializer.Executable.Path+" "+strings.Join(event.ProcessContextSerializer.Args, " "))
+
 	cmdline := make([]string, 0, len(event.ProcessContextSerializer.Args) + 1)
 	cmdline = append(cmdline, event.ProcessContextSerializer.Executable.Path)
 	cmdline = append(cmdline, event.ProcessContextSerializer.Args...)
 
-	p.processCreationChan <- &Process{
+	proc := &Process{
 		Pid:      int32(event.ProcessContextSerializer.Pid),
 		Cmdline:  cmdline,
 		Username: event.ProcessContextSerializer.User,
@@ -169,8 +172,13 @@ func (p *Probe) dispatchProcessEvent(in *sapi.SecurityProcessEventMessage) {
 		},
 	}
 
-	log.Infof("started process PID: %d USER: %s CREATION_TIME: %s CMDLINE: %s",
-		event.ProcessContextSerializer.Pid, event.ProcessContextSerializer.User, event.ProcessContextSerializer.ExecTime, event.ProcessContextSerializer.Executable.Path+" "+strings.Join(event.ProcessContextSerializer.Args, " "))
+	//TODO: drop message when channel is full and log and error :)
+	select {
+	case p.processCreationChan <- proc:
+		log.Infof("successuflly pushed to processCreationChan: len(chan) = %d", len(p.processCreationChan))
+	default:
+		log.Errorf("to many process event. Dropping message")
+	}
 }
 
 // NewProcessProbe initializes a new Probe object
@@ -230,8 +238,19 @@ func (p *Probe) syncBootTime() {
 	}
 }
 
-func (p *Probe) GetCreatedProcesses() (map[int32]*Stats, error) {
-	return nil, nil
+func (p *Probe) GetCreatedProcesses() (map[int32]*Process, error) {
+	procs := make(map[int32]*Process)
+
+	// Only consumes what is already in the channel when the function is called
+	toConsume := len(p.processCreationChan)
+	log.Info("GetCreatedProcesses, len(chan) = ", toConsume)
+	for i := 0; i < toConsume; i++{
+		proc := <-p.processCreationChan
+		log.Infof("consumed process %v", proc)
+		procs[proc.Pid] = proc
+	}
+
+	return procs, nil
 }
 
 // StatsForPIDs returns a map of stats info indexed by PID using the given PIDs
