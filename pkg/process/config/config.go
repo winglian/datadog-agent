@@ -40,12 +40,13 @@ const (
 
 // Name for check performed by process-agent or system-probe
 const (
-	ProcessCheckName     = "process"
-	RTProcessCheckName   = "rtprocess"
-	ContainerCheckName   = "container"
-	RTContainerCheckName = "rtcontainer"
-	ConnectionsCheckName = "connections"
-	PodCheckName         = "pod"
+	ProcessCheckName       = "process"
+	RTProcessCheckName     = "rtprocess"
+	ContainerCheckName     = "container"
+	RTContainerCheckName   = "rtcontainer"
+	ConnectionsCheckName   = "connections"
+	PodCheckName           = "pod"
+	ProcessEventsCheckName = "process_events"
 
 	NetworkCheckName        = "Network"
 	OOMKillCheckName        = "OOM Kill"
@@ -219,12 +220,13 @@ func NewDefaultAgentConfig(canAccessContainers bool) *AgentConfig {
 		// Check config
 		EnabledChecks: enabledChecks,
 		CheckIntervals: map[string]time.Duration{
-			ProcessCheckName:     10 * time.Second,
-			RTProcessCheckName:   2 * time.Second,
-			ContainerCheckName:   10 * time.Second,
-			RTContainerCheckName: 2 * time.Second,
-			ConnectionsCheckName: 30 * time.Second,
-			PodCheckName:         10 * time.Second,
+			ProcessCheckName:       10 * time.Second,
+			RTProcessCheckName:     2 * time.Second,
+			ContainerCheckName:     10 * time.Second,
+			RTContainerCheckName:   2 * time.Second,
+			ConnectionsCheckName:   30 * time.Second,
+			PodCheckName:           10 * time.Second,
+			ProcessEventsCheckName: 10 * time.Second,
 		},
 
 		// DataScrubber to hide command line sensitive words

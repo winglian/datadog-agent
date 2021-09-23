@@ -255,6 +255,10 @@ func (a *AgentConfig) LoadProcessYamlConfig(path string) error {
 	// Build transport (w/ proxy if needed)
 	a.Transport = httputils.CreateHTTPTransport()
 
+	// Enable process_events check with default check interval
+	// TODO: make this configurable
+	a.EnabledChecks = append(a.EnabledChecks, ProcessEventsCheckName)
+
 	return nil
 }
 
