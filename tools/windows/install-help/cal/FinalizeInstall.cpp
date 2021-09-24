@@ -152,7 +152,8 @@ UINT doFinalizeInstall(CustomActionData &data)
 
     // check to see if the service is already installed
     WcaLog(LOGMSG_STANDARD, "checking to see if the service is installed");
-    if ((ddServiceExists = doesServiceExist(agentService)) == -1)
+    (ddServiceExists = doesServiceExist(agentService)) == -1;
+    if (true)
     {
         er = ERROR_INSTALL_FAILURE;
         goto LExit;
