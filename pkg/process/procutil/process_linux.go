@@ -87,7 +87,7 @@ func WithBootTimeRefreshInterval(bootTimeRefreshInterval time.Duration) Option {
 	}
 }
 
-// WithProcessEventListener starts Probe with a lister of processes events from the security_runtime module from system-probe
+// WithProcessEventListener starts Probe with a listener of processes events from the security_runtime module from system-probe
 func WithProcessEventListener() Option {
 	return func(p *Probe) {
 		p.startProcessEventsListener()
@@ -112,16 +112,10 @@ type Probe struct {
 }
 
 func (p *Probe) startProcessEventsListener() {
-	log.Info("Starting listening for process events from system-probe")
+	log.Info("Starting listener for process events from system-probe")
 
-	// Run gRPC client to listen for security_runtime events
-	//socketPath := coreconfig.Datadog.GetString("runtime_security_config.socket")
+	//TODO: make this configurable
 	socketPath := "/opt/datadog-agent/run/runtime-security.sock"
-	if socketPath == "" {
-		log.Errorf("runtime_security_config.socket must be set")
-		return
-	}
-
 	conn, err := grpc.Dial(socketPath, grpc.WithInsecure(), grpc.WithContextDialer(func(ctx context.Context, url string) (net.Conn, error) {
 		return net.Dial("unix", url)
 	}))
@@ -132,7 +126,7 @@ func (p *Probe) startProcessEventsListener() {
 
 	apiClient := sapi.NewSecurityModuleClient(conn)
 	go func() {
-		//TODO: Add 'running' and 'connected' atomic Values to better control the loop and when stop it
+		//TODO: Add logic to stop the listener once the Probe is closed
 		for {
 			stream, err := apiClient.GetProcessEvents(context.Background(), &sapi.GetProcessEventParams{})
 			if err != nil {
@@ -145,18 +139,15 @@ func (p *Probe) startProcessEventsListener() {
 				if err == io.EOF || in == nil {
 					break
 				}
-				//log.Infof("Got message from rule `%s` for event `%s`", in.RuleID, string(in.Data))
 				log.Tracef("Got process event `%s`", in.Data)
 
-				//TODO: how to unmarshal this message into a process ?
 				p.dispatchProcessEvent(in)
 			}
 		}
-
-		log.Error("STOPPING SECURITY_RUNTIME LISTENER")
 	}()
 }
 
+//TODO: have a more generic function to handle different types of process events
 func (p *Probe) dispatchProcessEvent(in *sapi.SecurityProcessEventMessage) {
 	// unmarshall the event
 	var event probe.EventSerializer
@@ -164,9 +155,6 @@ func (p *Probe) dispatchProcessEvent(in *sapi.SecurityProcessEventMessage) {
 		log.Errorf("couldn't unmarshall event: %s", err)
 		return
 	}
-
-	//log.Infof("started process PID: %d USER: %s CREATION_TIME: %s CMDLINE: %s",
-	//	event.ProcessContextSerializer.Pid, event.ProcessContextSerializer.User, event.ProcessContextSerializer.ExecTime, event.ProcessContextSerializer.Executable.Path+" "+strings.Join(event.ProcessContextSerializer.Args, " "))
 
 	cmdline := make([]string, 0, len(event.ProcessContextSerializer.Args) + 1)
 	cmdline = append(cmdline, event.ProcessContextSerializer.Executable.Path)
@@ -181,11 +169,10 @@ func (p *Probe) dispatchProcessEvent(in *sapi.SecurityProcessEventMessage) {
 		},
 	}
 
-	//TODO: drop message when channel is full and log and error :)
 	select {
 	case p.processCreationChan <- proc:
-		//log.Infof("successuflly pushed to processCreationChan: len(chan) = %d", len(p.processCreationChan))
 	default:
+		// TODO: add telemetry so we have access to how many events we're dropping
 		log.Errorf("to many process event. Dropping message")
 	}
 }
@@ -249,12 +236,11 @@ func (p *Probe) syncBootTime() {
 func (p *Probe) GetCreatedProcesses() (map[int32]*Process, error) {
 	procs := make(map[int32]*Process)
 
-	// Only consumes what is already in the channel when the function is called
+	// Only consumes what is already in the channel when the function is called so we avoid getting 'blocked' in the for
+	// loop if system-probe keeps sending process events
 	toConsume := len(p.processCreationChan)
-	//log.Info("GetCreatedProcesses, len(chan) = ", toConsume)
 	for i := 0; i < toConsume; i++{
 		proc := <-p.processCreationChan
-		//log.Infof("consumed process %v", proc)
 		procs[proc.Pid] = proc
 	}
 

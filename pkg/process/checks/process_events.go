@@ -32,6 +32,7 @@ func (c *ProcessEventsCheck) Run(cfg *config.AgentConfig, groupID int32) ([]mode
 	if err != nil {
 		log.Error("Error fetching CreatedProcess")
 	}
+
 	for _, fp := range procsByPID {
 		proc := &model.Process{
 			Pid:                    fp.Pid,
@@ -53,20 +54,17 @@ func (c *ProcessEventsCheck) Run(cfg *config.AgentConfig, groupID int32) ([]mode
 			ContainerId:            "",
 		}
 
-		log.Infof("collected proc: %v", proc)
+		log.Tracef("collected proc: %v", proc)
 		procs = append(procs, proc)
-		//log.Infof("=== process created {PID: %d CMD: %s USER: %s CREATE_TIME: %d }",
-		//	proc.Pid, strings.Join(fp.Cmdline, " "), fp.Username, fp.Stats.CreateTime)
 	}
 
-	log.Infof("COLLECTED TOTAL PROCS: %d", len(procs))
+	// we're not yet collecting containers inside the check so we map all of them to an empty containerID
 	procsByCtr := map[string][]*model.Process{
 		emptyCtrID: procs,
 	}
+
 	messages, totalProcs, totalContainers := createProcCtrMessages(procsByCtr, nil, cfg, c.info, groupID, "")
 	log.Infof("collected %d messages with %d processses and %d containers", len(messages), totalProcs, totalContainers)
 
 	return messages, nil
 }
-
-
