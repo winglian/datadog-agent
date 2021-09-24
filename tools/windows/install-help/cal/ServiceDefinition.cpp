@@ -24,7 +24,6 @@ ServiceDefinition::ServiceDefinition()
     , _errorControl(SERVICE_ERROR_NORMAL)
     , _binaryPathName()
     , _loadOrderGroup()         // not needed
-    , _tagId(NULL)              // no tag identifier
     , _dependencies()           // no dependencies to start
     , _serviceUsername()        // will set to LOCAL_SYSTEM by default
     , _serviceUserPassword()    // no password for LOCAL_SYSTEM
@@ -41,7 +40,6 @@ ServiceDefinition::ServiceDefinition(const std::wstring &name)
     , _errorControl(SERVICE_ERROR_NORMAL)
     , _binaryPathName()
     , _loadOrderGroup()         // not needed
-    , _tagId(NULL)              // no tag identifier
     , _dependencies()           // no dependencies to start
     , _serviceUsername()        // will set to LOCAL_SYSTEM by default
     , _serviceUserPassword()    // no password for LOCAL_SYSTEM
@@ -60,7 +58,6 @@ ServiceDefinition::ServiceDefinition(const std::wstring &name, const std::wstrin
     , _errorControl(SERVICE_ERROR_NORMAL)
     , _binaryPathName(path)
     , _loadOrderGroup()             // not needed
-    , _tagId(NULL)                  // no tag identifier
     , _serviceUsername(user)
     , _serviceUserPassword(pass)    // no password for LOCAL_SYSTEM
 {
@@ -76,15 +73,36 @@ void ServiceDefinition::addDependency(ServiceDefinition const &serviceDef)
     addDependency(serviceDef.getServiceName());
 }
 
+const wchar_t *CStrOrNull(const std::wstring &str)
+{
+    if (str.empty())
+    {
+        return nullptr;
+    }
+    return str.c_str();
+}
+
 DWORD ServiceDefinition::create(SC_HANDLE hMgr)
 {
     DWORD retval = 0;
     WcaLog(LOGMSG_STANDARD, "serviceDef::create()");
     auto formattedDeps = formatDependencies(_dependencies);
-    SC_HANDLE hService = CreateService(hMgr, _svcName.c_str(), _displayName.c_str(), _access, _serviceType, _startType,
-                                       _errorControl, _binaryPathName.c_str(), _loadOrderGroup.c_str(), _tagId,
-                                       &formattedDeps[0], _serviceUsername.c_str(), _serviceUserPassword.c_str());
-    if (!hService)
+    auto hService = service_handle_p(CreateService(
+        hMgr                                /*SC_HANDLE hSCManager*/
+        , _svcName.c_str()                  /*LPCWSTR   lpServiceName*/
+        , CStrOrNull(_displayName)          /*LPCWSTR   lpDisplayName*/
+        , _access                           /*DWORD     dwDesiredAccess*/
+        , _serviceType                      /*DWORD     dwServiceType*/
+        , _startType                        /*DWORD     dwStartType*/
+        , _errorControl                     /*DWORD     dwErrorControl*/
+        , CStrOrNull(_binaryPathName)       /*LPCWSTR   lpBinaryPathName*/
+        , CStrOrNull(_loadOrderGroup)       /*LPCWSTR   lpLoadOrderGroup*/
+        , nullptr                           /*LPCWSTR   lpdwTagId*/
+        , &formattedDeps[0]                 /*LPCWSTR   lpDependencies*/
+        , CStrOrNull(_serviceUsername)      /*LPCWSTR   lpServiceStartName*/
+        , CStrOrNull(_serviceUserPassword)  /*LPCWSTR   lpPassword*/
+    ));
+    if (hService == nullptr)
     {
 
         retval = GetLastError();
@@ -97,7 +115,7 @@ DWORD ServiceDefinition::create(SC_HANDLE hMgr)
         // make it delayed-auto-start
         SERVICE_DELAYED_AUTO_START_INFO inf = {TRUE};
         WcaLog(LOGMSG_STANDARD, "setting to delayed auto start");
-        ChangeServiceConfig2(hService, SERVICE_CONFIG_DELAYED_AUTO_START_INFO, (LPVOID)&inf);
+        ChangeServiceConfig2(hService.get(), SERVICE_CONFIG_DELAYED_AUTO_START_INFO, (LPVOID)&inf);
         WcaLog(LOGMSG_STANDARD, "done setting to delayed auto start");
     }
     // set the description
@@ -105,7 +123,7 @@ DWORD ServiceDefinition::create(SC_HANDLE hMgr)
     {
         WcaLog(LOGMSG_STANDARD, "setting description");
         SERVICE_DESCRIPTION desc = {(LPWSTR)_displayDescription.c_str()};
-        ChangeServiceConfig2(hService, SERVICE_CONFIG_DESCRIPTION, (LPVOID)&desc);
+        ChangeServiceConfig2(hService.get(), SERVICE_CONFIG_DESCRIPTION, (LPVOID)&desc);
         WcaLog(LOGMSG_STANDARD, "done setting description");
     }
     // set the error recovery actions
@@ -121,24 +139,23 @@ DWORD ServiceDefinition::create(SC_HANDLE hMgr)
                                            4,    // 4 actions
                                            actions};
     WcaLog(LOGMSG_STANDARD, "Setting failure actions");
-    ChangeServiceConfig2(hService, SERVICE_CONFIG_FAILURE_ACTIONS, (LPVOID)&failactions);
+    ChangeServiceConfig2(hService.get(), SERVICE_CONFIG_FAILURE_ACTIONS, (LPVOID)&failactions);
     WcaLog(LOGMSG_STANDARD, "Done with create() %d", retval);
     return retval;
 }
 
 DWORD ServiceDefinition::destroy(SC_HANDLE hMgr)
 {
-    SC_HANDLE hService = OpenService(hMgr, _svcName.c_str(), DELETE);
+    service_handle_p hService = service_handle_p(OpenService(hMgr, _svcName.c_str(), DELETE));
     if (!hService)
     {
         return GetLastError();
     }
     DWORD retval = 0;
-    if (!DeleteService(hService))
+    if (!DeleteService(hService.get()))
     {
         retval = GetLastError();
     }
-    CloseServiceHandle(hService);
     return retval;
 }
 

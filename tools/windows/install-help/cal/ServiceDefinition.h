@@ -16,7 +16,6 @@ class ServiceDefinition
     DWORD _errorControl;
     std::wstring _binaryPathName;
     std::wstring _loadOrderGroup;
-    LPDWORD _tagId;
     deps_t _dependencies;
     std::wstring _serviceUsername;
     std::wstring _serviceUserPassword;
