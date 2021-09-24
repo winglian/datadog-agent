@@ -132,3 +132,14 @@ template <class ErrType> std::string GetErrorMessageStr(ErrType errCode)
     }
     return "Failed to retrieve error message string.";
 }
+
+template <class P> struct service_handle_deleter
+{
+    typedef P *pointer;
+
+    void operator()(pointer ptr) const
+    {
+        CloseServiceHandle(ptr);
+    }
+};
+typedef std::unique_ptr<SC_HANDLE__, service_handle_deleter<SC_HANDLE__>> service_handle_p;

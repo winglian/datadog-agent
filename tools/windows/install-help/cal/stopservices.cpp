@@ -529,42 +529,25 @@ doneStartService:
     return err;
 }
 
-int installServices(CustomActionData &data, PSID sid, const wchar_t *password)
+std::map<std::wstring, ServiceDefinition> getServices(CustomActionData &data, const wchar_t *password)
 {
-    SC_HANDLE hScManager = NULL;
-    SC_HANDLE hService = NULL;
-    int retval = 0;
-
 #ifdef __REGISTER_ALL_SERVICES
     std::map<std::wstring, ServiceDefinition> services = {
-        {
-            L"datadog-agent",
-            ServiceDefinition(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe,
-                              SERVICE_AUTO_START, data.Username(), password)
-        },
-        {
-            L"trace-agent",
-            ServiceDefinition(traceService, L"Datadog Trace Agent", L"Send tracing metrics to Datadog", trace_exe,
-                              SERVICE_DEMAND_START, data.Username(), password)
-        },
-        {
-            L"process-agent",
-            ServiceDefinition(processService, L"Datadog Process Agent", L"Send process metrics to Datadog", process_exe,
-                              SERVICE_DEMAND_START, L"", L"")
-        },
+        {L"datadog-agent", ServiceDefinition(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe,
+                                             SERVICE_AUTO_START, data.Username(), password)},
+        {L"trace-agent", ServiceDefinition(traceService, L"Datadog Trace Agent", L"Send tracing metrics to Datadog",
+                                           trace_exe, SERVICE_DEMAND_START, data.Username(), password)},
+        {L"process-agent",
+         ServiceDefinition(processService, L"Datadog Process Agent", L"Send process metrics to Datadog", process_exe,
+                           SERVICE_DEMAND_START, L"", L"")},
     };
 
     // by default, don't add sysprobe
     if (data.installSysprobe())
     {
-        WcaLog(LOGMSG_STANDARD, "Requested sysprobe, installing all services");
         services[L"system-probe"] =
             ServiceDefinition(systemProbeService, L"Datadog System Probe", L"Send network metrics to Datadog",
                               sysprobe_exe, SERVICE_DEMAND_START, L"", L"");
-    }
-    else
-    {
-        WcaLog(LOGMSG_STANDARD, "Not installing sysprobe");
     }
 
     services[L"trace-agent"].addDependency(services[L"datadog-agent"]);
@@ -577,13 +560,20 @@ int installServices(CustomActionData &data, PSID sid, const wchar_t *password)
 
 #else
     std::map<std::wstring, ServiceDefinition> services = {
-        {
-            L"datadog-agent",
-            ServiceDefinition(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe,
-                              SERVICE_AUTO_START, data.Username(), password)
-        },
+        {L"datadog-agent", ServiceDefinition(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe,
+                                             SERVICE_AUTO_START, data.Username(), password)},
     };
 #endif
+    return services;
+}
+
+int installServices(CustomActionData &data, PSID sid, const wchar_t *password)
+{
+    SC_HANDLE hScManager = NULL;
+    SC_HANDLE hService = NULL;
+    int retval = 0;
+
+    auto services = getServices(data, password);
 
     WcaLog(LOGMSG_STANDARD, "Installing services");
     hScManager = OpenSCManager(NULL,                   // local computer
@@ -595,19 +585,20 @@ int installServices(CustomActionData &data, PSID sid, const wchar_t *password)
         WcaLog(LOGMSG_STANDARD, "OpenSCManager failed (%d)\n", GetLastError());
         return -1;
     }
-    for (auto svc : services)
+    for (auto svcIt = services.begin(); svcIt != services.end(); ++svcIt)
     {
-        WcaLog(LOGMSG_STANDARD, "installing service %S", svc.first);
-        retval = svc.second.create(hScManager);
+        WcaLog(LOGMSG_STANDARD, "installing service %S", svcIt->first.c_str());
+        retval = svcIt->second.create(hScManager);
         if (retval != 0)
         {
-            WcaLog(LOGMSG_STANDARD, "Failed to install service %S %d (0x%x), rolling back", svc.first, retval, retval);
-            for (int rbi = i - 1; rbi >= 0; rbi--)
+            auto lastErrStr = GetErrorMessageStr(retval);
+            WcaLog(LOGMSG_STANDARD, "Failed to install service %S (%d), rolling back", lastErrStr.c_str(), rbret);
+            for (auto svcRevIt = svcIt; svcRevIt != services.begin(); --svcRevIt)
             {
-                DWORD rbret = services[rbi].destroy(hScManager);
+                DWORD rbret = svcRevIt->second.destroy(hScManager);
                 if (rbret != 0)
                 {
-                    WcaLog(LOGMSG_STANDARD, "Failed to roll back service install %d 0x%x", rbret, rbret);
+                    WcaLog(LOGMSG_STANDARD, "Failed to roll back serviceinstall %S %d (0x%x)", svcRevIt->first.c_str(), rbret, rbret);
                 }
             }
             break;
@@ -649,27 +640,9 @@ int uninstallServices(CustomActionData &data)
     SC_HANDLE hScManager = NULL;
     SC_HANDLE hService = NULL;
     int retval = 0;
-    // Get a handle to the SCM database.
-#ifdef __REGISTER_ALL_SERVICES
-#define NUM_SERVICES 4
-    ServiceDefinition services[NUM_SERVICES] = {
-        ServiceDefinition(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe,
-                          SERVICE_AUTO_START, data.Username(), L""),
-        ServiceDefinition(traceService, L"Datadog Trace Agent", L"Send tracing metrics to Datadog", trace_exe,
-                          SERVICE_DEMAND_START, data.Username(), L""),
-        ServiceDefinition(processService, L"Datadog Process Agent", L"Send process metrics to Datadog", process_exe,
-                          SERVICE_DEMAND_START, L"", L""),
-        ServiceDefinition(systemProbeService, L"Datadog System Probe", L"Send network metrics to Datadog", sysprobe_exe,
-                          SERVICE_DEMAND_START, L"", L"")
 
-    };
-#else
-#define NUM_SERVICES 1
-    ServiceDefinition services[NUM_SERVICES] = {
-        ServiceDefinition(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe, SERVICE_AUTO_START,
-                          data.Username(), NULL),
-    };
-#endif
+    auto services = getServices(data, nullptr);
+
     WcaLog(LOGMSG_STANDARD, "Uninstalling services");
     hScManager = OpenSCManager(NULL,                   // local computer
                                NULL,                   // ServicesActive database
@@ -680,14 +653,14 @@ int uninstallServices(CustomActionData &data)
         WcaLog(LOGMSG_STANDARD, "OpenSCManager failed (%d)\n", GetLastError());
         return -1;
     }
-    for (int i = NUM_SERVICES - 1; i >= 0; i--)
+    for (auto svcIt = services.rbegin(); svcIt != services.rbegin(); ++svcIt)
     {
-        WcaLog(LOGMSG_STANDARD, "deleting service service %d", i);
-        DWORD rbret = services[i].destroy(hScManager);
+        WcaLog(LOGMSG_STANDARD, "deleting service service %S", svcIt->first.c_str());
+        DWORD rbret = svcIt->second.destroy(hScManager);
         if (rbret != 0)
         {
-            std::string lastErrStr = GetErrorMessageStr(rbret);
-            WcaLog(LOGMSG_STANDARD, "Failed to uninstall service %s (%d)", lastErrStr.c_str(), rbret);
+            auto lastErrStr = GetErrorMessageStr(rbret);
+            WcaLog(LOGMSG_STANDARD, "Failed to uninstall service %S (%d)", lastErrStr.c_str(), rbret);
         }
     }
     WcaLog(LOGMSG_STANDARD, "done uinstalling services");
@@ -700,36 +673,10 @@ int verifyServices(CustomActionData &data)
     SC_HANDLE hScManager = NULL;
     SC_HANDLE hService = NULL;
     int retval = 0;
-    // Get a handle to the SCM database.
-#ifdef __REGISTER_ALL_SERVICES
-#define NUM_SERVICES 4
-#define SYSPROBE_INDEX 3
-    ServiceDefinition services[NUM_SERVICES] = {
-        ServiceDefinition(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe, SERVICE_AUTO_START,
-                          data.Username(), L""),
-        ServiceDefinition(traceService, L"Datadog Trace Agent", L"Send tracing metrics to Datadog", trace_exe,
-                          SERVICE_DEMAND_START, data.Username(), L""),
-        ServiceDefinition(processService, L"Datadog Process Agent", L"Send process metrics to Datadog", process_exe,
-                          SERVICE_DEMAND_START, NULL, NULL),
-        ServiceDefinition(systemProbeService, L"Datadog System Probe", L"Send network metrics to Datadog", sysprobe_exe,
-                          SERVICE_DEMAND_START, NULL, NULL)
 
-    };
-    // by default, don't add sysprobe
-    int servicesToInstall = NUM_SERVICES - 1;
-    if (data.installSysprobe())
-    {
-        servicesToInstall = NUM_SERVICES;
-    }
-#else
-#define NUM_SERVICES 1
-    serviceDef services[NUM_SERVICES] = {
-        serviceDef(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe,
-                   L"winmgmt\0\0", SERVICE_AUTO_START, data.Username(), NULL),
-    };
-    int servicesToInstall = NUM_SERVICES;
-#endif
-    WcaLog(LOGMSG_STANDARD, "Installing services");
+    auto services = getServices(data, nullptr);
+
+    WcaLog(LOGMSG_STANDARD, "Updating services");
     hScManager = OpenSCManager(NULL,                   // local computer
                                NULL,                   // ServicesActive database
                                SC_MANAGER_ALL_ACCESS); // full access rights

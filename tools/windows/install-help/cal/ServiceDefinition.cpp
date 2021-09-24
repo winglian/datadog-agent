@@ -7,10 +7,7 @@ std::vector<wchar_t> formatDependencies(const ServiceDefinition::deps_t &depende
     std::vector<wchar_t> formattedDeps;
     for (auto dep : dependencies)
     {
-        for (auto ch : dep)
-        {
-            formattedDeps.push_back(ch);
-        }
+        formattedDeps.insert(formattedDeps.end(), dep.begin(), dep.end());
         formattedDeps.push_back(L'\0');
     }
     formattedDeps.push_back(L'\0');
@@ -95,7 +92,7 @@ DWORD ServiceDefinition::create(SC_HANDLE hMgr)
         return retval;
     }
     WcaLog(LOGMSG_STANDARD, "Created Service");
-    if (this->_startType == SERVICE_AUTO_START)
+    if (_startType == SERVICE_AUTO_START)
     {
         // make it delayed-auto-start
         SERVICE_DELAYED_AUTO_START_INFO inf = {TRUE};
@@ -147,58 +144,62 @@ DWORD ServiceDefinition::destroy(SC_HANDLE hMgr)
 
 DWORD ServiceDefinition::verify(SC_HANDLE hMgr)
 {
-    SC_HANDLE hService = OpenService(hMgr, _svcName.c_str(), SC_MANAGER_ALL_ACCESS);
+    service_handle_p hService = service_handle_p(OpenService(hMgr, _svcName.c_str(), SC_MANAGER_ALL_ACCESS));
     if (!hService)
     {
         return GetLastError();
     }
     DWORD retval = 0;
-#define QUERY_BUF_SIZE 8192
+
     //////
     // from 6.11 to 6.12, the location of the service binary changed.  Check the location
     // vs the expected location, and change if it's different
-    QUERY_SERVICE_CONFIGW cfg;
+    QUERY_SERVICE_CONFIGW *cfg = nullptr;
+    std::vector<char> buffer;
     DWORD needed = 0;
-    if (!QueryServiceConfigW(hService, &cfg, QUERY_BUF_SIZE, &needed))
+    (void)QueryServiceConfigW(hService.get(), nullptr, 0, &needed);
+    DWORD lastError = GetLastError();
+    if (lastError != ERROR_INSUFFICIENT_BUFFER)
     {
-        // shouldn't ever fail.  WE're supplying the largest possible buffer
-        // according to the docs.
-        retval = GetLastError();
         WcaLog(LOGMSG_STANDARD, "Failed to query service status %d\n", retval);
-        goto done_verify;
+        return lastError;
     }
-    if (_wcsicmp(cfg.lpBinaryPathName, _binaryPathName.c_str()) == 0)
+
+    buffer.resize(needed);
+    cfg = reinterpret_cast<decltype(cfg)>(&buffer[0]);
+    if (!QueryServiceConfigW(hService.get(), cfg, needed, &needed))
+    {
+        WcaLog(LOGMSG_STANDARD, "Failed to query service status %d\n", retval);
+        return GetLastError();
+    }
+
+    if (_wcsicmp(cfg->lpBinaryPathName, _binaryPathName.c_str()) == 0)
     {
         // nothing to do, already correctly configured
         WcaLog(LOGMSG_STANDARD, "Service path already correct");
     }
     else
     {
-        BOOL bRet = ChangeServiceConfigW(hService, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE,
+        BOOL bRet = ChangeServiceConfigW(hService.get(), SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE,
                                          _binaryPathName.c_str(), NULL, NULL, NULL, NULL, NULL, NULL);
         if (!bRet)
         {
             retval = GetLastError();
             WcaLog(LOGMSG_STANDARD, "Failed to update service config %d\n", retval);
-            goto done_verify;
         }
         WcaLog(LOGMSG_STANDARD, "Updated path for existing service");
     }
     {
         WcaLog(LOGMSG_STANDARD, "Resetting dependencies");
-        BOOL bRet = ChangeServiceConfigW(hService, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, NULL, NULL,
+        BOOL bRet = ChangeServiceConfigW(hService.get(), SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, NULL, NULL,
                                          NULL, _binaryPathName.c_str(), NULL, NULL, NULL);
         if (!bRet)
         {
             retval = GetLastError();
             WcaLog(LOGMSG_STANDARD, "Failed to update service dependency config %d\n", retval);
-            goto done_verify;
         }
         WcaLog(LOGMSG_STANDARD, "Updated dependencies for existing service");
     }
-
-done_verify:
-    CloseServiceHandle(hService);
 
     return retval;
 }
