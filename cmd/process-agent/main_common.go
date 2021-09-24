@@ -386,6 +386,10 @@ func debugCheckResults(cfg *config.AgentConfig, check string) error {
 	for _, ch := range checks.All {
 		if ch.Name() == check {
 			ch.Init(cfg, sysInfo)
+			if ch.Name() == checks.ProcessEvents.Name(){
+				log.Info("listening for process events for 10s before printing the results")
+				time.Sleep(10*time.Second)
+			}
 			return printResults(cfg, ch)
 		}
 		names = append(names, ch.Name())
@@ -395,8 +399,10 @@ func debugCheckResults(cfg *config.AgentConfig, check string) error {
 
 func printResults(cfg *config.AgentConfig, ch checks.Check) error {
 	// Run the check once to prime the cache.
-	if _, err := ch.Run(cfg, 0); err != nil {
-		return fmt.Errorf("collection error: %s", err)
+	if ch.Name() != checks.ProcessEvents.Name(){
+		if _, err := ch.Run(cfg, 0); err != nil {
+			return fmt.Errorf("collection error: %s", err)
+		}
 	}
 
 	time.Sleep(1 * time.Second)
