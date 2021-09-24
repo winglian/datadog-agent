@@ -23,9 +23,9 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/DataDog/datadog-agent/pkg/process/util"
-	"github.com/DataDog/datadog-agent/pkg/util/log"
 	sapi "github.com/DataDog/datadog-agent/pkg/security/api"
 	"github.com/DataDog/datadog-agent/pkg/security/probe"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 const (
@@ -177,7 +177,7 @@ func (p *Probe) dispatchProcessEvent(in *sapi.SecurityProcessEventMessage) {
 		Cmdline:  cmdline,
 		Username: event.ProcessContextSerializer.User,
 		Stats: &Stats{
-			CreateTime: event.ProcessContextSerializer.ExecTime.Unix(),
+			CreateTime: event.ProcessContextSerializer.ExecTime.Unix()*1000, // in ms
 		},
 	}
 
