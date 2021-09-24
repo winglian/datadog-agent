@@ -73,15 +73,18 @@ type KeyGenerator struct {
 	empty [hashSetSize]int16
 }
 
-// Generate returns the ContextKey hash for the given parameters.
-// tagsBuf is re-arranged in place and truncated to only contain unique tags.
+// Generate is a legacy shim for GenerateWithTags
 func (g *KeyGenerator) Generate(name, hostname string, tagsBuf *util.HashingTagsBuilder) ContextKey {
+	key, _ := g.GenerateWithTags(name, hostname, tagsBuf)
+	return key
+}
+
+// GenerateWithTags returns the ContextKey hash for the given parameters.
+// tagsBuf is re-arranged in place and truncated to only contain unique tags.
+func (g *KeyGenerator) GenerateWithTags(name, hostname string, tagsBuf *util.HashingTagsBuilder) (ContextKey, ContextKey) {
 	// between two generations, we have to set the hash to something neutral, let's
 	// use this big value seed from the murmur3 implementations
 	g.intb = 0xc6a4a7935bd1e995
-
-	g.intb = g.intb ^ murmur3.StringSum64(name)
-	g.intb = g.intb ^ murmur3.StringSum64(hostname)
 
 	// There are three implementations used here to deduplicate the tags depending on how
 	// many tags we have to process:
@@ -160,7 +163,12 @@ func (g *KeyGenerator) Generate(name, hostname string, tagsBuf *util.HashingTags
 		tagsBuf.Truncate(ntags)
 	}
 
-	return ContextKey(g.intb)
+	tagsKey := g.intb
+
+	g.intb = g.intb ^ murmur3.StringSum64(name)
+	g.intb = g.intb ^ murmur3.StringSum64(hostname)
+
+	return ContextKey(g.intb), ContextKey(tagsKey)
 }
 
 // Equals returns whether the two context keys are equal or not.
