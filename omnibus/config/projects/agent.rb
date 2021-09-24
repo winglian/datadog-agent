@@ -128,6 +128,7 @@ end
 
 package :msi do
 
+  fast_msi true
   # For a consistent package management, please NEVER change this code
   arch = "x64"
   if windows_arch_i386?
