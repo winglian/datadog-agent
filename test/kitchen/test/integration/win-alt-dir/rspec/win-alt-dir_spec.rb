@@ -1,5 +1,5 @@
 require 'spec_helper'
-  
+
 
 def check_user_exists(name)
   selectstatement = "powershell -command \"get-wmiobject -query \\\"Select * from Win32_UserAccount where Name='#{name}'\\\"\""
@@ -35,7 +35,7 @@ shared_examples_for 'a correctly created binary root' do
     else
       dna_json_path = "/tmp/kitchen/dna.json"
     end
-    JSON.parse(IO.read(dna_json_path)).fetch('dd-agent-rspec').fetch('PROJECTLOCATION')
+    JSON.parse(IO.read(dna_json_path)).fetch('dd-agent-rspec').fetch('INSTALLFOLDER')
   }
   it 'has the proper binary root' do
     expect(File).not_to exist("#{ENV['ProgramFiles']}\\DataDog")
@@ -58,7 +58,7 @@ shared_examples_for 'an Agent with valid permissions' do
     else
       dna_json_path = "/tmp/kitchen/dna.json"
     end
-    JSON.parse(IO.read(dna_json_path)).fetch('dd-agent-rspec').fetch('PROJECTLOCATION')
+    JSON.parse(IO.read(dna_json_path)).fetch('dd-agent-rspec').fetch('INSTALLFOLDER')
   }
   dd_user_sid = get_user_sid('ddagentuser')
   #datadog_yaml_sddl = get_sddl_for_object("c:\\programdata\\datadog\\datadog.yaml")
@@ -71,7 +71,7 @@ shared_examples_for 'an Agent with valid permissions' do
     expect(equal_base | equal_2016).to be_truthy
   end
   it 'has proper permissions on datadog.yaml' do
-    # should have a sddl like so 
+    # should have a sddl like so
     # O:SYG:SYD:(A;ID;WD;;;BU)(A;ID;FA;;;BA)(A;ID;FA;;;SY)(A;ID;FA;;;<sid>)
 
     # on server 2016, it doesn't have the assigned system right, only the inherited.
@@ -123,7 +123,7 @@ shared_examples_for 'an Agent with valid permissions' do
     expected_sddl =           "O:SYG:SYD:AI(A;;KA;;;SY)(A;;KA;;;BA)(A;;KA;;;#{dd_user_sid})(A;OICIIO;CCDCLCSWRPWPSDRCWDWOGA;;;#{dd_user_sid})(A;CIID;KR;;;BU)(A;CIID;KA;;;BA)(A;CIID;KA;;;SY)(A;CIIOID;KA;;;CO)(A;CIID;KR;;;AC)"
     expected_sddl_2008 =      "O:SYG:SYD:AI(A;;KA;;;SY)(A;;KA;;;BA)(A;;KA;;;#{dd_user_sid})(A;OICIIO;CCDCLCSWRPWPSDRCWDWOGA;;;#{dd_user_sid})(A;ID;KR;;;BU)(A;CIIOID;GR;;;BU)(A;ID;KA;;;BA)(A;CIIOID;GA;;;BA)(A;ID;KA;;;SY)(A;CIIOID;GA;;;SY)(A;CIIOID;GA;;;CO)"
     expected_sddl_with_edge = "O:SYG:SYD:AI(A;;KA;;;SY)(A;;KA;;;BA)(A;;KA;;;#{dd_user_sid})(A;OICIIO;CCDCLCSWRPWPSDRCWDWOGA;;;#{dd_user_sid})(A;CIID;KR;;;BU)(A;CIID;KA;;;BA)(A;CIID;KA;;;SY)(A;CIIOID;KA;;;CO)(A;CIID;KR;;;AC)(A;CIID;KR;;;S-1-15-3-1024-1065365936-1281604716-3511738428-1654721687-432734479-3232135806-4053264122-3456934681)"
-    
+
     ## sigh.  M$ added a mystery sid some time back, that Edge/IE use for sandboxing,
     ## and it's an inherited ace.  Allow that one, too
 
@@ -155,4 +155,4 @@ describe 'dd-agent-install-alternate-dir' do
   it_behaves_like 'a correctly created binary root'
   it_behaves_like 'an Agent with valid permissions'
 end
-  
+

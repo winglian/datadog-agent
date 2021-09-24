@@ -97,8 +97,8 @@
       The second of each pair is because the directory can be stored with a trailing "\", but it's the same
       directory.  Makes the comparison (below) easier.
     -->
-    <SetProperty Id="PROJECTLOCATIONONCMDLINE" Value="[PROJECTLOCATION]" Before="AppSearch">PROJECTLOCATION </SetProperty>
-    <SetProperty Id="PROJECTLOCATIONONCMDLINESLASH" Value="[PROJECTLOCATION]\" Before="AppSearch">PROJECTLOCATION </SetProperty>
+    <SetProperty Id="PROJECTLOCATIONONCMDLINE" Value="[INSTALLFOLDER]" Before="AppSearch">INSTALLFOLDER </SetProperty>
+    <SetProperty Id="PROJECTLOCATIONONCMDLINESLASH" Value="[INSTALLFOLDER]\" Before="AppSearch">INSTALLFOLDER </SetProperty>
     <SetProperty Id="CONFDIRONCOMMANDLINE" Value="[APPLICATIONDATADIRECTORY]" Before="AppSearch">APPLICATIONDATADIRECTORY </SetProperty>
     <SetProperty Id="CONFDIRONCOMMANDLINESLASH" Value="[APPLICATIONDATADIRECTORY]\" Before="AppSearch">APPLICATIONDATADIRECTORY </SetProperty>
 
@@ -113,8 +113,8 @@
       Message="!(loc.NoMoveInstallDir)">
       <!-- Inside of conditional must be TRUE to meet the condition (to NOT fail the install) -->
       <![CDATA[(NOT PROJECTLOCATIONONCMDLINE) OR (NOT PREVIOUSFOUND)
-              OR ((PROJECTLOCATIONONCMDLINE~=PROJECTLOCATION) OR
-                  (PROJECTLOCATIONONCMDLINESLASH~=PROJECTLOCATION))]]>
+              OR ((PROJECTLOCATIONONCMDLINE~=INSTALLFOLDER) OR
+                  (PROJECTLOCATIONONCMDLINESLASH~=INSTALLFOLDER))]]>
     </Condition>
 
     <!-- Same as above, but for the configuration directory. -->
@@ -130,7 +130,7 @@
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="$(var.PlatformProgramFilesFolder)">
         <Directory Id="APPLICATIONROOTDIRECTORY" Name="Datadog">
-          <Directory Id="PROJECTLOCATION" Name="Datadog Agent"/>
+          <Directory Id="INSTALLFOLDER" Name="Datadog Agent"/>
         </Directory>
       </Directory>
       <Directory Id="CommonAppDataFolder" SourceName="CommonAppData">
@@ -160,9 +160,9 @@
     <!-- Delete application when uninstalling -->
     <!--
       RemoveFolderEx requires that we "remember" the path for uninstall.
-      Read the path value and set the PROJECTLOCATION property with the value.
+      Read the path value and set the INSTALLFOLDER property with the value.
     -->
-    <Property Id="PROJECTLOCATION" Secure="yes">
+    <Property Id="INSTALLFOLDER" Secure="yes">
       <RegistrySearch Key="SOFTWARE\Datadog\Datadog Agent"
                       Root="HKLM"
                       Type="raw"
@@ -184,7 +184,7 @@
                       Id="DDFILTERINSTALLED_REGSEARCH"
                       Name="Start" />
     </Property>
-    <DirectoryRef Id="PROJECTLOCATION">
+    <DirectoryRef Id="INSTALLFOLDER">
       <Component Id="CleanupMainApplicationFolder" Guid="096249cf-3fe7-4342-a80f-77101ceed5fe">
         <!-- We need to use APPLICATIONROOTDIRECTORY variable here or RemoveFolderEx
              will not remove on "uninstall". -->
@@ -192,17 +192,17 @@
                        Key="SOFTWARE\Datadog\Datadog Agent"
                        Name="InstallPath"
                        Type="string"
-                       Value="[PROJECTLOCATION]"/>
+                       Value="[INSTALLFOLDER]"/>
         <RegistryValue Root="HKLM"
                        Key="SOFTWARE\Datadog\Datadog Agent"
                        Name="ConfigRoot"
                        Type="string"
                        Value="[APPLICATIONDATADIRECTORY]"/>
-        <util:RemoveFolderEx On="uninstall" Property="PROJECTLOCATION"/>
+        <util:RemoveFolderEx On="uninstall" Property="INSTALLFOLDER"/>
       </Component>
     </DirectoryRef>
     <!-- Let's ship our dist folder with the service and gui executables -->
-    <DirectoryRef Id="PROJECTLOCATION">
+    <DirectoryRef Id="INSTALLFOLDER">
       <!-- put the agent in the embedded folder so that it can find the python DLLS -->
       <Directory Id="BIN" Name="bin">
         <!-- Windows service declaration for Datadog Agent -->
@@ -370,7 +370,7 @@
             Source="$(var.EtcFiles)\system-probe.yaml.example"/>
         </Component>
       <?endif ?>
-      
+
 
       <Directory Id="checks.d" Name="checks.d">
         <Component Id="checks.d"
@@ -449,11 +449,11 @@
     </InstallExecuteSequence>
 
     <!-- Set the components defined in our fragment files that will be used for our feature  -->
-    <Feature 
-      Id="MainApplication" 
-      Title="Datadog Agent" 
+    <Feature
+      Id="MainApplication"
+      Title="Datadog Agent"
       Level="1"
-      Absent="disallow" 
+      Absent="disallow"
       ConfigurableDirectory="APPLICATIONROOTDIRECTORY">
         <ComponentRef Id="conffolder" />
         <ComponentGroupRef Id="ProjectDir" />
@@ -483,9 +483,9 @@
       <?if $(var.IncludeSysprobe) = true ?>
         <!-- don't install by default (indicated by level 100)  Only things with level
         <= INSTALLLEVEL (1 by default) will be installed.  Can be changed via gui or command line params to optionally install -->
-        <Feature  Id="NPM" 
-                  Level="100"  
-                  Title="Network Performance Monitoring" 
+        <Feature  Id="NPM"
+                  Level="100"
+                  Title="Network Performance Monitoring"
                   ConfigurableDirectory="APPLICATIONROOTDIRECTORY"
                   Absent="allow"
                   AllowAdvertise="no"
@@ -495,7 +495,7 @@
         </Feature>
       <?endif ?>
     </Feature>
-  
+
     <!-- UI Stuff: 100% Omnibus Generated -->
     <Icon Id="project.ico" SourceFile="Resources\assets\project_16x16.ico"/>
     <Property Id="ARPPRODUCTICON" Value="project.ico" />
@@ -561,7 +561,7 @@
 
            -->
       <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="LicenseAgreementDlg">NOT PREVIOUSFOUND</Publish>
-      
+
 
       <?if $(var.IncludeSysprobe) = true ?>
         <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="CustomizeDlg">PREVIOUSFOUND</Publish>
@@ -595,13 +595,13 @@
       <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="3">1</Publish>
       <Publish Dialog="SiteDlg" Control="Back" Event="NewDialog" Value="ApiKeyDlg">NOT PREVIOUSFOUND</Publish>
       <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="SiteDlg">NOT PREVIOUSFOUND</Publish>
-      
+
 
       <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="MaintenanceTypeDlg">1</Publish>
 
       <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg">1</Publish>
 
-      
+
 
 
       <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="ApiKeyDlg">NOT APIKEY</Publish>
@@ -654,7 +654,7 @@
     <CustomAction Id='SetFinalizeProperty' Return='check' Property='FinalizeInstall'
         Value='
             UILevel=[UILevel]
-            PROJECTLOCATION=[PROJECTLOCATION]
+            INSTALLFOLDER=[INSTALLFOLDER]
             APPLICATIONDATADIRECTORY=[APPLICATIONDATADIRECTORY]
             DDAGENTUSER_NAME=[DDAGENTUSER_NAME]
             DDAGENTUSER_PASSWORD=[DDAGENTUSER_PASSWORD]
@@ -687,7 +687,7 @@
     <CustomAction Id='StartDDServices' BinaryKey='wixcadll' DllEntry='PostStartServices' Execute='deferred' Return='ignore' Impersonate='no'/>
 
     <CustomAction Id='SetUninstallProperty' Return='check' Property='DoUninstall'
-        Value='PROJECTLOCATION=[PROJECTLOCATION];DDAGENTUSER_NAME=[DDAGENTUSER_NAME];DDAGENTUSER_PASSWORD=[DDAGENTUSER_PASSWORD];' />
+        Value='INSTALLFOLDER=[INSTALLFOLDER];DDAGENTUSER_NAME=[DDAGENTUSER_NAME];DDAGENTUSER_PASSWORD=[DDAGENTUSER_PASSWORD];' />
 
     <CustomAction Id='DoUninstall' BinaryKey='wixcadll' DllEntry='DoUninstall' Execute='deferred' Return='check' Impersonate='no'/>
 
@@ -715,7 +715,7 @@
 
   </Product>
 </Wix>
-<!-- check 
+<!-- check
 HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\ddnpm
 
 -->

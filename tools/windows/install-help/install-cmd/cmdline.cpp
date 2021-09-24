@@ -2,7 +2,7 @@
 const wchar_t *opts[] = {L"-bindir", L"-confdir",    L"-uname",      L"-password",   L"-api_key",
                          L"-site",   L"-proxy_host", L"-proxy_port", L"-proxy_user", L"-proxy_password"};
 
-const wchar_t *calargs[] = {L"PROJECTLOCATION",  L"APPLICATIONDATADIRECTORY",
+const wchar_t *calargs[] = {L"INSTALLFOLDER",  L"APPLICATIONDATADIRECTORY",
                             L"DDAGENTUSER_NAME", L"DDAGENTUSER_PASSWORD",
                             L"APIKEY",           L"SITE",
                             L"PROXY_HOST",       L"PROXY_PORT",

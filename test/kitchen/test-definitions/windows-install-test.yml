@@ -197,10 +197,10 @@ suites:
         agent_install_options: >
           APIKEY=<%= api_key %>
           APPLICATIONDATADIRECTORY=c:\altconfroot
-          PROJECTLOCATION=c:\ddagent
+          INSTALLFOLDER=c:\ddagent
 
       dd-agent-rspec:
         skip_windows_signing_test: &skip_windows_signing_test <%= ENV['SKIP_SIGNATURE_TEST'] || false %>
         APPLICATIONDATADIRECTORY: c:\altconfroot
-        PROJECTLOCATION: c:\ddagent
+        INSTALLFOLDER: c:\ddagent
 

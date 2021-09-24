@@ -7,9 +7,9 @@ copy ..\source.wxs.erb source.wxs
 xcopy /y/e/s/i ..\assets\*.* resources\assets
 REM run HEAT on c:\opt\datadog-agent
 REM
-heat.exe dir "c:\opt\datadog-dogstatsd" -nologo -srd -sreg -gg -cg ProjectDir -dr PROJECTLOCATION -var "var.ProjectSourceDir" -out "project-files.wxs"
+heat.exe dir "c:\opt\datadog-dogstatsd" -nologo -srd -sreg -gg -cg ProjectDir -dr INSTALLFOLDER -var "var.ProjectSourceDir" -out "project-files.wxs"
 
-REM 
+REM
 REM run HEAT on the extras
 REM
 for /D %%D in (c:\omnibus-ruby\src\etc\datadog-dogstatsd\extra_package_files\*.*) do (

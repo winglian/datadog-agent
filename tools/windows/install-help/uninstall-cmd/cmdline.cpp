@@ -6,7 +6,7 @@ const wchar_t *opts[] = {
 };
 
 const wchar_t *calargs[] = {
-    L"PROJECTLOCATION",
+    L"INSTALLFOLDER",
     L"APPLICATIONDATADIRECTORY",
     L"DDAGENTUSER_NAME",
 };

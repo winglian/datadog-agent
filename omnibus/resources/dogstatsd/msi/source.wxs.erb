@@ -74,7 +74,7 @@
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="$(var.PlatformProgramFilesFolder)">
         <Directory Id="APPLICATIONROOTDIRECTORY" Name="Datadog">
-          <Directory Id="PROJECTLOCATION" Name="Datadog Dogstatsd"/>
+          <Directory Id="INSTALLFOLDER" Name="Datadog Dogstatsd"/>
         </Directory>
       </Directory>
       <Directory Id="CommonAppDataFolder" SourceName="CommonAppData">
@@ -93,19 +93,19 @@
 
 
 
-    <DirectoryRef Id="PROJECTLOCATION">
+    <DirectoryRef Id="INSTALLFOLDER">
       <Component Id="SetFolderKeys" Guid="5878543d-2abc-4023-b85c-d693d5609cca">
         <RegistryValue Root="HKLM"
                       Key="SOFTWARE\Datadog\Datadog Dogstatsd"
                       Name="InstallPath"
                       Type="string"
-                      Value="[PROJECTLOCATION]"/>
+                      Value="[INSTALLFOLDER]"/>
         <RegistryValue Root="HKLM"
                       Key="SOFTWARE\Datadog\Datadog Dogstatsd"
                       Name="ConfigRoot"
                       Type="string"
                       Value="[APPLICATIONDATADIRECTORY]"/>
-      </Component>      
+      </Component>
       <!-- Register variables that will be used by the agent at startup -->
       <Component Id="RegisterConfVariables" Guid="ff5b161a-1d5b-45e2-9cff-2f5ed205e9d0">
         <RegistryKey Root="HKLM"
@@ -143,7 +143,7 @@
                          Type="string"
                          Value="[PROXY_PASSWORD]" >
                        </RegistryValue>
-          
+
           <RegistryValue Name="site"
                          Type="string"
                          Value="[SITE]" />
@@ -160,7 +160,7 @@
     </DirectoryRef>
 
     <!-- Let's ship our dist folder with the service and gui executables -->
-    <DirectoryRef Id="PROJECTLOCATION">
+    <DirectoryRef Id="INSTALLFOLDER">
       <!-- put the agent in the embedded folder so that it can find the python DLLS -->
       <Directory Id="BIN" Name="bin">
         <!-- Windows service declaration for Datadog Agent -->
@@ -171,7 +171,7 @@
                 KeyPath="yes"
                 DiskId="1"
                 Source="$(var.BinFiles)/dogstatsd.exe"/>
-          
+
           <ServiceInstall Id="DatadogServiceInstaller"
                 DisplayName="!(loc.ServiceDisplayName)"
                 Description="!(loc.ServiceDescription)"
@@ -182,10 +182,10 @@
                 Vital="yes"
                 Interactive="no"
                 Account="[WIX_ACCOUNT_LOCALSERVICE]">
-            <ServiceConfig 
-              DelayedAutoStart="yes" 
-              OnInstall="yes" 
-              OnReinstall ="yes" 
+            <ServiceConfig
+              DelayedAutoStart="yes"
+              OnInstall="yes"
+              OnReinstall ="yes"
               ServiceSid ="unrestricted"
               />
             <util:ServiceConfig
@@ -194,7 +194,7 @@
                 ThirdFailureActionType='restart'
                 RestartServiceDelayInSeconds='30'
                 ResetPeriodInDays='1'/>
-    
+
           </ServiceInstall>
           <ServiceControl Id="DatadogStartService"
                           Name="Datadog-dogstatsd"
@@ -202,8 +202,8 @@
                           Stop="both"
                           Remove="uninstall"
                           Wait="yes" />
-          
-          
+
+
           <!-- The "Name" field must match the argument to eventlog.Open() -->
           <util:EventSource Log="Application" Name="DatadogDogstatsd"
                 EventMessageFile="[DIST]dogstatsd.exe"
@@ -254,13 +254,13 @@
                 <Permission User="[WIX_ACCOUNT_LOCALSYSTEM]" GenericAll="yes" ChangePermission="yes"/>
                 <Permission User="[WIX_ACCOUNT_USERS]" GenericAll="no" ChangePermission="yes"/>
             </CreateFolder>
-     
+
         </Component>
       </Directory>
     </DirectoryRef>
 
-    
-    
+
+
     <!-- Set the components defined in our fragment files that will be used for our feature  -->
     <Feature Id="MainApplication" Title="Datadog Agent" Level="1" ConfigurableDirectory="APPLICATIONROOTDIRECTORY">
       <ComponentRef Id="conffolder" />
@@ -374,11 +374,11 @@
     <WixVariable Id="WixUILicenseRtf" Value="Resources\assets\LICENSE.rtf" />
     <WixVariable Id="WixUIDialogBmp" Value="Resources\assets\dialog_background.bmp" />
     <WixVariable Id="WixUIBannerBmp" Value="Resources\assets\banner_background.bmp" />
-    <!-- the following custom action is a testing custom action.  Set WIXFAILWHENDEFERRED=1 on the command line, and it will FirstFailureActionType   
+    <!-- the following custom action is a testing custom action.  Set WIXFAILWHENDEFERRED=1 on the command line, and it will FirstFailureActionType
          the install at the end, to allow for testing of rollback -->
     <CustomActionRef Id="WixFailWhenDeferred" />
-  
-    
+
+
     <Binary Id="BannerBmp" SourceFile="Resources\assets\banner_background.bmp" />
     <Binary Id="BackgroundBmp" SourceFile="Resources\assets\dialog_background.bmp" />
     <Binary Id="PrepBackgroundBmp" SourceFile="Resources\assets\dialog_background.bmp" />
