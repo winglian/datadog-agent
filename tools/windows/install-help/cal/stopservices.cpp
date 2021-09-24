@@ -529,39 +529,44 @@ doneStartService:
     return err;
 }
 
-std::map<std::wstring, ServiceDefinition> getServices(CustomActionData &data, const wchar_t *password)
+std::vector<ServiceDefinition> getServices(CustomActionData &data, const wchar_t *password)
 {
 #ifdef __REGISTER_ALL_SERVICES
-    std::map<std::wstring, ServiceDefinition> services = {
-        {L"datadog-agent", ServiceDefinition(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe,
-                                             SERVICE_AUTO_START, data.Username(), password)},
-        {L"trace-agent", ServiceDefinition(traceService, L"Datadog Trace Agent", L"Send tracing metrics to Datadog",
-                                           trace_exe, SERVICE_DEMAND_START, data.Username(), password)},
-        {L"process-agent",
-         ServiceDefinition(processService, L"Datadog Process Agent", L"Send process metrics to Datadog", process_exe,
-                           SERVICE_DEMAND_START, L"", L"")},
+    auto datadogAgent = ServiceDefinition(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe,
+                                          SERVICE_AUTO_START, data.Username(), password);
+    std::vector<ServiceDefinition> services = {
+        datadogAgent,
+        {
+            ServiceDefinition(traceService, L"Datadog Trace Agent", L"Send tracing metrics to Datadog", trace_exe,
+                           SERVICE_DEMAND_START, data.Username(), password)
+        },
+        {
+            ServiceDefinition(processService, L"Datadog Process Agent", L"Send process metrics to Datadog", process_exe,
+                           SERVICE_DEMAND_START, L"", L"")
+        },
     };
+
+    services[1].addDependency(datadogAgent);
+    services[2].addDependency(datadogAgent);
 
     // by default, don't add sysprobe
     if (data.installSysprobe())
     {
-        services[L"system-probe"] =
+        auto sysProbe =
             ServiceDefinition(systemProbeService, L"Datadog System Probe", L"Send network metrics to Datadog",
                               sysprobe_exe, SERVICE_DEMAND_START, L"", L"");
-    }
-
-    services[L"trace-agent"].addDependency(services[L"datadog-agent"]);
-    services[L"process-agent"].addDependency(services[L"datadog-agent"]);
-    services[L"system-probe"].addDependency(services[L"datadog-agent"]);
-    if (data.npmPresent())
-    {
-        services[L"system-probe"].addDependency(L"ddnpm");
+        sysProbe.addDependency(datadogAgent);
+        if (data.npmPresent())
+        {
+            sysProbe.addDependency(L"ddnpm");
+        }
+        services.push_back(sysProbe);
     }
 
 #else
-    std::map<std::wstring, ServiceDefinition> services = {
-        {L"datadog-agent", ServiceDefinition(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe,
-                                             SERVICE_AUTO_START, data.Username(), password)},
+    std::vector<ServiceDefinition> services = {
+        {ServiceDefinition(agentService, L"Datadog Agent", L"Send metrics to Datadog", agent_exe,
+                           SERVICE_AUTO_START, data.Username(), password)},
     };
 #endif
     return services;
@@ -569,17 +574,12 @@ std::map<std::wstring, ServiceDefinition> getServices(CustomActionData &data, co
 
 int installServices(CustomActionData &data, PSID sid, const wchar_t *password)
 {
-    SC_HANDLE hScManager = NULL;
-    SC_HANDLE hService = NULL;
     int retval = 0;
-
     auto services = getServices(data, password);
-
     WcaLog(LOGMSG_STANDARD, "Installing services");
-    hScManager = OpenSCManager(NULL,                   // local computer
-                               NULL,                   // ServicesActive database
-                               SC_MANAGER_ALL_ACCESS); // full access rights
-
+    service_handle_p hScManager = service_handle_p(OpenSCManager(NULL,                    // local computer
+                                                                 NULL,                    // ServicesActive database
+                                                                 SC_MANAGER_ALL_ACCESS)); // full access rights
     if (NULL == hScManager)
     {
         WcaLog(LOGMSG_STANDARD, "OpenSCManager failed (%d)\n", GetLastError());
@@ -587,18 +587,18 @@ int installServices(CustomActionData &data, PSID sid, const wchar_t *password)
     }
     for (auto svcIt = services.begin(); svcIt != services.end(); ++svcIt)
     {
-        WcaLog(LOGMSG_STANDARD, "installing service %S", svcIt->first.c_str());
-        retval = svcIt->second.create(hScManager);
+        WcaLog(LOGMSG_STANDARD, "installing service %S", svcIt->getServiceName().c_str());
+        retval = svcIt->create(hScManager.get());
         if (retval != 0)
         {
-            auto lastErrStr = GetErrorMessageStr(retval);
-            WcaLog(LOGMSG_STANDARD, "Failed to install service %S (%d), rolling back", lastErrStr.c_str(), rbret);
-            for (auto svcRevIt = svcIt; svcRevIt != services.begin(); --svcRevIt)
+            auto lastErrStr = GetErrorMessageStrW(retval);
+            WcaLog(LOGMSG_STANDARD, "Failed to install service %S (%d), rolling back", lastErrStr.c_str(), retval);
+            for (auto svcRevIt = std::make_reverse_iterator(svcIt); svcRevIt != services.rend(); ++svcRevIt)
             {
-                DWORD rbret = svcRevIt->second.destroy(hScManager);
+                DWORD rbret = svcRevIt->destroy(hScManager.get());
                 if (rbret != 0)
                 {
-                    WcaLog(LOGMSG_STANDARD, "Failed to roll back serviceinstall %S %d (0x%x)", svcRevIt->first.c_str(), rbret, rbret);
+                    WcaLog(LOGMSG_STANDARD, "Failed to roll back serviceinstall %S %d (0x%x)", svcRevIt->getServiceName().c_str(), rbret, rbret);
                 }
             }
             break;
@@ -631,23 +631,17 @@ int installServices(CustomActionData &data, PSID sid, const wchar_t *password)
         WcaLog(LOGMSG_STANDARD, "Warning, unable to enable agent service for dd user %d", er);
     }
     WcaLog(LOGMSG_STANDARD, "done setting service rights %d", retval);
-    CloseServiceHandle(hScManager);
     return retval;
 }
 
 int uninstallServices(CustomActionData &data)
 {
-    SC_HANDLE hScManager = NULL;
-    SC_HANDLE hService = NULL;
     int retval = 0;
-
     auto services = getServices(data, nullptr);
-
     WcaLog(LOGMSG_STANDARD, "Uninstalling services");
-    hScManager = OpenSCManager(NULL,                   // local computer
-                               NULL,                   // ServicesActive database
-                               SC_MANAGER_ALL_ACCESS); // full access rights
-
+    service_handle_p hScManager = service_handle_p(OpenSCManager(NULL,                    // local computer
+                                                                 NULL,                    // ServicesActive database
+                                                                 SC_MANAGER_ALL_ACCESS)); // full access rights
     if (NULL == hScManager)
     {
         WcaLog(LOGMSG_STANDARD, "OpenSCManager failed (%d)\n", GetLastError());
@@ -655,8 +649,8 @@ int uninstallServices(CustomActionData &data)
     }
     for (auto svcIt = services.rbegin(); svcIt != services.rbegin(); ++svcIt)
     {
-        WcaLog(LOGMSG_STANDARD, "deleting service service %S", svcIt->first.c_str());
-        DWORD rbret = svcIt->second.destroy(hScManager);
+        WcaLog(LOGMSG_STANDARD, "deleting service service %S", svcIt->getServiceName().c_str());
+        DWORD rbret = svcIt->destroy(hScManager.get());
         if (rbret != 0)
         {
             auto lastErrStr = GetErrorMessageStrW(rbret);
@@ -664,35 +658,31 @@ int uninstallServices(CustomActionData &data)
         }
     }
     WcaLog(LOGMSG_STANDARD, "done uinstalling services");
-    CloseServiceHandle(hScManager);
     return retval;
 }
 
 int verifyServices(CustomActionData &data)
 {
-    SC_HANDLE hScManager = NULL;
-    SC_HANDLE hService = NULL;
     int retval = 0;
-
     auto services = getServices(data, nullptr);
-
     WcaLog(LOGMSG_STANDARD, "Updating services");
-    hScManager = OpenSCManager(NULL,                   // local computer
-                               NULL,                   // ServicesActive database
-                               SC_MANAGER_ALL_ACCESS); // full access rights
-
+    service_handle_p hScManager = service_handle_p(OpenSCManager(NULL,                    // local computer
+                                                                 NULL,                    // ServicesActive database
+                                                                 SC_MANAGER_ALL_ACCESS)); // full access rights
     if (NULL == hScManager)
     {
         WcaLog(LOGMSG_STANDARD, "OpenSCManager failed (%d)\n", GetLastError());
         return -1;
     }
-    for (int i = 0; i < servicesToInstall; i++) 
+    for (auto svc : services)
     {
-        WcaLog(LOGMSG_STANDARD, "updating service %d", i);
-        retval = services[i].verify(hScManager);
+        WcaLog(LOGMSG_STANDARD, "updating service %S", svc.getServiceName().c_str());
+        retval = svc.verify(hScManager.get());
         if (retval != 0) 
         {
-            if(ERROR_SERVICE_DOES_NOT_EXIST == retval && i > 1)
+            if (ERROR_SERVICE_DOES_NOT_EXIST == retval &&
+                svc.getServiceName() != traceService &&
+                svc.getServiceName() != agentService)
             {
                 // i > 1 b/c we can't do this for core or trace, since they run as
                 // ddagentuser and we don't have the password.  process & npm run
@@ -706,13 +696,14 @@ int verifyServices(CustomActionData &data)
                 // this only works b/c the NPM service is running as LOCAL_SYSTEM rather
                 // than ddagentuser; otherwise, we wouldn't have the password at this
                 // point and this wouldn't work.
-                retval = services[i].create(hScManager);
+                retval = svc.create(hScManager.get());
                 if(0 != retval)
                 {
                     // if we can't create it, don't fail the upgrade,just log and
                     // continue on.  The existing services can/should still function
-                    WcaLog(LOGMSG_STANDARD, "Failed to create new service during upgrade %S %d %d 0x%x", services[i].getServiceName(), i, retval, retval);
-                    WcaLog(LOGMSG_STANDARD, "Allowing upgrade to proceed");
+                    auto lastErrStr = GetErrorMessageStrW(retval);
+                    WcaLog(LOGMSG_STANDARD, "Failed to create new service during upgrade %S %S (%d), allowing upgrade to proceed",
+                           svc.getServiceName().c_str(), lastErrStr.c_str(), retval);
                     // since we're allowing the upgrade to continue, reset the error code to zero
                     // in case this is the last one. Don't want to fail the upgrade by mistake
                     retval = 0;
@@ -722,10 +713,11 @@ int verifyServices(CustomActionData &data)
 
                 // since we just created this service, we need to allow the datadog
                 // agent core service to start/stop it
-                retval = EnableServiceForUser(data.Sid(), services[i].getServiceName());
+                retval = EnableServiceForUser(data.Sid(), svc.getServiceName().c_str());
                 if(0 != retval)
                 {
-                    WcaLog(LOGMSG_STANDARD, "Failed to modify service permissions for %S", services[i].getServiceName());
+                    WcaLog(LOGMSG_STANDARD, "Failed to modify service permissions for %S",
+                           svc.getServiceName().c_str());
                     // since we're allowing the upgrade to continue, reset the error code to zero
                     // in case this is the last one. Don't want to fail the upgrade by mistake
                     retval = 0;
@@ -733,34 +725,12 @@ int verifyServices(CustomActionData &data)
                 }
             } else 
             {
-                WcaLog(LOGMSG_STANDARD, "Failed to verify service %d %d 0x%x, rolling back", i, retval, retval);
+                auto lastErrStr = GetErrorMessageStrW(retval);
+                WcaLog(LOGMSG_STANDARD, "Failed to verify service %S (%d), rolling back", lastErrStr.c_str(), retval);
                 break;
             }
         }
     }
-#ifdef __REGISTER_ALL_SERVICES
-    if (!data.installSysprobe())
-    {
-        retval = services[SYSPROBE_INDEX].destroy(hScManager);
-        if (0 == retval)
-        {
-            WcaLog(LOGMSG_STANDARD, "Removed system probe service");
-        }
-        else if (ERROR_SERVICE_DOES_NOT_EXIST == retval)
-        {
-            WcaLog(LOGMSG_STANDARD, "system probe not present");
-        }
-        else
-        {
-            WcaLog(LOGMSG_STANDARD, "Error removing system probe service %d", retval);
-        }
-        // reset retval to zero.  If we were unable to remove the system-probe service,
-        // and it's not present anyway, don't cause the entire install to fail
-        retval = 0;
-    }
-#endif
     WcaLog(LOGMSG_STANDARD, "done updating services");
-
-    CloseServiceHandle(hScManager);
     return retval;
 }
