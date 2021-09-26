@@ -236,6 +236,7 @@ func (s *TimeSampler) countersSampleZeroValue(timestamp int64, contextMetrics me
 	}
 }
 
+// Close closes the TimeSampler and its allocated resources.
 func (s *TimeSampler) Close() {
 	s.contextResolver.close()
 }

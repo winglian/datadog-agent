@@ -17,6 +17,7 @@ type Context struct {
 	Host string
 }
 
+// UseBadger indicates to use the ContextResolverBadger implementation.
 // FIXME: make this an option.
 const UseBadger = true
 
