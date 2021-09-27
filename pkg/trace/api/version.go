@@ -69,4 +69,5 @@ const (
 	//
 	v05 Version = "v0.5"
 	v06 Version = "v0.6"
+	v07 Version = "v0.7"
 )

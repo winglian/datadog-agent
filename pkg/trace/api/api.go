@@ -394,6 +394,21 @@ func decodeTraces(v Version, req *http.Request) (pb.Traces, error) {
 		var traces pb.Traces
 		err := traces.UnmarshalMsgDictionary(buf.Bytes())
 		return traces, err
+	case v06:
+		buf := getBuffer()
+		defer putBuffer(buf)
+		if _, err := io.Copy(buf, req.Body); err != nil {
+			return nil, err
+		}
+		var traces pb.Traces
+		err := traces.UnmarshalMsgDictionary(buf.Bytes())
+		return traces, err
+	case v07:
+		var traces pb.Traces
+		if err := decodeRequest(req, &traces); err != nil {
+			return nil, err
+		}
+		return traces, nil
 	default:
 		var traces pb.Traces
 		if err := decodeRequest(req, &traces); err != nil {

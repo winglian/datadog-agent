@@ -11,3 +11,12 @@ message TracePayload {
         repeated APITrace traces = 3;
         repeated Span transactions = 4;
 }
+
+message Trace {
+        repeated Span spans = 1;
+}
+
+message ClientTracePayload {
+        repeated Trace traces = 1;
+        map<string, string> meta = 2 [(gogoproto.jsontag) = "meta", (gogoproto.moretags) = "msg:\"meta\""];
+}
