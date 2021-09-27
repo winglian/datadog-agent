@@ -181,5 +181,7 @@ func (cs *CheckSampler) flush() (metrics.Series, metrics.SketchSeriesList) {
 }
 
 func (cs *CheckSampler) close() {
-	cs.contextResolver.close()
+	if cs.contextResolver != nil {
+		cs.contextResolver.close()
+	}
 }
