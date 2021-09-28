@@ -364,19 +364,26 @@ func (a *Agent) ProcessStats(in pb.ClientStatsPayload, lang, tracerVersion strin
 // from it.
 func (a *Agent) sample(ts *info.TagStats, pt ProcessedTrace) (events []*pb.Span, keep bool) {
 	priority, hasPriority := sampler.GetSamplingPriority(pt.Root)
+	unexpected := int64(0)
+	stat := &unexpected
 
 	// Depending on the sampling priority, count that trace differently.
-	stat := &ts.TracesPriorityNone
 	if hasPriority {
-		if priority < 0 {
-			stat = &ts.TracesPriorityNeg
+		if priority == -3 {
+			stat = &ts.PriorityRuleSamplerReject
+		} else if priority == -1 {
+			stat = &ts.PriorityUserReject
 		} else if priority == 0 {
-			stat = &ts.TracesPriority0
+			stat = &ts.PriorityAutoReject
 		} else if priority == 1 {
-			stat = &ts.TracesPriority1
-		} else {
-			stat = &ts.TracesPriority2
+			stat = &ts.PriorityAutoKeep
+		} else if priority == 2 {
+			stat = &ts.PriorityUserKeep
+		} else if priority == 3 {
+			stat = &ts.PriorityRuleSamplerKeep
 		}
+	} else {
+		stat = &ts.TracesPriorityNone
 	}
 	atomic.AddInt64(stat, 1)
 

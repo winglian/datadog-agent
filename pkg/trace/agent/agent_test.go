@@ -225,20 +225,33 @@ func TestProcess(t *testing.T) {
 		now := time.Now()
 		for _, key := range []sampler.SamplingPriority{
 			sampler.PriorityNone,
+			sampler.PriorityTracerRuleDrop,
+			sampler.PriorityTracerRuleDrop,
 			sampler.PriorityUserDrop,
 			sampler.PriorityUserDrop,
+			sampler.PriorityUserDrop,
 			sampler.PriorityAutoDrop,
 			sampler.PriorityAutoDrop,
 			sampler.PriorityAutoDrop,
+			sampler.PriorityAutoDrop,
 			sampler.PriorityAutoKeep,
 			sampler.PriorityAutoKeep,
 			sampler.PriorityAutoKeep,
 			sampler.PriorityAutoKeep,
+			sampler.PriorityAutoKeep,
 			sampler.PriorityUserKeep,
 			sampler.PriorityUserKeep,
 			sampler.PriorityUserKeep,
 			sampler.PriorityUserKeep,
 			sampler.PriorityUserKeep,
+			sampler.PriorityUserKeep,
+			sampler.PriorityTracerRuleKeep,
+			sampler.PriorityTracerRuleKeep,
+			sampler.PriorityTracerRuleKeep,
+			sampler.PriorityTracerRuleKeep,
+			sampler.PriorityTracerRuleKeep,
+			sampler.PriorityTracerRuleKeep,
+			sampler.PriorityTracerRuleKeep,
 		} {
 			span := &pb.Span{
 				TraceID:  1,
@@ -259,10 +272,12 @@ func TestProcess(t *testing.T) {
 		}
 
 		assert.EqualValues(t, 1, want.TracesPriorityNone)
-		assert.EqualValues(t, 2, want.TracesPriorityNeg)
-		assert.EqualValues(t, 3, want.TracesPriority0)
-		assert.EqualValues(t, 4, want.TracesPriority1)
-		assert.EqualValues(t, 5, want.TracesPriority2)
+		assert.EqualValues(t, 2, want.PriorityRuleSamplerReject)
+		assert.EqualValues(t, 3, want.PriorityUserReject)
+		assert.EqualValues(t, 4, want.PriorityAutoReject)
+		assert.EqualValues(t, 5, want.PriorityAutoKeep)
+		assert.EqualValues(t, 6, want.PriorityUserKeep)
+		assert.EqualValues(t, 7, want.PriorityRuleSamplerKeep)
 	})
 
 	t.Run("GlobalTags", func(t *testing.T) {

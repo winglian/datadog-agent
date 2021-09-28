@@ -57,6 +57,9 @@ const (
 	// PriorityNone is the value for SamplingPriority when no priority sampling decision could be found.
 	PriorityNone SamplingPriority = math.MinInt8
 
+	// PriorityTracerRuleDrop is the value set by a user via tracer configuration to explicitly drop traces.
+	PriorityTracerRuleDrop SamplingPriority = -3
+
 	// PriorityUserDrop is the value set by a user to explicitly drop a trace.
 	PriorityUserDrop SamplingPriority = -1
 
@@ -68,6 +71,9 @@ const (
 
 	// PriorityUserKeep is the value set by a user to explicitly keep a trace.
 	PriorityUserKeep SamplingPriority = 2
+
+	// PriorityTracerRuleKeep is the value set by a user via tracer configuration to explicitly keep traces.
+	PriorityTracerRuleKeep SamplingPriority = 3
 )
 
 // GetSamplingPriority returns the value of the sampling priority metric set on this span and a boolean indicating if

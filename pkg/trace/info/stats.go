@@ -134,10 +134,12 @@ func (ts *TagStats) publish() {
 	tracesReceived := atomic.LoadInt64(&ts.TracesReceived)
 	tracesFiltered := atomic.LoadInt64(&ts.TracesFiltered)
 	tracesPriorityNone := atomic.LoadInt64(&ts.TracesPriorityNone)
-	tracesPriorityNeg := atomic.LoadInt64(&ts.TracesPriorityNeg)
-	tracesPriority0 := atomic.LoadInt64(&ts.TracesPriority0)
-	tracesPriority1 := atomic.LoadInt64(&ts.TracesPriority1)
-	tracesPriority2 := atomic.LoadInt64(&ts.TracesPriority2)
+	tracesPriorityRuleSamplerReject := atomic.LoadInt64(&ts.PriorityRuleSamplerReject)
+	tracesPriorityUserReject := atomic.LoadInt64(&ts.PriorityUserReject)
+	tracesPriorityAutoReject := atomic.LoadInt64(&ts.PriorityAutoReject)
+	tracesPriorityAutoKeep := atomic.LoadInt64(&ts.PriorityAutoKeep)
+	tracesPriorityUserKeep := atomic.LoadInt64(&ts.PriorityUserKeep)
+	tracesPriorityRuleSamplerKeep := atomic.LoadInt64(&ts.PriorityRuleSamplerKeep)
 	clientDroppedP0Spans := atomic.LoadInt64(&ts.ClientDroppedP0Spans)
 	clientDroppedP0Traces := atomic.LoadInt64(&ts.ClientDroppedP0Traces)
 	tracesBytes := atomic.LoadInt64(&ts.TracesBytes)
@@ -156,10 +158,12 @@ func (ts *TagStats) publish() {
 	metrics.Count("datadog.trace_agent.receiver.traces_received", tracesReceived, tags, 1)
 	metrics.Count("datadog.trace_agent.receiver.traces_filtered", tracesFiltered, tags, 1)
 	metrics.Count("datadog.trace_agent.receiver.traces_priority", tracesPriorityNone, append(tags, "priority:none"), 1)
-	metrics.Count("datadog.trace_agent.receiver.traces_priority", tracesPriorityNeg, append(tags, "priority:neg"), 1)
-	metrics.Count("datadog.trace_agent.receiver.traces_priority", tracesPriority0, append(tags, "priority:0"), 1)
-	metrics.Count("datadog.trace_agent.receiver.traces_priority", tracesPriority1, append(tags, "priority:1"), 1)
-	metrics.Count("datadog.trace_agent.receiver.traces_priority", tracesPriority2, append(tags, "priority:2"), 1)
+	metrics.Count("datadog.trace_agent.receiver.traces_priority", tracesPriorityRuleSamplerReject, append(tags, "priority:-3"), 1)
+	metrics.Count("datadog.trace_agent.receiver.traces_priority", tracesPriorityUserReject, append(tags, "priority:-1"), 1)
+	metrics.Count("datadog.trace_agent.receiver.traces_priority", tracesPriorityAutoReject, append(tags, "priority:0"), 1)
+	metrics.Count("datadog.trace_agent.receiver.traces_priority", tracesPriorityAutoKeep, append(tags, "priority:1"), 1)
+	metrics.Count("datadog.trace_agent.receiver.traces_priority", tracesPriorityUserKeep, append(tags, "priority:2"), 1)
+	metrics.Count("datadog.trace_agent.receiver.traces_priority", tracesPriorityRuleSamplerKeep, append(tags, "priority:3"), 1)
 	metrics.Count("datadog.trace_agent.receiver.traces_bytes", tracesBytes, tags, 1)
 	metrics.Count("datadog.trace_agent.receiver.spans_received", spansReceived, tags, 1)
 	metrics.Count("datadog.trace_agent.receiver.spans_dropped", spansDropped, tags, 1)
@@ -301,14 +305,18 @@ type Stats struct {
 	TracesFiltered int64
 	// TracesPriorityNone is the number of traces with no sampling priority.
 	TracesPriorityNone int64
-	// TracesPriorityNeg is the number of traces with a negative sampling priority.
-	TracesPriorityNeg int64
-	// TracesPriority0 is the number of traces with sampling priority set to zero.
-	TracesPriority0 int64
-	// TracesPriority1 is the number of traces with sampling priority automatically set to 1.
-	TracesPriority1 int64
-	// TracesPriority2 is the number of traces with sampling priority manually set to 2 or more.
-	TracesPriority2 int64
+	// PriorityUserReject is the number of traces with sampling priority manually set to -1
+	PriorityUserReject int64
+	// PriorityRuleSamplerReject is the number of traces with sampling priority set to -3 or less
+	PriorityRuleSamplerReject int64
+	// PriorityAutoReject is the number of traces with sampling priority set to zero.
+	PriorityAutoReject int64
+	// PriorityAutoKeep is the number of traces with sampling priority automatically set to 1.
+	PriorityAutoKeep int64
+	// PriorityUserKeep is the number of traces with sampling priority manually set to 2
+	PriorityUserKeep int64
+	// PriorityRuleSamplerKeep is the number of traces with sampling priority set to 3 via tracer rules
+	PriorityRuleSamplerKeep int64
 	// ClientDroppedP0Traces number of P0 traces dropped by client.
 	ClientDroppedP0Traces int64
 	// ClientDroppedP0Spans number of P0 spans dropped by client.
@@ -354,9 +362,12 @@ func (s *Stats) update(recent *Stats) {
 
 	atomic.AddInt64(&s.TracesFiltered, atomic.LoadInt64(&recent.TracesFiltered))
 	atomic.AddInt64(&s.TracesPriorityNone, atomic.LoadInt64(&recent.TracesPriorityNone))
-	atomic.AddInt64(&s.TracesPriorityNeg, atomic.LoadInt64(&recent.TracesPriorityNeg))
-	atomic.AddInt64(&s.TracesPriority0, atomic.LoadInt64(&recent.TracesPriority0))
-	atomic.AddInt64(&s.TracesPriority1, atomic.LoadInt64(&recent.TracesPriority1))
+	atomic.AddInt64(&s.PriorityRuleSamplerReject, atomic.LoadInt64(&recent.PriorityRuleSamplerReject))
+	atomic.AddInt64(&s.PriorityUserReject, atomic.LoadInt64(&recent.PriorityUserReject))
+	atomic.AddInt64(&s.PriorityAutoReject, atomic.LoadInt64(&recent.PriorityAutoReject))
+	atomic.AddInt64(&s.PriorityAutoKeep, atomic.LoadInt64(&recent.PriorityAutoKeep))
+	atomic.AddInt64(&s.PriorityUserKeep, atomic.LoadInt64(&recent.PriorityUserKeep))
+	atomic.AddInt64(&s.PriorityRuleSamplerKeep, atomic.LoadInt64(&recent.PriorityRuleSamplerKeep))
 	atomic.AddInt64(&s.ClientDroppedP0Traces, atomic.LoadInt64(&recent.ClientDroppedP0Traces))
 	atomic.AddInt64(&s.ClientDroppedP0Spans, atomic.LoadInt64(&recent.ClientDroppedP0Spans))
 	atomic.AddInt64(&s.TracesBytes, atomic.LoadInt64(&recent.TracesBytes))
@@ -393,10 +404,12 @@ func (s *Stats) reset() {
 	atomic.StoreInt64(&s.SpansMalformed.InvalidHTTPStatusCode, 0)
 	atomic.StoreInt64(&s.TracesFiltered, 0)
 	atomic.StoreInt64(&s.TracesPriorityNone, 0)
-	atomic.StoreInt64(&s.TracesPriorityNeg, 0)
-	atomic.StoreInt64(&s.TracesPriority0, 0)
-	atomic.StoreInt64(&s.TracesPriority1, 0)
-	atomic.StoreInt64(&s.TracesPriority2, 0)
+	atomic.StoreInt64(&s.PriorityRuleSamplerReject, 0)
+	atomic.StoreInt64(&s.PriorityUserReject, 0)
+	atomic.StoreInt64(&s.PriorityAutoReject, 0)
+	atomic.StoreInt64(&s.PriorityAutoKeep, 0)
+	atomic.StoreInt64(&s.PriorityUserKeep, 0)
+	atomic.StoreInt64(&s.PriorityRuleSamplerKeep, 0)
 	atomic.StoreInt64(&s.ClientDroppedP0Traces, 0)
 	atomic.StoreInt64(&s.ClientDroppedP0Spans, 0)
 	atomic.StoreInt64(&s.TracesBytes, 0)
