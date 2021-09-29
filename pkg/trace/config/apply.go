@@ -383,8 +383,8 @@ func (c *AgentConfig) applyDatadogConfig() error {
 	}
 
 	// undocumented
-	if config.Datadog.IsSet("apm_config.enable_remote_configuration_dynamic_rates") {
-		c.RemoteRates = config.Datadog.GetBool("apm_config.enable_remote_configuration_dynamic_rates")
+	if config.Datadog.IsSet("apm_config.remote_rates") {
+		c.RemoteRates = config.Datadog.GetBool("apm_config.remote_rates")
 	}
 
 	return nil
