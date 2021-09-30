@@ -45,7 +45,7 @@ func (ipc ipCache) Get(addr netaddr.IP) string {
 	return v
 }
 
-// FormatConnection converts a ConnectionStats into an model.Connection
+// FormatConnection converts a ConnectionStats into a model.Connection
 func FormatConnection(
 	conn network.ConnectionStats,
 	domainSet map[string]int,
@@ -58,7 +58,7 @@ func FormatConnection(
 	c.Pid = int32(conn.Pid)
 	c.Laddr = formatAddr(conn.Source, conn.SPort, ipc)
 	c.Raddr = formatAddr(conn.Dest, conn.DPort, ipc)
-	c.Family = formatFamily(conn.Family)
+	c.Family = formatFamily(conn.Source)
 	c.Type = formatType(conn.Type)
 	c.IsLocalPortEphemeral = formatEphemeralType(conn.SPortIsEphemeral)
 	c.PidCreateTime = 0
@@ -258,15 +258,11 @@ func formatAddr(addr netaddr.IP, port uint16, ipc ipCache) *model.Addr {
 	return &model.Addr{Ip: ipc.Get(addr), Port: int32(port)}
 }
 
-func formatFamily(f network.ConnectionFamily) model.ConnectionFamily {
-	switch f {
-	case network.AFINET:
+func formatFamily(f netaddr.IP) model.ConnectionFamily {
+	if f.Is4() {
 		return model.ConnectionFamily_v4
-	case network.AFINET6:
-		return model.ConnectionFamily_v6
-	default:
-		return -1
 	}
+	return model.ConnectionFamily_v6
 }
 
 func formatType(f network.ConnectionType) model.ConnectionType {

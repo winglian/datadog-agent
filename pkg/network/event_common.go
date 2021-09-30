@@ -180,7 +180,6 @@ type ConnectionStats struct {
 	SPort                       uint16
 	DPort                       uint16
 	Type                        ConnectionType
-	Family                      ConnectionFamily
 	Direction                   ConnectionDirection
 	SPortIsEphemeral            EphemeralPortType
 	IPTranslation               *IPTranslation
@@ -240,13 +239,16 @@ func (c ConnectionStats) ByteKey(buf []byte) ([]byte, error) {
 	n += 8
 
 	// Family (4 bits) + Type (4 bits) = 8 bits
-	buf[n] = uint8(c.Family)<<4 | uint8(c.Type)
-	n++
+	buf[n] = uint8(c.Type)
 
 	if c.Source.Is4() {
+		buf[n] |= uint8(AFINET) << 4
+		n++
 		ip := c.Source.As4()
 		n += copy(buf[n:], (ip)[:])
 	} else {
+		buf[n] |= uint8(AFINET6) << 4
+		n++
 		ip := c.Source.As16()
 		n += copy(buf[n:], ip[:])
 	}
@@ -292,9 +294,8 @@ func BeautifyKey(key string) string {
 // ConnectionSummary returns a string summarizing a connection
 func ConnectionSummary(c *ConnectionStats, names map[netaddr.IP][]string) string {
 	str := fmt.Sprintf(
-		"[%s%s] [PID: %d] [%v:%d ⇄ %v:%d] ",
+		"[%s] [PID: %d] [%v:%d ⇄ %v:%d] ",
 		c.Type,
-		c.Family,
 		c.Pid,
 		printAddress(c.Source, names[c.Source]),
 		c.SPort,

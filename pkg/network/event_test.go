@@ -14,7 +14,6 @@ var (
 	testConn = ConnectionStats{
 		Pid:                123,
 		Type:               1,
-		Family:             AFINET,
 		Source:             netaddr.MustParseIP("192.168.0.1"),
 		Dest:               netaddr.MustParseIP("192.168.0.103"),
 		SPort:              123,
@@ -31,7 +30,6 @@ func TestBeautifyKey(t *testing.T) {
 		{
 			Pid:    345,
 			Type:   0,
-			Family: AFINET6,
 			Source: netaddr.MustParseIP("::7f00:35:0:1"),
 			Dest:   netaddr.MustParseIP("2001:db8::2:1"),
 			SPort:  4444,
@@ -40,7 +38,6 @@ func TestBeautifyKey(t *testing.T) {
 		{
 			Pid:       32065,
 			Type:      0,
-			Family:    AFINET,
 			Direction: 2,
 			Source:    netaddr.MustParseIP("172.21.148.124"),
 			Dest:      netaddr.MustParseIP("130.211.21.187"),
@@ -50,7 +47,12 @@ func TestBeautifyKey(t *testing.T) {
 	} {
 		bk, err := c.ByteKey(buf)
 		require.NoError(t, err)
-		expected := fmt.Sprintf(keyFmt, c.Pid, c.Source.String(), c.SPort, c.Dest.String(), c.DPort, c.Family, c.Type)
+		family := AFINET
+		if c.Source.Is6() {
+			family = AFINET6
+		}
+
+		expected := fmt.Sprintf(keyFmt, c.Pid, c.Source.String(), c.SPort, c.Dest.String(), c.DPort, family, c.Type)
 		assert.Equal(t, expected, BeautifyKey(string(bk)))
 	}
 }
@@ -66,10 +68,6 @@ func TestConnStatsByteKey(t *testing.T) {
 	}{
 		{ // Port is different
 			a: ConnectionStats{Source: addrA, Dest: addrB, Pid: 1},
-			b: ConnectionStats{Source: addrA, Dest: addrB},
-		},
-		{ // Family is different
-			a: ConnectionStats{Source: addrA, Dest: addrB, Family: 1},
 			b: ConnectionStats{Source: addrA, Dest: addrB},
 		},
 		{ // Type is different
@@ -93,15 +91,15 @@ func TestConnStatsByteKey(t *testing.T) {
 			b: ConnectionStats{Source: addrA, Dest: addrB},
 		},
 		{ // Fields set, but sources are different
-			a: ConnectionStats{Pid: 1, Family: 0, Type: 1, Source: addrA, Dest: addrB},
-			b: ConnectionStats{Pid: 1, Family: 0, Type: 1, Source: addrB, Dest: addrB},
+			a: ConnectionStats{Pid: 1, Type: 1, Source: addrA, Dest: addrB},
+			b: ConnectionStats{Pid: 1, Type: 1, Source: addrB, Dest: addrB},
 		},
 		{ // Both sources and dest are different
-			a: ConnectionStats{Pid: 1, Dest: addrB, Family: 0, Type: 1, Source: addrA},
-			b: ConnectionStats{Pid: 1, Dest: addrA, Family: 0, Type: 1, Source: addrB},
+			a: ConnectionStats{Pid: 1, Dest: addrB, Type: 1, Source: addrA},
+			b: ConnectionStats{Pid: 1, Dest: addrA, Type: 1, Source: addrB},
 		},
-		{ // Family and Type are different
-			a: ConnectionStats{Pid: 1, Source: addrA, Dest: addrB, Family: 1},
+		{ // Type are different
+			a: ConnectionStats{Pid: 1, Source: addrA, Dest: addrB},
 			b: ConnectionStats{Pid: 1, Source: addrA, Dest: addrB, Type: 1},
 		},
 	} {
@@ -148,7 +146,7 @@ func BenchmarkByteKey(b *testing.B) {
 	buf := make([]byte, ConnectionByteKeyMaxLen)
 	addrA := netaddr.MustParseIP("127.0.0.1")
 	addrB := netaddr.MustParseIP("127.0.0.2")
-	c := ConnectionStats{Pid: 1, Dest: addrB, Family: 0, Type: 1, Source: addrA}
+	c := ConnectionStats{Pid: 1, Dest: addrB, Type: 1, Source: addrA}
 
 	b.ReportAllocs()
 	b.ResetTimer()

@@ -212,10 +212,9 @@ func toConntrackTupleFromStats(src *netebpf.ConntrackTuple, stats *network.Conne
 	case network.UDP:
 		src.Metadata |= uint32(netebpf.UDP)
 	}
-	switch stats.Family {
-	case network.AFINET:
+	if stats.Source.Is4() {
 		src.Metadata |= uint32(netebpf.IPv4)
-	case network.AFINET6:
+	} else {
 		src.Metadata |= uint32(netebpf.IPv6)
 	}
 }

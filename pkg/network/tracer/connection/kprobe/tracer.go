@@ -215,7 +215,7 @@ func (t *kprobeTracer) Remove(conn *network.ConnectionStats) error {
 	t.removeTuple.Saddr.FromIP(conn.Source)
 	t.removeTuple.Daddr.FromIP(conn.Dest)
 
-	if conn.Family == network.AFINET6 {
+	if conn.Source.Is6() {
 		t.removeTuple.Metadata = uint32(netebpf.IPv6)
 	} else {
 		t.removeTuple.Metadata = uint32(netebpf.IPv4)
@@ -374,13 +374,6 @@ func connStats(t *netebpf.ConnTuple, s *netebpf.ConnStats) network.ConnectionSta
 		stats.Type = network.TCP
 	} else {
 		stats.Type = network.UDP
-	}
-
-	switch t.Family() {
-	case netebpf.IPv4:
-		stats.Family = network.AFINET
-	case netebpf.IPv6:
-		stats.Family = network.AFINET6
 	}
 
 	switch s.ConnectionDirection() {

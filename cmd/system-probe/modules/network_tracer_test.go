@@ -40,7 +40,6 @@ func TestDecode(t *testing.T) {
 				},
 
 				Type:      network.UDP,
-				Family:    network.AFINET6,
 				Direction: network.LOCAL,
 			},
 		},

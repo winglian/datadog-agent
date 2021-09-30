@@ -99,7 +99,6 @@ func TestCachedConntrackExists(t *testing.T) {
 		SPort:  sport,
 		DPort:  dport,
 		Type:   network.TCP,
-		Family: network.AFINET,
 	}
 
 	m.EXPECT().Exists(gomock.Not(gomock.Nil())).Times(1).DoAndReturn(func(c *netlink.Con) (bool, error) {

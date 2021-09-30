@@ -95,7 +95,6 @@ func TestRemoveConnections(t *testing.T) {
 	conn := ConnectionStats{
 		Pid:                  123,
 		Type:                 UDP,
-		Family:               AFINET,
 		Source:               netaddr.MustParseIP("127.0.0.1"),
 		Dest:                 netaddr.MustParseIP("127.0.0.1"),
 		SPort:                31890,
@@ -133,7 +132,6 @@ func TestRetrieveClosedConnection(t *testing.T) {
 	conn := ConnectionStats{
 		Pid:                  123,
 		Type:                 TCP,
-		Family:               AFINET,
 		Source:               netaddr.MustParseIP("127.0.0.1"),
 		Dest:                 netaddr.MustParseIP("127.0.0.1"),
 		SPort:                31890,
@@ -212,7 +210,6 @@ func TestLastStats(t *testing.T) {
 	conn := ConnectionStats{
 		Pid:                  123,
 		Type:                 TCP,
-		Family:               AFINET,
 		Source:               netaddr.MustParseIP("127.0.0.1"),
 		Dest:                 netaddr.MustParseIP("127.0.0.1"),
 		SPort:                31890,
@@ -292,7 +289,6 @@ func TestLastStatsForClosedConnection(t *testing.T) {
 	conn := ConnectionStats{
 		Pid:                  123,
 		Type:                 TCP,
-		Family:               AFINET,
 		Source:               netaddr.MustParseIP("127.0.0.1"),
 		Dest:                 netaddr.MustParseIP("127.0.0.1"),
 		SPort:                31890,
@@ -343,7 +339,6 @@ func TestRaceConditions(t *testing.T) {
 			conns = append(conns, ConnectionStats{
 				Pid:                  1 + i,
 				Type:                 TCP,
-				Family:               AFINET,
 				Source:               netaddr.MustParseIP("127.0.0.1"),
 				Dest:                 netaddr.MustParseIP("127.0.0.1"),
 				SPort:                uint16(rand.Int()),
@@ -391,7 +386,6 @@ func TestSameKeyEdgeCases(t *testing.T) {
 	conn := ConnectionStats{
 		Pid:                123,
 		Type:               TCP,
-		Family:             AFINET,
 		Source:             netaddr.MustParseIP("127.0.0.1"),
 		Dest:               netaddr.MustParseIP("127.0.0.1"),
 		MonotonicSentBytes: 3,
@@ -476,7 +470,6 @@ func TestSameKeyEdgeCases(t *testing.T) {
 		conn := ConnectionStats{
 			Pid:                123,
 			Type:               TCP,
-			Family:             AFINET,
 			Source:             netaddr.MustParseIP("127.0.0.1"),
 			Dest:               netaddr.MustParseIP("127.0.0.1"),
 			SPort:              9000,
@@ -911,7 +904,6 @@ func TestStatsResetOnUnderflow(t *testing.T) {
 	conn := ConnectionStats{
 		Pid:                123,
 		Type:               TCP,
-		Family:             AFINET,
 		Source:             netaddr.MustParseIP("127.0.0.1"),
 		Dest:               netaddr.MustParseIP("127.0.0.1"),
 		MonotonicSentBytes: 3,
@@ -948,7 +940,6 @@ func TestDoubleCloseOnTwoClients(t *testing.T) {
 	conn := ConnectionStats{
 		Pid:                123,
 		Type:               TCP,
-		Family:             AFINET,
 		Source:             netaddr.MustParseIP("127.0.0.1"),
 		Dest:               netaddr.MustParseIP("127.0.0.1"),
 		MonotonicSentBytes: 3,
@@ -990,7 +981,6 @@ func TestUnorderedCloseEvent(t *testing.T) {
 	conn := ConnectionStats{
 		Pid:                123,
 		Type:               TCP,
-		Family:             AFINET,
 		Source:             netaddr.MustParseIP("127.0.0.1"),
 		Dest:               netaddr.MustParseIP("127.0.0.1"),
 		MonotonicSentBytes: 3,
@@ -1042,7 +1032,6 @@ func TestAggregateClosedConnectionsTimestamp(t *testing.T) {
 	conn := ConnectionStats{
 		Pid:                123,
 		Type:               TCP,
-		Family:             AFINET,
 		Source:             netaddr.MustParseIP("127.0.0.1"),
 		Dest:               netaddr.MustParseIP("127.0.0.1"),
 		MonotonicSentBytes: 3,
@@ -1072,7 +1061,6 @@ func TestDNSStatsWithMultipleClients(t *testing.T) {
 	c := ConnectionStats{
 		Pid:    123,
 		Type:   TCP,
-		Family: AFINET,
 		Source: netaddr.MustParseIP("127.0.0.1"),
 		Dest:   netaddr.MustParseIP("127.0.0.1"),
 		SPort:  1000,
@@ -1124,7 +1112,6 @@ func TestDNSStatsWithMultipleClientsWithDomainCollectionEnabled(t *testing.T) {
 	c := ConnectionStats{
 		Pid:    123,
 		Type:   TCP,
-		Family: AFINET,
 		Source: netaddr.MustParseIP("127.0.0.1"),
 		Dest:   netaddr.MustParseIP("127.0.0.1"),
 		SPort:  1000,
@@ -1181,7 +1168,6 @@ func TestDNSStatsPIDCollisions(t *testing.T) {
 	c := ConnectionStats{
 		Pid:    123,
 		Type:   TCP,
-		Family: AFINET,
 		Source: netaddr.MustParseIP("127.0.0.1"),
 		Dest:   netaddr.MustParseIP("127.0.0.1"),
 		SPort:  1000,
@@ -1489,7 +1475,6 @@ func generateRandConnections(n int) []ConnectionStats {
 		cs = append(cs, ConnectionStats{
 			Pid:                  123,
 			Type:                 TCP,
-			Family:               AFINET,
 			Source:               netaddr.MustParseIP("127.0.0.1"),
 			Dest:                 netaddr.MustParseIP("127.0.0.1"),
 			SPort:                uint16(rand.Intn(math.MaxUint16)),

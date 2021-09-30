@@ -94,9 +94,8 @@ func FlowToConnStat(cs *ConnectionStats, flow *driver.PerFlowData, enableMonoton
 	cs.SPort = flow.LocalPort
 	cs.DPort = flow.RemotePort
 	cs.Type = connectionType
-	cs.Family = family
 	cs.Direction = connDirection(flow.Flags)
-	cs.SPortIsEphemeral = IsPortInEphemeralRange(cs.Family, cs.Type, cs.SPort)
+	cs.SPortIsEphemeral = IsPortInEphemeralRange(family, cs.Type, cs.SPort)
 
 	// reset other fields to default values
 	cs.NetNS = 0

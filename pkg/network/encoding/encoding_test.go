@@ -63,8 +63,8 @@ func getExpectedConnections(encodedWithQueryType bool, httpOutBlob []byte) *mode
 	out := &model.Connections{
 		Conns: []*model.Connection{
 			{
-				Laddr:              &model.Addr{Ip: "10.1.1.1", Port: int32(1000)},
-				Raddr:              &model.Addr{Ip: "10.2.2.2", Port: int32(9000)},
+				Laddr:              &model.Addr{Ip: "fc00::1", Port: int32(1000)},
+				Raddr:              &model.Addr{Ip: "fc00::2", Port: int32(9000)},
 				LastBytesSent:      2,
 				LastBytesReceived:  101,
 				LastRetransmits:    201,
@@ -73,8 +73,8 @@ func getExpectedConnections(encodedWithQueryType bool, httpOutBlob []byte) *mode
 				Pid:                int32(6000),
 				NetNS:              7,
 				IpTranslation: &model.IPTranslation{
-					ReplSrcIP:   "20.1.1.1",
-					ReplDstIP:   "20.1.1.1",
+					ReplSrcIP:   "fc00::3",
+					ReplDstIP:   "fc00::3",
 					ReplSrcPort: int32(40),
 					ReplDstPort: int32(80),
 				},
@@ -91,7 +91,7 @@ func getExpectedConnections(encodedWithQueryType bool, httpOutBlob []byte) *mode
 			},
 		},
 		Dns: map[string]*model.DNSEntry{
-			"172.217.12.145": {Names: []string{"golang.org"}},
+			"2607:f8b0:400a:806::2011": {Names: []string{"golang.org"}},
 		},
 		Domains: []string{"foo.com"},
 		Routes: []*model.Route{
@@ -110,8 +110,8 @@ func TestSerialization(t *testing.T) {
 	in := &network.Connections{
 		Conns: []network.ConnectionStats{
 			{
-				Source:               netaddr.MustParseIP("10.1.1.1"),
-				Dest:                 netaddr.MustParseIP("10.2.2.2"),
+				Source:               netaddr.MustParseIP("fc00::1"),
+				Dest:                 netaddr.MustParseIP("fc00::2"),
 				MonotonicSentBytes:   1,
 				LastSentBytes:        2,
 				MonotonicRecvBytes:   100,
@@ -126,14 +126,13 @@ func TestSerialization(t *testing.T) {
 				SPort:                1000,
 				DPort:                9000,
 				IPTranslation: &network.IPTranslation{
-					ReplSrcIP:   netaddr.MustParseIP("20.1.1.1"),
-					ReplDstIP:   netaddr.MustParseIP("20.1.1.1"),
+					ReplSrcIP:   netaddr.MustParseIP("fc00::3"),
+					ReplDstIP:   netaddr.MustParseIP("fc00::3"),
 					ReplSrcPort: 40,
 					ReplDstPort: 80,
 				},
 
 				Type:      network.UDP,
-				Family:    network.AFINET6,
 				Direction: network.LOCAL,
 
 				DNSCountByRcode: map[uint32]uint32{0: 1},
@@ -155,12 +154,12 @@ func TestSerialization(t *testing.T) {
 			},
 		},
 		DNS: map[netaddr.IP][]string{
-			netaddr.MustParseIP("172.217.12.145"): {"golang.org"},
+			netaddr.MustParseIP("2607:f8b0:400a:806::2011"): {"golang.org"},
 		},
 		HTTP: map[http.Key]http.RequestStats{
 			http.NewKey(
-				netaddr.MustParseIP("20.1.1.1"),
-				netaddr.MustParseIP("20.1.1.1"),
+				netaddr.MustParseIP("fc00::3"),
+				netaddr.MustParseIP("fc00::3"),
 				40,
 				80,
 				"/testpath",

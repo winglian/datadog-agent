@@ -101,11 +101,6 @@ func testConntracker(t *testing.T, serverIP, clientIP netaddr.IP, ct netlink.Con
 	curNs, err := util.GetCurrentIno()
 	require.NoError(t, err)
 
-	family := network.AFINET
-	if len(localAddr.IP) == net.IPv6len {
-		family = network.AFINET6
-	}
-
 	lip, _ := netaddr.FromStdIP(localAddr.IP)
 
 	trans := ct.GetTranslationForConn(
@@ -115,7 +110,6 @@ func testConntracker(t *testing.T, serverIP, clientIP netaddr.IP, ct netlink.Con
 			Dest:   clientIP,
 			DPort:  uint16(natPort),
 			Type:   network.TCP,
-			Family: family,
 			NetNS:  curNs,
 		},
 	)
@@ -125,11 +119,6 @@ func testConntracker(t *testing.T, serverIP, clientIP netaddr.IP, ct netlink.Con
 	localAddrUDP := nettestutil.PingUDP(t, clientIP, natPort).LocalAddr().(*net.UDPAddr)
 	time.Sleep(time.Second)
 
-	family = network.AFINET
-	if len(localAddrUDP.IP) == net.IPv6len {
-		family = network.AFINET6
-	}
-
 	lip, _ = netaddr.FromStdIP(localAddrUDP.IP)
 	trans = ct.GetTranslationForConn(
 		network.ConnectionStats{
@@ -138,7 +127,6 @@ func testConntracker(t *testing.T, serverIP, clientIP netaddr.IP, ct netlink.Con
 			Dest:   clientIP,
 			DPort:  uint16(natPort),
 			Type:   network.UDP,
-			Family: family,
 			NetNS:  curNs,
 		},
 	)
