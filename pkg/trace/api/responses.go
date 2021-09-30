@@ -26,7 +26,8 @@ const (
 // should we add another fied.
 type traceResponse struct {
 	// All the sampling rates recommended, by service
-	Rates map[string]float64 `json:"rate_by_service"`
+	LocalRates  map[string]float64 `json:"rate_by_service"`
+	RemoteRates map[string]float64 `json:"remote_rate_by_service,omitempty"`
 }
 
 // httpFormatError is used for payload format errors
@@ -71,8 +72,10 @@ func httpOK(w http.ResponseWriter) {
 // httpRateByService outputs, as a JSON, the recommended sampling rates for all services.
 func httpRateByService(w http.ResponseWriter, dynConf *sampler.DynamicConfig) {
 	w.Header().Set("Content-Type", "application/json")
+	localRates, remoteRates := dynConf.RateByService.GetAll() // this is thread-safe as RateByService returns clean copies
 	response := traceResponse{
-		Rates: dynConf.RateByService.GetAll(), // this is thread-safe
+		LocalRates:  localRates,
+		RemoteRates: remoteRates,
 	}
 	encoder := json.NewEncoder(w)
 	if err := encoder.Encode(response); err != nil {

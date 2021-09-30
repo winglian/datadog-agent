@@ -29,47 +29,56 @@ func NewDynamicConfig(env string) *DynamicConfig {
 type RateByService struct {
 	defaultEnv string // env. to use for service defaults
 
-	mu    sync.RWMutex // guards rates
-	rates map[string]float64
+	mu          sync.RWMutex // guards rates
+	localRates  map[string]float64
+	remoteRates map[string]float64
 }
 
-// SetAll the sampling rate for all services. If a service/env is not
-// in the map, then the entry is removed.
-func (rbs *RateByService) SetAll(rates map[ServiceSignature]float64) {
-	rbs.mu.Lock()
-	defer rbs.mu.Unlock()
-
-	if rbs.rates == nil {
-		rbs.rates = make(map[string]float64, len(rates))
+func uploadRates(defaultEnv string, new map[ServiceSignature]float64, dest map[string]float64) map[string]float64 {
+	if dest == nil {
+		dest = make(map[string]float64, len(new))
 	}
-	for k := range rbs.rates {
-		delete(rbs.rates, k)
+	for k := range dest {
+		delete(dest, k)
 	}
-	for k, v := range rates {
+	for k, v := range new {
 		if v < 0 {
 			v = 0
 		}
 		if v > 1 {
 			v = 1
 		}
-		rbs.rates[k.String()] = v
-		if k.Env == rbs.defaultEnv {
+		dest[k.String()] = v
+		if k.Env == defaultEnv {
 			// if this is the default env, then this is also the
 			// service's default rate unbound to any env.
-			rbs.rates[ServiceSignature{Name: k.Name}.String()] = v
+			dest[ServiceSignature{Name: k.Name}.String()] = v
 		}
 	}
+	return dest
+}
+
+// SetAll the sampling rate for all services. If a service/env is not
+// in the map, then the entry is removed.
+func (rbs *RateByService) SetAll(localRates, remoteRates map[ServiceSignature]float64) {
+	rbs.mu.Lock()
+	defer rbs.mu.Unlock()
+
+	rbs.localRates = uploadRates(rbs.defaultEnv, localRates, rbs.localRates)
+	rbs.remoteRates = uploadRates(rbs.defaultEnv, remoteRates, rbs.remoteRates)
 }
 
 // GetAll returns all sampling rates for all services.
-func (rbs *RateByService) GetAll() map[string]float64 {
+func (rbs *RateByService) GetAll() (localRates, remoteRates map[string]float64) {
 	rbs.mu.RLock()
 	defer rbs.mu.RUnlock()
+	return copyMap(rbs.localRates), copyMap(rbs.remoteRates)
+}
 
-	ret := make(map[string]float64, len(rbs.rates))
-	for k, v := range rbs.rates {
-		ret[k] = v
+func copyMap(old map[string]float64) map[string]float64 {
+	res := make(map[string]float64, len(old))
+	for k, v := range old {
+		res[k] = v
 	}
-
-	return ret
+	return res
 }

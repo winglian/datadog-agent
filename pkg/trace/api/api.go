@@ -613,8 +613,7 @@ func (r *HTTPReceiver) loop() {
 				lastLog = now
 
 				// Also publish rates by service (they are updated by receiver)
-				rates := r.dynConf.RateByService.GetAll()
-				info.UpdateRateByService(rates)
+				info.UpdateRateByService(r.dynConf.RateByService.GetAll())
 			}
 		}
 	}

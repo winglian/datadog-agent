@@ -38,7 +38,7 @@ func TestCatalogRegression(t *testing.T) {
 			cat.ratesByService(map[Signature]float64{
 				ServiceSignature{}.Hash():                 0.3,
 				ServiceSignature{"web", "staging"}.Hash(): 0.4,
-			}, nil, 0.2)
+			}, 0.2)
 		}
 	}()
 
@@ -149,8 +149,6 @@ func TestServiceKeyCatalogRatesByService(t *testing.T) {
 	sig1 := cat.register(ServiceSignature{root1.Service, defaultEnv})
 	_, root2 := getTestTraceWithService(t, "service2", s)
 	sig2 := cat.register(ServiceSignature{root2.Service, defaultEnv})
-	_, root3 := getTestTraceWithService(t, "service3", s)
-	sig3 := cat.register(ServiceSignature{root3.Service, defaultEnv})
 
 	rates := map[Signature]float64{
 		sig1: 0.3,
@@ -158,22 +156,16 @@ func TestServiceKeyCatalogRatesByService(t *testing.T) {
 	}
 	const totalRate = 0.2
 
-	remoteRates := map[Signature]float64{
-		sig2: 0.5555,
-		sig3: 0.19,
-	}
-
-	rateByService := cat.ratesByService(rates, remoteRates, totalRate)
+	rateByService := cat.ratesByService(rates, totalRate)
 	assert.Equal(map[ServiceSignature]float64{
 		{"service1", "none"}: 0.3,
-		{"service2", "none"}: 0.5555,
-		{"service3", "none"}: 0.19,
+		{"service2", "none"}: 0.7,
 		{}:                   0.2,
 	}, rateByService)
 
 	delete(rates, sig1)
 
-	rateByService = cat.ratesByService(rates, nil, totalRate)
+	rateByService = cat.ratesByService(rates, totalRate)
 	assert.Equal(map[ServiceSignature]float64{
 		{"service2", "none"}: 0.7,
 		{}:                   0.2,
@@ -181,7 +173,7 @@ func TestServiceKeyCatalogRatesByService(t *testing.T) {
 
 	delete(rates, sig2)
 
-	rateByService = cat.ratesByService(rates, nil, totalRate)
+	rateByService = cat.ratesByService(rates, totalRate)
 	assert.Equal(map[ServiceSignature]float64{
 		{}: 0.2,
 	}, rateByService)

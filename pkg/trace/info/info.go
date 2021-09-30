@@ -34,14 +34,15 @@ var (
 	traceWriterInfo TraceWriterInfo
 	statsWriterInfo StatsWriterInfo
 
-	watchdogInfo     watchdog.Info
-	rateByService    map[string]float64
-	rateLimiterStats RateLimiterStats
-	start            = time.Now()
-	once             sync.Once
-	infoTmpl         *template.Template
-	notRunningTmpl   *template.Template
-	errorTmpl        *template.Template
+	watchdogInfo         watchdog.Info
+	localRatesByService  map[string]float64
+	remoteRatesByService map[string]float64
+	rateLimiterStats     RateLimiterStats
+	start                = time.Now()
+	once                 sync.Once
+	infoTmpl             *template.Template
+	notRunningTmpl       *template.Template
+	errorTmpl            *template.Template
 )
 
 const (
@@ -137,16 +138,23 @@ func publishReceiverStats() interface{} {
 }
 
 // UpdateRateByService updates the RateByService map.
-func UpdateRateByService(rbs map[string]float64) {
+func UpdateRateByService(localRates, remoteRates map[string]float64) {
 	infoMu.Lock()
 	defer infoMu.Unlock()
-	rateByService = rbs
+	localRatesByService = localRates
+	remoteRatesByService = remoteRates
 }
 
-func publishRateByService() interface{} {
+func publishLocalRatesByService() interface{} {
 	infoMu.RLock()
 	defer infoMu.RUnlock()
-	return rateByService
+	return localRatesByService
+}
+
+func publishRemoteRatesByService() interface{} {
+	infoMu.RLock()
+	defer infoMu.RUnlock()
+	return remoteRatesByService
 }
 
 // UpdateWatchdogInfo updates internal stats about the watchdog.
@@ -216,7 +224,8 @@ func InitInfo(conf *config.AgentConfig) error {
 		expvar.Publish("receiver", expvar.Func(publishReceiverStats))
 		expvar.Publish("trace_writer", expvar.Func(publishTraceWriterInfo))
 		expvar.Publish("stats_writer", expvar.Func(publishStatsWriterInfo))
-		expvar.Publish("ratebyservice", expvar.Func(publishRateByService))
+		expvar.Publish("ratebyservice", expvar.Func(publishLocalRatesByService))
+		expvar.Publish("remote_ratebyservice", expvar.Func(publishRemoteRatesByService))
 		expvar.Publish("watchdog", expvar.Func(publishWatchdogInfo))
 		expvar.Publish("ratelimiter", expvar.Func(publishRateLimiterStats))
 

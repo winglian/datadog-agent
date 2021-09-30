@@ -43,10 +43,13 @@ func getTestTraceWithService(t *testing.T, service string, s *PrioritySampler) (
 	}
 	r := rand.Float64()
 	priority := PriorityAutoDrop
-	rates := s.ratesByService()
+	localRates, remoteRates := s.ratesByService()
 	key := ServiceSignature{trace[0].Service, defaultEnv}
 	var rate float64
-	if serviceRate, ok := rates[key]; ok {
+	if serviceRate, ok := remoteRates[key]; ok {
+		rate = serviceRate
+		trace[0].Metrics[agentRateKey] = serviceRate
+	} else if serviceRate, ok := localRates[key]; ok {
 		rate = serviceRate
 		trace[0].Metrics[agentRateKey] = serviceRate
 	} else {
@@ -177,7 +180,7 @@ func TestPrioritySamplerTPSFeedbackLoop(t *testing.T) {
 	for i := len(testCases) - 1; i >= 0; i-- {
 		tc := testCases[i]
 		tc.localRate = true
-		tc.service = "local" + tc.service
+		tc.service = "local_" + tc.service
 		testCases = append(testCases, tc)
 	}
 
@@ -185,6 +188,7 @@ func TestPrioritySamplerTPSFeedbackLoop(t *testing.T) {
 	for i := len(testCases) - 1; i >= 0; i-- {
 		tc := testCases[i]
 		tc.clientDrop = true
+		tc.service = "client_drop_" + tc.service
 		testCases = append(testCases, tc)
 	}
 
@@ -201,7 +205,7 @@ func TestPrioritySamplerTPSFeedbackLoop(t *testing.T) {
 	s.remoteRates.loadNewConfig(configGenerator(generatedConfigVersion, testCasesRates))
 
 	for _, tc := range testCases {
-		t.Logf("testing targetTPS=%0.1f generatedTPS=%0.1f localRate=%v clientDrop=%v", tc.targetTPS, tc.generatedTPS, tc.localRate, tc.clientDrop)
+		t.Logf("testing %s targetTPS=%0.1f generatedTPS=%0.1f localRate=%v clientDrop=%v", tc.service, tc.targetTPS, tc.generatedTPS, tc.localRate, tc.clientDrop)
 		if tc.localRate {
 			s.localRates.targetTPS = atomic.NewFloat(tc.targetTPS)
 		}
