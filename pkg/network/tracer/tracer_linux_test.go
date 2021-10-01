@@ -101,9 +101,9 @@ func TestTCPRemoveEntries(t *testing.T) {
 
 	conn, ok := findConnection(c2.LocalAddr(), c2.RemoteAddr(), connections)
 	require.True(t, ok)
-	assert.Equal(t, clientMessageSize, int(conn.MonotonicSentBytes))
-	assert.Equal(t, 0, int(conn.MonotonicRecvBytes))
-	assert.Equal(t, 0, int(conn.MonotonicRetransmits))
+	assert.Equal(t, clientMessageSize, int(conn.SentBytes))
+	assert.Equal(t, 0, int(conn.RecvBytes))
+	assert.Equal(t, 0, int(conn.Retransmits))
 	assert.Equal(t, os.Getpid(), int(conn.Pid))
 	assert.Equal(t, addrPort(server.address), int(conn.DPort))
 }
@@ -155,8 +155,8 @@ func TestTCPRetransmit(t *testing.T) {
 
 	conn, ok := findConnection(c.LocalAddr(), c.RemoteAddr(), connections)
 	require.True(t, ok)
-	assert.Equal(t, 100*clientMessageSize, int(conn.MonotonicSentBytes))
-	assert.True(t, int(conn.MonotonicRetransmits) > 0)
+	assert.Equal(t, 100*clientMessageSize, int(conn.SentBytes))
+	assert.True(t, int(conn.Retransmits) > 0)
 	assert.Equal(t, os.Getpid(), int(conn.Pid))
 	assert.Equal(t, addrPort(server.address), int(conn.DPort))
 }
@@ -205,7 +205,7 @@ func TestTCPRetransmitSharedSocket(t *testing.T) {
 
 	totalSent := 0
 	for _, c := range conns {
-		totalSent += int(c.MonotonicSentBytes)
+		totalSent += int(c.SentBytes)
 	}
 	assert.Equal(t, numProcesses*clientMessageSize, totalSent)
 
@@ -214,7 +214,7 @@ func TestTCPRetransmitSharedSocket(t *testing.T) {
 	// same socket
 	connsWithRetransmits := 0
 	for _, c := range conns {
-		if c.MonotonicRetransmits > 0 {
+		if c.Retransmits > 0 {
 			connsWithRetransmits++
 		}
 	}
@@ -321,7 +321,7 @@ func TestTCPMiscount(t *testing.T) {
 
 	// TODO this should not happen but is expected for now
 	// we don't have the correct count since retries happened
-	assert.False(t, uint64(len(x)) == conn.MonotonicSentBytes)
+	assert.False(t, uint64(len(x)) == conn.SentBytes)
 
 	tel := tr.ebpfTracer.GetTelemetry()
 	assert.NotZero(t, tel["tcp_sent_miscounts"])
@@ -361,7 +361,7 @@ func TestConnectionExpirationRegression(t *testing.T) {
 	allConnections := getConnections(t, tr)
 	connectionStats, ok := findConnection(c.LocalAddr(), c.RemoteAddr(), allConnections)
 	require.True(t, ok)
-	assert.Equal(t, uint64(len(payload)), connectionStats.LastSentBytes)
+	assert.Equal(t, uint64(len(payload)), connectionStats.SentBytes)
 
 	// This emulates the race condition, a `tcp_close` followed by a call to `Tracer.removeConnections()`
 	// It's unfortunate we're relying here on private methods, but there isn't much we can do to avoid that.
@@ -370,11 +370,11 @@ func TestConnectionExpirationRegression(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	tr.ebpfTracer.Remove(connectionStats)
 
-	// Since no bytes were send or received after we obtained the connectionStats, we should have 0 LastBytesSent
+	// Since no bytes were send or received after we obtained the connectionStats, we should have 0 BytesSent
 	allConnections = getConnections(t, tr)
 	connectionStats, ok = findConnection(c.LocalAddr(), c.RemoteAddr(), allConnections)
 	require.True(t, ok)
-	assert.Equal(t, uint64(0), connectionStats.LastSentBytes)
+	assert.Equal(t, uint64(0), connectionStats.SentBytes)
 
 	// Finally, this connection should have been expired from the state
 	allConnections = getConnections(t, tr)
@@ -507,7 +507,7 @@ func TestUnconnectedUDPSendIPv6(t *testing.T) {
 
 	require.Len(t, outgoing, 1)
 	assert.Equal(t, remoteAddr.IP.String(), outgoing[0].Dest.String())
-	assert.Equal(t, bytesSent, int(outgoing[0].MonotonicSentBytes))
+	assert.Equal(t, bytesSent, int(outgoing[0].SentBytes))
 }
 
 func TestGatewayLookupNotEnabled(t *testing.T) {
@@ -858,7 +858,7 @@ func TestConnectionAssured(t *testing.T) {
 		conns := getConnections(t, tr)
 		var ok bool
 		conn, ok = findConnection(c.LocalAddr(), c.RemoteAddr(), conns)
-		return ok && conn.MonotonicSentBytes > 0 && conn.MonotonicRecvBytes > 0
+		return ok && conn.SentBytes > 0 && conn.RecvBytes > 0
 	}, 3*time.Second, 500*time.Millisecond, "could not find udp connection")
 
 	// verify the connection is marked as assured
@@ -896,7 +896,7 @@ func TestConnectionNotAssured(t *testing.T) {
 		conns := getConnections(t, tr)
 		var ok bool
 		conn, ok = findConnection(c.LocalAddr(), c.RemoteAddr(), conns)
-		return ok && conn.MonotonicSentBytes > 0 && conn.MonotonicRecvBytes == 0
+		return ok && conn.SentBytes > 0 && conn.RecvBytes == 0
 	}, 3*time.Second, 500*time.Millisecond, "could not find udp connection")
 
 	// verify the connection is marked as not assured
@@ -1118,13 +1118,13 @@ func TestUDPPeekCount(t *testing.T) {
 		return outgoing != nil && incoming != nil
 	}, 3*time.Second, 100*time.Millisecond, "couldn't find incoming and outgoing connections matching")
 
-	require.Equal(t, len(msg), int(outgoing.MonotonicSentBytes))
-	require.Equal(t, 0, int(outgoing.MonotonicRecvBytes))
+	require.Equal(t, len(msg), int(outgoing.SentBytes))
+	require.Equal(t, 0, int(outgoing.RecvBytes))
 	require.True(t, outgoing.IntraHost)
 
 	// make sure the inverse values are seen for the other message
-	require.Equal(t, 0, int(incoming.MonotonicSentBytes))
-	require.Equal(t, len(msg), int(incoming.MonotonicRecvBytes))
+	require.Equal(t, 0, int(incoming.SentBytes))
+	require.Equal(t, len(msg), int(incoming.RecvBytes))
 	require.True(t, incoming.IntraHost)
 }
 
@@ -1269,10 +1269,10 @@ func TestSendfileRegression(t *testing.T) {
 		conns := getConnections(t, tr)
 		var ok bool
 		conn, ok = findConnection(c.LocalAddr(), c.RemoteAddr(), conns)
-		return ok && conn.MonotonicSentBytes > 0
+		return ok && conn.SentBytes > 0
 	}, 3*time.Second, 500*time.Millisecond, "couldn't find connection used by sendfile(2)")
 
-	assert.Equalf(t, int64(clientMessageSize), int64(conn.MonotonicSentBytes), "sendfile data wasn't properly traced")
+	assert.Equalf(t, int64(clientMessageSize), int64(conn.SentBytes), "sendfile data wasn't properly traced")
 }
 
 func sendFile(t *testing.T, c net.Conn, f *os.File) {
