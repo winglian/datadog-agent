@@ -86,8 +86,8 @@ func getExpectedConnections(encodedWithQueryType bool, httpOutBlob []byte) *mode
 				HttpAggregations: httpOutBlob,
 			},
 			{
-				Laddr: &model.Addr{Ip: "10.1.1.1", Port: int32(1000)},
-				Raddr: &model.Addr{Ip: "8.8.8.8", Port: int32(53)},
+				Laddr: &model.Addr{Ip: "fc00::4", Port: int32(1000)},
+				Raddr: &model.Addr{Ip: "fc00::5", Port: int32(53)},
 
 				Type:      model.ConnectionType_udp,
 				Family:    model.ConnectionFamily_v6,
@@ -156,8 +156,8 @@ func TestSerialization(t *testing.T) {
 					},
 				},
 				{
-					Source:    netaddr.MustParseIP("10.1.1.1"),
-					Dest:      netaddr.MustParseIP("8.8.8.8"),
+					Source:    netaddr.MustParseIP("fc00::4"),
+					Dest:      netaddr.MustParseIP("fc00::5"),
 					SPort:     1000,
 					DPort:     53,
 					Type:      network.UDP,
@@ -170,8 +170,8 @@ func TestSerialization(t *testing.T) {
 		},
 		DNSStats: dns.StatsByKeyByNameByType{
 			dns.Key{
-				ClientIP:   netaddr.MustParseIP("10.1.1.1"),
-				ServerIP:   netaddr.MustParseIP("8.8.8.8"),
+				ClientIP:   netaddr.MustParseIP("fc00::4"),
+				ServerIP:   netaddr.MustParseIP("fc00::5"),
 				ClientPort: uint16(1000),
 				Protocol:   syscall.IPPROTO_UDP,
 			}: map[*intern.Value]map[dns.QueryType]dns.Stats{
