@@ -62,7 +62,6 @@ func NewTracer(config *config.Config) (*Tracer, error) {
 		config.MaxConnectionsStateBuffered,
 		config.MaxDNSStatsBuffered,
 		config.MaxHTTPStatsBuffered,
-		config.CollectDNSDomains,
 	)
 
 	reverseDNS := dns.NewNullReverseDNS()
@@ -104,16 +103,12 @@ func (t *Tracer) GetActiveConnections(clientID string) (*network.Connections, er
 	t.connLock.Lock()
 	defer t.connLock.Unlock()
 
-	t.activeBuffer.Reset()
-	t.closedBuffer.Reset()
-
 	_, _, err := t.driverInterface.GetConnectionStats(t.activeBuffer, t.closedBuffer, func(c *network.ConnectionStats) bool {
 		return !t.shouldSkipConnection(c)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving connections from driver: %w", err)
 	}
-
 	activeConnStats := t.activeBuffer.Connections()
 	closedConnStats := t.closedBuffer.Connections()
 
@@ -121,13 +116,19 @@ func (t *Tracer) GetActiveConnections(clientID string) (*network.Connections, er
 	t.state.RemoveExpiredClients(time.Now())
 
 	delta := t.state.GetDelta(clientID, uint64(time.Now().Nanosecond()), activeConnStats, closedConnStats, t.reverseDNS.GetDNSStats(), nil)
-	conns := delta.Connections
-	var ips []netaddr.IP
-	for _, conn := range delta.Connections {
+	t.activeBuffer.Reset()
+	t.closedBuffer.Reset()
+
+	ips := make([]netaddr.IP, 0, len(delta.Conns)*2)
+	for _, conn := range delta.Conns {
 		ips = append(ips, conn.Source, conn.Dest)
 	}
 	names := t.reverseDNS.Resolve(ips)
-	return &network.Connections{Conns: conns, DNS: names}, nil
+	return &network.Connections{
+		BufferedData: delta.BufferedData,
+		DNS:          names,
+		DNSStats:     delta.DNSStats,
+	}, nil
 }
 
 // GetStats returns a map of statistics about the current tracer's internal state
@@ -155,4 +156,9 @@ func (t *Tracer) DebugNetworkState(_ string) (map[string]interface{}, error) {
 // DebugNetworkMaps returns all connections stored in the maps without modifications from network state
 func (t *Tracer) DebugNetworkMaps() (*network.Connections, error) {
 	return nil, ebpf.ErrNotImplemented
+}
+
+// DebugEBPFMaps is not implemented on this OS for Tracer
+func (t *Tracer) DebugEBPFMaps(maps ...string) (string, error) {
+	return "", ebpf.ErrNotImplemented
 }

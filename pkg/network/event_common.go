@@ -9,7 +9,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/network/dns"
 	"github.com/DataDog/datadog-agent/pkg/network/http"
 	"github.com/dustin/go-humanize"
-	"go4.org/intern"
 	"inet.af/netaddr"
 )
 
@@ -104,13 +103,20 @@ func (e EphemeralPortType) String() string {
 	}
 }
 
+// BufferedData encapsulates data whose underlying memory can be recycled
+type BufferedData struct {
+	Conns  []ConnectionStats
+	buffer *clientBuffer
+}
+
 // Connections wraps a collection of ConnectionStats
 type Connections struct {
+	BufferedData
 	DNS                         map[netaddr.IP][]string
-	Conns                       []ConnectionStats
 	ConnTelemetry               *ConnectionsTelemetry
 	CompilationTelemetryByAsset map[string]RuntimeCompilationTelemetry
 	HTTP                        map[http.Key]http.RequestStats
+	DNSStats                    dns.StatsByKeyByNameByType
 }
 
 // ConnectionsTelemetry stores telemetry from the system probe related to connections collection
@@ -184,14 +190,6 @@ type ConnectionStats struct {
 	SPortIsEphemeral            EphemeralPortType
 	IPTranslation               *IPTranslation
 	IntraHost                   bool
-	DNSSuccessfulResponses      uint32
-	DNSFailedResponses          uint32
-	DNSTimeouts                 uint32
-	DNSSuccessLatencySum        uint64
-	DNSFailureLatencySum        uint64
-	DNSCountByRcode             map[uint32]uint32
-	DNSStatsByDomainByQueryType map[*intern.Value]map[dns.QueryType]dns.Stats
-
 	Via *Via
 
 	IsAssured bool
