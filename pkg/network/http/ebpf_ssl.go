@@ -3,7 +3,10 @@
 package http
 
 import (
+	"crypto/md5"
+	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -14,6 +17,7 @@ import (
 	ddebpf "github.com/DataDog/datadog-agent/pkg/ebpf"
 	"github.com/DataDog/datadog-agent/pkg/network/config"
 	"github.com/DataDog/datadog-agent/pkg/network/ebpf/probes"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/DataDog/ebpf"
 	"github.com/DataDog/ebpf/manager"
 )
@@ -102,8 +106,9 @@ func (o *openSSLProgram) ConfigureManager(m *manager.Manager) {
 
 	// Load SSL & Crypto "base" probes
 	var extraProbes []string
-	extraProbes = append(extraProbes, sslProbes...)
+	extraProbes = append(extraProbes, openSSLProbes...)
 	extraProbes = append(extraProbes, cryptoProbes...)
+	extraProbes = append(extraProbes, gnuTLSProbes...)
 	for _, sec := range extraProbes {
 		m.Probes = append(m.Probes, &manager.Probe{
 			Section: sec,
@@ -164,8 +169,8 @@ func (o *openSSLProgram) Start() {
 		},
 		soRule{
 			re:           regexp.MustCompile(`libgnutls.so`),
-			registerCB:   addHooks(m, gnuTLSProbes),
-			unregisterCB: removeHooks(m, gnuTLSProbes),
+			registerCB:   addHooks(o.manager, gnuTLSProbes),
+			unregisterCB: removeHooks(o.manager, gnuTLSProbes),
 		},
 	)
 
@@ -214,7 +219,11 @@ func addHooks(m *manager.Manager, probes []string) func(string) error {
 
 func removeHooks(m *manager.Manager, probes []string) func(string) error {
 	return func(libPath string) error {
+<<<<<<< HEAD
 		uid := getUID(libPath)
+=======
+		uid := makeUID(libPath)
+>>>>>>> 426063e80 (fix gnutls functionality after rebase)
 		for _, sec := range probes {
 			p, found := m.GetProbe(manager.ProbeIdentificationPair{uid, sec})
 			if !found {
