@@ -53,28 +53,29 @@ static __always_inline void sockaddr_to_addr(struct sockaddr *sa, struct in6_add
 
     u16 family = 0;
     bpf_probe_read(&family, sizeof(family), &sa->sa_family);
-
-    struct sockaddr_in *sin;
-    struct sockaddr_in6 *sin6;
     switch (family) {
     case AF_INET:
-        sin = (struct sockaddr_in *)sa;
-        if (addr) {
-            read_in_addr(addr, &sin->sin_addr);
-        }
-        if (port) {
-            bpf_probe_read(port, sizeof(__be16), &sin->sin_port);
-            *port = bpf_ntohs(*port);
+        {
+            struct sockaddr_in *sin = (struct sockaddr_in *)sa;
+            if (addr) {
+                read_in_addr(addr, &sin->sin_addr);
+            }
+            if (port) {
+                bpf_probe_read(port, sizeof(__be16), &sin->sin_port);
+                *port = bpf_ntohs(*port);
+            }
         }
         break;
     case AF_INET6:
-        sin6 = (struct sockaddr_in6 *)sa;
-        if (addr) {
-            read_in6_addr(addr, &sin6->sin6_addr);
-        }
-        if (port) {
-            bpf_probe_read(port, sizeof(u16), &sin6->sin6_port);
-            *port = bpf_ntohs(*port);
+        {
+            struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sa;
+            if (addr) {
+                read_in6_addr(addr, &sin6->sin6_addr);
+            }
+            if (port) {
+                bpf_probe_read(port, sizeof(__be16), &sin6->sin6_port);
+                *port = bpf_ntohs(*port);
+            }
         }
         break;
     }

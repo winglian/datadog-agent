@@ -15,25 +15,14 @@
 
 #include <net/ipv6.h>
 
+#include "ipv6.h"
+
 static __always_inline bool is_ipv4_set(const struct in6_addr *ip) {
     return ip->s6_addr32[3] != 0;
 }
 
 static __always_inline void set_ipv4(struct in6_addr *dst, const __be32 src) {
     dst->s6_addr32[3] = src;
-}
-
-static __always_inline bool is_ipv6_set(const struct in6_addr *ip) {
-    return (ip->s6_addr32[0] | ip->s6_addr32[1] | ip->s6_addr32[2] | ip->s6_addr32[3]) != 0;
-}
-
-static __always_inline void read_ipv6_skb(struct __sk_buff *skb, __u64 off, struct in6_addr *addr) {
-    ipv6_addr_set(addr,
-        bpf_ntohl(load_word(skb, off)),
-        bpf_ntohl(load_word(skb, off + 4)),
-        bpf_ntohl(load_word(skb, off + 8)),
-        bpf_ntohl(load_word(skb, off + 12))
-    );
 }
 
 static __always_inline void read_ipv4_skb_offset(struct in6_addr *dst, struct __sk_buff *skb, __u64 offset) {
@@ -79,8 +68,8 @@ static __always_inline __u64 read_conn_tuple_skb(struct __sk_buff *skb, skb_info
     case ETH_P_IPV6:
         l4_proto = load_byte(skb, info->data_off + offsetof(struct ipv6hdr, nexthdr));
         info->tup.metadata |= CONN_V6;
-        read_ipv6_skb(skb, info->data_off + offsetof(struct ipv6hdr, saddr), &info->tup.saddr);
-        read_ipv6_skb(skb, info->data_off + offsetof(struct ipv6hdr, daddr), &info->tup.daddr);
+        read_ipv6_skb(&info->tup.saddr, skb, info->data_off + offsetof(struct ipv6hdr, saddr));
+        read_ipv6_skb(&info->tup.daddr, skb, info->data_off + offsetof(struct ipv6hdr, daddr));
         info->data_off += sizeof(struct ipv6hdr);
         break;
     default:
