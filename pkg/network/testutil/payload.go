@@ -4,6 +4,7 @@ import "math/rand"
 
 var letterBytes = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
+// AlphaPayload returns a byte slice of the requested size populated with random alphabetic characters.
 func AlphaPayload(n int) []byte {
 	b := make([]byte, n)
 	for i := range b {

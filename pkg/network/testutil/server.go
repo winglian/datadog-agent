@@ -42,10 +42,12 @@ func StartServerTCP(t *testing.T, ip netaddr.IP, port int) io.Closer {
 	return closer
 }
 
+// NewTCPServer creates a TCP test server listening on localhost and a random port
 func NewTCPServer(onMessage func(c net.Conn)) (string, io.Closer, error) {
 	return NewTCPServerOnAddress(netaddr.MustParseIPPort("127.0.0.1:0"), onMessage)
 }
 
+// NewTCPServerOnAddress creates a TCP test server on the provided address
 func NewTCPServerOnAddress(addr netaddr.IPPort, onMessage func(c net.Conn)) (string, io.Closer, error) {
 	network := "tcp"
 	if addr.IP().Is6() {
@@ -72,10 +74,12 @@ func NewTCPServerOnAddress(addr netaddr.IPPort, onMessage func(c net.Conn)) (str
 	return ln.Addr().String(), ln, nil
 }
 
+// NewUDPServer creates a UDP test server listening on localhost and a random port
 func NewUDPServer(payloadSize int, onMessage func(b []byte, n int) []byte) (string, io.Closer, error) {
 	return NewUDPServerOnAddress(netaddr.MustParseIPPort("127.0.0.1:0"), payloadSize, onMessage)
 }
 
+// NewUDPServerOnAddress creates a UDP test server on the provided address
 func NewUDPServerOnAddress(addr netaddr.IPPort, payloadSize int, onMessage func(b []byte, n int) []byte) (string, io.Closer, error) {
 	network := "udp"
 	if addr.IP().Is6() {
