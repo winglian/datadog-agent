@@ -4,8 +4,8 @@ hackerino:
   tags: ["runner:main"]
   script:
     - apt update -y && apt install -y wget
-    - wget http://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-gcc-10.2.0-11-any.pkg.tar.zst
-    - wget http://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-gcc-libs-10.2.0-11-any.pkg.tar.zst
-    - aws s3 cp mingw-w64-x86_64-gcc-libs-10.2.0-11-any.pkg.tar.zst s3://dd-agent-omnibus/ --acl public-read
-    - aws s3 cp mingw-w64-x86_64-gcc-10.2.0-11-any.pkg.tar.zst s3://dd-agent-omnibus/ --acl public-read
+    - wget http://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-gcc-10.2.0-5-any.pkg.tar.zst
+    - wget http://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-gcc-libs-10.2.0-5-any.pkg.tar.zst
+    - aws s3 cp mingw-w64-x86_64-gcc-libs-10.2.0-5-any.pkg.tar.zst s3://dd-agent-omnibus/ --acl public-read
+    - aws s3 cp mingw-w64-x86_64-gcc-10.2.0-5-any.pkg.tar.zst s3://dd-agent-omnibus/ --acl public-read
 
