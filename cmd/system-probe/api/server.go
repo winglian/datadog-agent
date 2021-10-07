@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/DataDog/datadog-agent/cmd/system-probe/api/conn_context"
+
 	"github.com/DataDog/datadog-agent/cmd/system-probe/api/module"
 	"github.com/DataDog/datadog-agent/cmd/system-probe/config"
 	"github.com/DataDog/datadog-agent/cmd/system-probe/modules"
@@ -41,7 +43,11 @@ func StartServer(cfg *config.Config) error {
 	mux.Handle("/debug/vars", http.DefaultServeMux)
 
 	go func() {
-		err = http.Serve(conn.GetListener(), mux)
+		srv := &http.Server{
+			Handler:     mux,
+			ConnContext: conn_context.SaveConnInContext,
+		}
+		err = srv.Serve(conn.GetListener())
 		if err != nil && err != http.ErrServerClosed {
 			log.Errorf("error creating HTTP server: %s", err)
 		}

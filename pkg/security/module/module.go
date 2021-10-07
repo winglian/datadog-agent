@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -22,8 +23,10 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
 	"google.golang.org/grpc"
 
+	"github.com/DataDog/datadog-agent/cmd/system-probe/api/conn_context"
 	"github.com/DataDog/datadog-agent/cmd/system-probe/api/module"
 	"github.com/DataDog/datadog-agent/pkg/config/remote/service"
 	"github.com/DataDog/datadog-agent/pkg/config/remote/service/tuf"
@@ -68,10 +71,36 @@ type Module struct {
 }
 
 // Register the runtime security agent module
-func (m *Module) Register(_ *module.Router) error {
+func (m *Module) Register(httpMux *module.Router) error {
 	if err := m.Init(); err != nil {
 		return err
 	}
+
+	httpMux.HandleFunc("/get_creds", func(w http.ResponseWriter, req *http.Request) {
+		conn := conn_context.GetConn(req)
+		uc, ok := conn.(*net.UnixConn)
+		if !ok {
+			return
+		}
+
+		rc, err := uc.SyscallConn()
+		if err != nil {
+			seclog.Errorf("couldn't retrieve syscall conn: %s", err)
+			return
+		}
+
+		var ucred *unix.Ucred
+		err = rc.Control(func(fd uintptr) {
+			ucred, err = unix.GetsockoptUcred(int(fd), unix.SOL_SOCKET, unix.SO_PEERCRED)
+		})
+		if err != nil {
+			seclog.Errorf("couldn't request socket credentials: %s", err)
+		}
+
+		fmt.Printf("%+v\n", ucred)
+		time.Sleep(2 * time.Second)
+		fmt.Printf("%s\n", m.probe.GetResolvers().ProcessResolver.Get(uint32(ucred.Pid)).PathnameStr)
+	})
 
 	return m.Start()
 }
