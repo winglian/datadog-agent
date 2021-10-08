@@ -44,6 +44,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/trace/metrics/timing"
 	"github.com/DataDog/datadog-agent/pkg/trace/osutil"
 	"github.com/DataDog/datadog-agent/pkg/trace/pb"
+	"github.com/DataDog/datadog-agent/pkg/trace/pipeline"
 	"github.com/DataDog/datadog-agent/pkg/trace/sampler"
 	"github.com/DataDog/datadog-agent/pkg/trace/watchdog"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
@@ -595,34 +596,7 @@ func droppedTracesFromHeader(h http.Header, ts *info.TagStats) int64 {
 	return dropped
 }
 
-// Payload specifies information about a set of traces received by the API.
-type Payload struct {
-	// Source specifies information about the source of these traces, such as:
-	// language, interpreter, tracer version, etc.
-	Source *info.TagStats
-
-	// ContainerID specifies the container ID from where this payload originated, as
-	// and if sent by the client.
-	ContainerID string
-
-	// ContainerTags specifies orchestrator tags corresponding to the origin of this
-	// trace (e.g. K8S pod, Docker image, ECS, etc). They are of the type "k1:v1,k2:v2".
-	ContainerTags string
-
-	// Traces contains all the traces received in the payload
-	Traces pb.Traces
-
-	// ClientComputedTopLevel specifies that the client has already marked top-level
-	// spans.
-	ClientComputedTopLevel bool
-
-	// ClientComputedStats reports whether the client has computed and sent over stats
-	// so that the agent doesn't have to.
-	ClientComputedStats bool
-
-	// ClientDroppedP0s specifies the number of P0 traces chunks dropped by the client.
-	ClientDroppedP0s int64
-}
+type Payload = pipeline.Payload
 
 // handleServices handle a request with a list of several services
 func (r *HTTPReceiver) handleServices(v Version, w http.ResponseWriter, req *http.Request) {

@@ -49,7 +49,7 @@ type Endpoint struct {
 // from JSON encoding. Use New() to create an instance.
 type AgentConfig struct {
 	Enabled             bool
-	FargateOrchestrator fargate.OrchestratorName
+	FargateOrchestrator string // Fargate orchestrator, or empty if not Fargate
 
 	// Global
 	Hostname   string
@@ -142,13 +142,16 @@ type Tag struct {
 func New() *AgentConfig {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	orch := fargate.GetOrchestrator(ctx)
+	if orch == fargate.Unknown {
+		orch = ""
+	}
 	cancel()
 	if err := ctx.Err(); err != nil && err != context.Canceled {
 		log.Errorf("Failed to get Fargate orchestrator. This may cause issues if you are in a Fargate instance: %v", err)
 	}
 	return &AgentConfig{
 		Enabled:             true,
-		FargateOrchestrator: orch,
+		FargateOrchestrator: string(orch),
 		DefaultEnv:          "none",
 		Endpoints:           []*Endpoint{{Host: "https://trace.agent.datadoghq.com"}},
 

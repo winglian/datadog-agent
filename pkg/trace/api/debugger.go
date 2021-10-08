@@ -18,7 +18,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/trace/info"
 	"github.com/DataDog/datadog-agent/pkg/trace/logutil"
 	"github.com/DataDog/datadog-agent/pkg/trace/metrics"
-	"github.com/DataDog/datadog-agent/pkg/util/fargate"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
@@ -31,7 +30,7 @@ const (
 // parsed, the returned handler will always return http.StatusInternalServerError with a clarifying message.
 func (r *HTTPReceiver) debuggerProxyHandler() http.Handler {
 	tags := fmt.Sprintf("host:%s,default_env:%s,agent_version:%s", r.conf.Hostname, r.conf.DefaultEnv, info.Version)
-	if orch := r.conf.FargateOrchestrator; orch != fargate.Unknown {
+	if orch := r.conf.FargateOrchestrator; orch != "" {
 		tags = tags + ",orchestrator:fargate_" + strings.ToLower(string(orch))
 	}
 	intake := fmt.Sprintf(logsIntakeURLTemplate, config.DefaultSite)
