@@ -22,12 +22,12 @@ type KprobeStats struct {
 // event name format is p|r_<funcname>_<uid>_<pid>
 var eventRegexp = regexp.MustCompile(`^((?:p|r)_.+?)(_[^_]*)(_[^_]*)$`)
 
-// KprobeProfile is the default path to the kprobe_profile file
-const KprobeProfile = "/sys/kernel/debug/tracing/kprobe_profile"
+// kprobeProfile is the default path to the kprobe_profile file
+const kprobeProfile = "/sys/kernel/debug/tracing/kprobe_profile"
 
 // GetProbeStats gathers stats about the # of kprobes triggered /missed by reading the kprobe_profile file
 func GetProbeStats() map[string]int64 {
-	m, err := readKprobeProfile(KprobeProfile)
+	m, err := readKprobeProfile(kprobeProfile)
 	if err != nil {
 		log.Debugf("error retrieving probe stats: %s", err)
 		return map[string]int64{}
@@ -51,7 +51,7 @@ func GetProbeStats() map[string]int64 {
 // GetProbeTotals returns the total number of kprobes triggered or missed by reading the kprobe_profile file
 func GetProbeTotals() KprobeStats {
 	stats := KprobeStats{}
-	m, err := readKprobeProfile(KprobeProfile)
+	m, err := readKprobeProfile(kprobeProfile)
 	if err != nil {
 		log.Debugf("error retrieving probe stats: %s", err)
 		return stats

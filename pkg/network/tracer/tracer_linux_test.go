@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -43,6 +44,16 @@ func httpSupported(t *testing.T) bool {
 	currKernelVersion, err := kernel.HostVersion()
 	require.NoError(t, err)
 	return currKernelVersion >= kernel.VersionCode(4, 1, 0)
+}
+
+func ebpfTimingsSupported(t *testing.T) bool {
+	if runtime.GOOS != "linux" {
+		return false
+	}
+
+	currKernelVersion, err := kernel.HostVersion()
+	require.NoError(t, err)
+	return currKernelVersion >= kernel.VersionCode(5, 1, 0)
 }
 
 func TestTCPRemoveEntries(t *testing.T) {

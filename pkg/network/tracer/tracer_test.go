@@ -57,14 +57,6 @@ func TestMain(m *testing.M) {
 }
 
 func TestGetStats(t *testing.T) {
-	dnsSupported := dnsSupported(t)
-	cfg := testConfig()
-	tr, err := NewTracer(cfg)
-	require.NoError(t, err)
-	defer tr.Stop()
-
-	<-time.After(time.Second)
-
 	linuxExpected := map[string][]string{
 		"conntrack": {
 			"state_size",
@@ -111,7 +103,6 @@ func TestGetStats(t *testing.T) {
 			"timestamp_micro_secs",
 			"truncated_packets",
 		},
-		"kprobes": nil,
 	}
 	windowsExpected := map[string][]string{
 		"driver":                   nil,
@@ -121,6 +112,19 @@ func TestGetStats(t *testing.T) {
 		"state":                    nil,
 		"dns":                      nil,
 	}
+
+	dnsSupported := dnsSupported(t)
+	cfg := testConfig()
+
+	if ebpfTimingsSupported(t) {
+		t.Log("eBPF timings enabled")
+		cfg.EnableEBPFTimings = true
+	}
+	tr, err := NewTracer(cfg)
+	require.NoError(t, err)
+	t.Cleanup(tr.Stop)
+
+	<-time.After(time.Second)
 
 	expected := linuxExpected
 	if runtime.GOOS == "windows" {
@@ -137,6 +141,27 @@ func TestGetStats(t *testing.T) {
 		require.Contains(t, actual, section, "missing section from telemetry map: %s", section)
 		for _, name := range entries {
 			assert.Contains(t, actual[section], name, "%s actual is missing %s", section, name)
+		}
+
+		if section == "ebpf" {
+			mp, ok := actual[section].(map[string]interface{})
+			require.True(t, ok)
+			for k, v := range mp {
+				if k == "probes" {
+					pStats, ok := v.(map[string]map[string]int64)
+					require.True(t, ok)
+					assert.NotEmpty(t, pStats)
+					for _, pv := range pStats {
+						assert.Contains(t, pv, "hits")
+						assert.Contains(t, pv, "misses")
+						if cfg.EnableEBPFTimings {
+							assert.Contains(t, pv, "avg_ns")
+							assert.Contains(t, pv, "run_count")
+						}
+					}
+					break
+				}
+			}
 		}
 	}
 }

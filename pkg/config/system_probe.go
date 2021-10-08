@@ -140,6 +140,8 @@ func InitSystemProbeConfig(cfg Config) {
 
 	// service monitoring
 	cfg.BindEnvAndSetDefault(join(smNS, "enabled"), false, "DD_SYSTEM_PROBE_SERVICE_MONITORING_ENABLED")
+
+	cfg.BindEnvAndSetDefault(join(netNS, "enable_ebpf_timings"), false)
 }
 
 func join(pieces ...string) string {

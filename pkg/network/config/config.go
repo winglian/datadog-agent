@@ -153,6 +153,9 @@ type Config struct {
 
 	// RecordedQueryTypes enables specific DNS query types to be recorded
 	RecordedQueryTypes []string
+
+	// EnableEBPFTimings enables reporting of kprobe timings via expvars
+	EnableEBPFTimings bool
 }
 
 func join(pieces ...string) string {
@@ -213,6 +216,8 @@ func New() *Config {
 		DriverBufferSize:     cfg.GetInt(join(spNS, "windows.driver_buffer_size")),
 
 		RecordedQueryTypes: cfg.GetStringSlice(join(netNS, "dns_recorded_query_types")),
+
+		EnableEBPFTimings: cfg.GetBool(join(netNS, "enable_ebpf_timings")),
 	}
 
 	if c.OffsetGuessThreshold > maxOffsetThreshold {

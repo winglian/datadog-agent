@@ -39,6 +39,8 @@ type kprobeTracer struct {
 
 	pidCollisions int64
 	removeTuple   *netebpf.ConnTuple
+
+	statsStop func() error
 }
 
 func New(config *config.Config, constants []manager.ConstantEditor) (connection.Tracer, error) {
@@ -146,6 +148,14 @@ func New(config *config.Config, constants []manager.ConstantEditor) (connection.
 		return nil, fmt.Errorf("error retrieving the bpf %s map: %s", probes.TcpStatsMap, err)
 	}
 
+	if config.EnableEBPFTimings {
+		tr.statsStop, err = ddebpf.EnableBPFStats()
+		if err != nil {
+			log.Warnf("error starting ebpf kernel stats: %s", err)
+			config.EnableEBPFTimings = false
+		}
+	}
+
 	return tr, nil
 }
 
@@ -176,6 +186,9 @@ func (t *kprobeTracer) FlushPending() {
 func (t *kprobeTracer) Stop() {
 	_ = t.m.Stop(manager.CleanAll)
 	t.closeConsumer.Stop()
+	if t.statsStop != nil {
+		_ = t.statsStop()
+	}
 }
 
 func (t *kprobeTracer) GetMap(name string) *ebpf.Map {
@@ -253,12 +266,12 @@ func (t *kprobeTracer) Remove(conn *network.ConnectionStats) error {
 	return nil
 }
 
-func (t *kprobeTracer) GetTelemetry() map[string]int64 {
+func (t *kprobeTracer) GetTelemetry() map[string]interface{} {
 	var zero uint64
 	mp, _, err := t.m.GetMap(string(probes.TelemetryMap))
 	if err != nil {
 		log.Warnf("error retrieving telemetry map: %s", err)
-		return map[string]int64{}
+		return map[string]interface{}{}
 	}
 
 	telemetry := &netebpf.Telemetry{}
@@ -271,7 +284,7 @@ func (t *kprobeTracer) GetTelemetry() map[string]int64 {
 	closeStats := t.closeConsumer.GetStats()
 	pidCollisions := atomic.LoadInt64(&t.pidCollisions)
 
-	return map[string]int64{
+	return map[string]interface{}{
 		"closed_conn_polling_lost":     closeStats["lost"],
 		"closed_conn_polling_received": closeStats["rcvd"],
 		"pid_collisions":               pidCollisions,
@@ -282,6 +295,8 @@ func (t *kprobeTracer) GetTelemetry() map[string]int64 {
 		"udp_sends_processed":        int64(telemetry.Udp_sends_processed),
 		"udp_sends_missed":           int64(telemetry.Udp_sends_missed),
 		"conn_stats_max_entries_hit": int64(telemetry.Conn_stats_max_entries_hit),
+
+		"probes": ddebpf.GetProbeTimings(t.m, t.config.EnableEBPFTimings),
 	}
 }
 
