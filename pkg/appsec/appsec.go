@@ -11,8 +11,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/DataDog/datadog-agent/cmd/trace-agent/api/apiutil"
 	coreconfig "github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/DataDog/datadog-agent/pkg/trace/api/apiutil"
 	"github.com/DataDog/datadog-agent/pkg/trace/info"
 	"github.com/DataDog/datadog-agent/pkg/trace/logutil"
 	"github.com/DataDog/datadog-agent/pkg/trace/metrics"

@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/runtime"
-	"github.com/DataDog/datadog-agent/pkg/trace/agent"
 	"github.com/DataDog/datadog-agent/pkg/trace/flags"
 	"github.com/DataDog/datadog-agent/pkg/trace/watchdog"
 	_ "github.com/DataDog/datadog-agent/pkg/util/containers/providers/windows"
@@ -63,7 +62,7 @@ func (m *myservice) Execute(args []string, r <-chan svc.ChangeRequest, changes c
 		}
 	}()
 	elog.Info(0x40000003, ServiceName)
-	agent.Run(ctx)
+	Run(ctx)
 
 	changes <- svc.Status{State: svc.Stopped}
 	return
@@ -164,7 +163,7 @@ func main() {
 	}()
 
 	// Invoke the Agent
-	agent.Run(ctx)
+	Run(ctx)
 }
 
 func startService() error {

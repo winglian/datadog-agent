@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 
-	mainconfig "github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/trace/config"
 	"github.com/DataDog/datadog-go/statsd"
 )
@@ -24,12 +23,12 @@ func findAddr(conf *config.AgentConfig) (string, error) {
 		// UDP enabled
 		return fmt.Sprintf("%s:%d", conf.StatsdHost, conf.StatsdPort), nil
 	}
-	pipename := mainconfig.Datadog.GetString("dogstatsd_pipe_name")
+	pipename := conf.StatsdPipe
 	if pipename != "" {
 		// Windows Pipes can be used
 		return `\\.\pipe\` + pipename, nil
 	}
-	sockname := mainconfig.Datadog.GetString("dogstatsd_socket")
+	sockname := conf.StatsdSocket
 	if sockname != "" {
 		// Unix sockets can be used
 		return `unix://` + sockname, nil

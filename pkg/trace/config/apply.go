@@ -153,6 +153,12 @@ func (c *AgentConfig) applyDatadogConfig() error {
 	if config.Datadog.IsSet("dogstatsd_port") {
 		c.StatsdPort = config.Datadog.GetInt("dogstatsd_port")
 	}
+	if config.Datadog.IsSet("dogstatsd_pipe_name") {
+		c.StatsdPipe = config.Datadog.GetString("dogstatsd_pipe_name")
+	}
+	if config.Datadog.IsSet("dogstatsd_socket") {
+		c.StatsdSocket = config.Datadog.GetString("dogstatsd_socket")
+	}
 
 	site := config.Datadog.GetString("site")
 	if site != "" {

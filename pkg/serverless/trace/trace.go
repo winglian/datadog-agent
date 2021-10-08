@@ -8,15 +8,15 @@ package trace
 import (
 	"context"
 
+	"github.com/DataDog/datadog-agent/cmd/trace-agent/api"
 	ddConfig "github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/DataDog/datadog-agent/pkg/trace/agent"
 	"github.com/DataDog/datadog-agent/pkg/trace/config"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 // ServerlessTraceAgent represents a trace agent in a serverless context
 type ServerlessTraceAgent struct {
-	ta     *agent.Agent
+	ta     *api.Agent
 	cancel context.CancelFunc
 }
 
@@ -50,7 +50,7 @@ func (s *ServerlessTraceAgent) Start(enabled bool, loadConfig Load) {
 			context, cancel := context.WithCancel(context.Background())
 			tc.Hostname = ""
 			tc.SynchronousFlushing = true
-			s.ta = agent.NewAgent(context, tc)
+			s.ta = api.NewAgent(context, tc)
 			s.cancel = cancel
 			go func() {
 				s.ta.Run()
@@ -60,7 +60,7 @@ func (s *ServerlessTraceAgent) Start(enabled bool, loadConfig Load) {
 }
 
 // Get returns the trace agent instance
-func (s *ServerlessTraceAgent) Get() *agent.Agent {
+func (s *ServerlessTraceAgent) Get() *api.Agent {
 	return s.ta
 }
 

@@ -3,12 +3,11 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
-package agent
+package api
 
 import (
 	"context"
 
-	"github.com/DataDog/datadog-agent/pkg/trace/api"
 	"github.com/DataDog/datadog-agent/pkg/trace/config"
 	"github.com/DataDog/datadog-agent/pkg/trace/pipeline"
 	"github.com/DataDog/datadog-agent/pkg/trace/sampler"
@@ -18,8 +17,8 @@ import (
 // Agent struct holds all the sub-routines structs and make the data flow between them
 type Agent struct {
 	Processor    *pipeline.Processor
-	Receiver     *api.HTTPReceiver
-	OTLPReceiver *api.OTLPReceiver
+	Receiver     *HTTPReceiver
+	OTLPReceiver *OTLPReceiver
 
 	// Used to synchronize on a clean exit
 	ctx context.Context
@@ -29,7 +28,7 @@ type Agent struct {
 // which may be cancelled in order to gracefully stop the agent.
 func NewAgent(ctx context.Context, conf *config.AgentConfig) *Agent {
 	dynConf := sampler.NewDynamicConfig(conf.DefaultEnv)
-	var httprcv *api.HTTPReceiver
+	var httprcv *HTTPReceiver
 	proc := pipeline.NewProcessor(&pipeline.Config{
 		Agent: conf,
 		Rates: dynConf,
@@ -40,12 +39,12 @@ func NewAgent(ctx context.Context, conf *config.AgentConfig) *Agent {
 			return httprcv.RateLimiter.RealRate(), httprcv.RateLimiter.Active()
 		},
 	})
-	httprcv = api.NewHTTPReceiver(conf, dynConf, proc.In, proc)
+	httprcv = NewHTTPReceiver(conf, dynConf, proc.In, proc)
 	agnt := &Agent{
 		ctx:          ctx,
 		Processor:    proc,
 		Receiver:     httprcv,
-		OTLPReceiver: api.NewOTLPReceiver(proc.In, conf.OTLPReceiver),
+		OTLPReceiver: NewOTLPReceiver(proc.In, conf.OTLPReceiver),
 	}
 	return agnt
 }

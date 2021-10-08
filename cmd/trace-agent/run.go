@@ -3,7 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
-package agent
+package main
 
 import (
 	"context"
@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/DataDog/datadog-agent/cmd/manager"
+	"github.com/DataDog/datadog-agent/cmd/trace-agent/api"
 	coreconfig "github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/pidfile"
 	"github.com/DataDog/datadog-agent/pkg/tagger"
@@ -163,7 +164,7 @@ func Run(ctx context.Context) {
 		}
 	}()
 
-	agnt := NewAgent(ctx, cfg)
+	agnt := api.NewAgent(ctx, cfg)
 	log.Infof("Trace agent running on host %s", cfg.Hostname)
 	if coreconfig.Datadog.GetBool("apm_config.internal_profiling.enabled") {
 		runProfiling(cfg)
