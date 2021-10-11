@@ -16,6 +16,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/cmd/manager"
 	"github.com/DataDog/datadog-agent/cmd/trace-agent/api"
+	mainconfig "github.com/DataDog/datadog-agent/cmd/trace-agent/config"
 	coreconfig "github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/pidfile"
 	"github.com/DataDog/datadog-agent/pkg/tagger"
@@ -50,10 +51,10 @@ func Run(ctx context.Context) {
 		return
 	}
 
-	cfg, err := config.Load(flags.ConfigPath)
+	cfg, err := mainconfig.Load(flags.ConfigPath)
 	if err != nil {
-		if err == config.ErrMissingAPIKey {
-			fmt.Println(config.ErrMissingAPIKey)
+		if err == mainconfig.ErrMissingAPIKey {
+			fmt.Println(mainconfig.ErrMissingAPIKey)
 
 			// a sleep is necessary to ensure that supervisor registers this process as "STARTED"
 			// If the exit is "too quick", we enter a BACKOFF->FATAL loop even though this is an expected exit

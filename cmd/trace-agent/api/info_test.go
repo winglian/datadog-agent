@@ -95,6 +95,7 @@ func TestInfoHandler(t *testing.T) {
 		AnalyzedSpansByService:      map[string]map[string]float64{"X": {"Y": 2.4}},
 		DDAgentBin:                  "/path/to/core/agent",
 		Obfuscation:                 obfCfg,
+		ProxyTransportFunc:          config.DefaultProxyTransportFunc,
 	}
 
 	var testCases = []struct {

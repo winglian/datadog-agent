@@ -31,12 +31,13 @@ import (
 	"github.com/tinylib/msgp/msgp"
 
 	"github.com/DataDog/datadog-agent/cmd/trace-agent/api/apiutil"
+	"github.com/DataDog/datadog-agent/cmd/trace-agent/config"
 	"github.com/DataDog/datadog-agent/pkg/appsec"
 	mainconfig "github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
 	"github.com/DataDog/datadog-agent/pkg/tagger"
 	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
-	"github.com/DataDog/datadog-agent/pkg/trace/config"
+	traceconfig "github.com/DataDog/datadog-agent/pkg/trace/config"
 	"github.com/DataDog/datadog-agent/pkg/trace/config/features"
 	"github.com/DataDog/datadog-agent/pkg/trace/info"
 	"github.com/DataDog/datadog-agent/pkg/trace/logutil"
@@ -73,7 +74,7 @@ type HTTPReceiver struct {
 	RateLimiter *rateLimiter
 
 	out              chan *Payload
-	conf             *config.AgentConfig
+	conf             *traceconfig.AgentConfig
 	dynConf          *sampler.DynamicConfig
 	server           *http.Server
 	statsProcessor   StatsProcessor
@@ -88,7 +89,7 @@ type HTTPReceiver struct {
 }
 
 // NewHTTPReceiver returns a pointer to a new HTTPReceiver
-func NewHTTPReceiver(conf *config.AgentConfig, dynConf *sampler.DynamicConfig, out chan *Payload, statsProcessor StatsProcessor) *HTTPReceiver {
+func NewHTTPReceiver(conf *traceconfig.AgentConfig, dynConf *sampler.DynamicConfig, out chan *Payload, statsProcessor StatsProcessor) *HTTPReceiver {
 	rateLimiterResponse := http.StatusOK
 	if features.Has("429") {
 		rateLimiterResponse = http.StatusTooManyRequests

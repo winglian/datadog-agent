@@ -6,31 +6,17 @@
 package config
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
-	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"net/url"
-	"os"
-	"os/exec"
-	"strings"
+	"regexp"
 	"time"
 
-	"github.com/DataDog/datadog-agent/pkg/config"
-	coreconfig "github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
-	"github.com/DataDog/datadog-agent/pkg/trace/config/features"
 	"github.com/DataDog/datadog-agent/pkg/util/fargate"
-	"github.com/DataDog/datadog-agent/pkg/util/grpc"
-	httputils "github.com/DataDog/datadog-agent/pkg/util/http"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
-
-// ErrMissingAPIKey is returned when the config could not be validated due to missing API key.
-var ErrMissingAPIKey = errors.New("you must specify an API Key, either via a configuration file or the DD_API_KEY env var")
 
 // Endpoint specifies an endpoint that the trace agent will write data (traces, stats & services) to.
 type Endpoint struct {
@@ -133,6 +119,121 @@ type AgentConfig struct {
 
 	// OTLPReceiver holds the configuration for OpenTelemetry receiver.
 	OTLPReceiver *OTLP
+
+	// ProxyTransportFunc returns the Transport's Proxy function to use.
+	ProxyTransportFunc func() func(*http.Request) (*url.URL, error) `json:",omitempty"`
+}
+
+// OTLP holds the configuration for the OpenTelemetry receiver.
+type OTLP struct {
+	// BindHost specifies the host to bind the receiver to.
+	BindHost string `mapstructure:"-"`
+
+	// HTTPPort specifies the port to use for the plain HTTP receiver.
+	// If unset (or 0), the receiver will be off.
+	HTTPPort int `mapstructure:"http_port"`
+
+	// GRPCPort specifies the port to use for the plain HTTP receiver.
+	// If unset (or 0), the receiver will be off.
+	GRPCPort int `mapstructure:"grpc_port"`
+
+	// MaxRequestBytes specifies the maximum number of bytes that will be read
+	// from an incoming HTTP request.
+	MaxRequestBytes int64 `mapstructure:"-"`
+}
+
+// ObfuscationConfig holds the configuration for obfuscating sensitive data
+// for various span types.
+type ObfuscationConfig struct {
+	// ES holds the obfuscation configuration for ElasticSearch bodies.
+	ES JSONObfuscationConfig `mapstructure:"elasticsearch"`
+
+	// Mongo holds the obfuscation configuration for MongoDB queries.
+	Mongo JSONObfuscationConfig `mapstructure:"mongodb"`
+
+	// SQLExecPlan holds the obfuscation configuration for SQL Exec Plans. This is strictly for safety related obfuscation,
+	// not normalization. Normalization of exec plans is configured in SQLExecPlanNormalize.
+	SQLExecPlan JSONObfuscationConfig `mapstructure:"sql_exec_plan"`
+
+	// SQLExecPlanNormalize holds the normalization configuration for SQL Exec Plans.
+	SQLExecPlanNormalize JSONObfuscationConfig `mapstructure:"sql_exec_plan_normalize"`
+
+	// HTTP holds the obfuscation settings for HTTP URLs.
+	HTTP HTTPObfuscationConfig `mapstructure:"http"`
+
+	// RemoveStackTraces specifies whether stack traces should be removed.
+	// More specifically "error.stack" tag values will be cleared.
+	RemoveStackTraces bool `mapstructure:"remove_stack_traces"`
+
+	// Redis holds the configuration for obfuscating the "redis.raw_command" tag
+	// for spans of type "redis".
+	Redis Enablable `mapstructure:"redis"`
+
+	// Memcached holds the configuration for obfuscating the "memcached.command" tag
+	// for spans of type "memcached".
+	Memcached Enablable `mapstructure:"memcached"`
+}
+
+// HTTPObfuscationConfig holds the configuration settings for HTTP obfuscation.
+type HTTPObfuscationConfig struct {
+	// RemoveQueryStrings determines query strings to be removed from HTTP URLs.
+	RemoveQueryString bool `mapstructure:"remove_query_string" json:"remove_query_string"`
+
+	// RemovePathDigits determines digits in path segments to be obfuscated.
+	RemovePathDigits bool `mapstructure:"remove_paths_with_digits" json:"remove_path_digits"`
+}
+
+// Enablable can represent any option that has an "enabled" boolean sub-field.
+type Enablable struct {
+	Enabled bool `mapstructure:"enabled"`
+}
+
+// JSONObfuscationConfig holds the obfuscation configuration for sensitive
+// data found in JSON objects.
+type JSONObfuscationConfig struct {
+	// Enabled will specify whether obfuscation should be enabled.
+	Enabled bool `mapstructure:"enabled"`
+
+	// KeepValues will specify a set of keys for which their values will
+	// not be obfuscated.
+	KeepValues []string `mapstructure:"keep_values"`
+
+	// ObfuscateSQLValues will specify a set of keys for which their values
+	// will be passed through SQL obfuscation
+	ObfuscateSQLValues []string `mapstructure:"obfuscate_sql_values"`
+}
+
+// ReplaceRule specifies a replace rule.
+type ReplaceRule struct {
+	// Name specifies the name of the tag that the replace rule addresses. However,
+	// some exceptions apply such as:
+	// • "resource.name" will target the resource
+	// • "*" will target all tags and the resource
+	Name string `mapstructure:"name"`
+
+	// Pattern specifies the regexp pattern to be used when replacing. It must compile.
+	Pattern string `mapstructure:"pattern"`
+
+	// Re holds the compiled Pattern and is only used internally.
+	Re *regexp.Regexp `mapstructure:"-"`
+
+	// Repl specifies the replacement string to be used when Pattern matches.
+	Repl string `mapstructure:"repl"`
+}
+
+// WriterConfig specifies configuration for an API writer.
+type WriterConfig struct {
+	// ConnectionLimit specifies the maximum number of concurrent outgoing
+	// connections allowed for the sender.
+	ConnectionLimit int `mapstructure:"connection_limit"`
+
+	// QueueSize specifies the maximum number or payloads allowed to be queued
+	// in the sender.
+	QueueSize int `mapstructure:"queue_size"`
+
+	// FlushPeriodSeconds specifies the frequency at which the writer's buffer
+	// will be flushed to the sender, in seconds. Fractions are permitted.
+	FlushPeriodSeconds float64 `mapstructure:"flush_period_seconds"`
 }
 
 // Tag represents a key/value pair.
@@ -190,7 +291,13 @@ func New() *AgentConfig {
 
 		DDAgentBin:   defaultDDAgentBin,
 		OTLPReceiver: &OTLP{},
+
+		ProxyTransportFunc: DefaultProxyTransportFunc,
 	}
+}
+
+var DefaultProxyTransportFunc = func() func(*http.Request) (*url.URL, error) {
+	return http.ProxyFromEnvironment
 }
 
 // APIKey returns the first (main) endpoint's API key.
@@ -199,83 +306,6 @@ func (c *AgentConfig) APIKey() string {
 		return ""
 	}
 	return c.Endpoints[0].APIKey
-}
-
-// Validate validates if the current configuration is good for the agent to start with.
-func (c *AgentConfig) validate() error {
-	if len(c.Endpoints) == 0 || c.Endpoints[0].APIKey == "" {
-		return ErrMissingAPIKey
-	}
-	if c.DDAgentBin == "" {
-		return errors.New("agent binary path not set")
-	}
-	if c.Hostname == "" {
-		// no user-set hostname, try to acquire
-		if err := c.acquireHostname(); err != nil {
-			log.Debugf("Could not get hostname via gRPC: %v. Falling back to other methods.", err)
-			if err := c.acquireHostnameFallback(); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-// fallbackHostnameFunc specifies the function to use for obtaining the hostname
-// when it can not be obtained by any other means. It is replaced in tests.
-var fallbackHostnameFunc = os.Hostname
-
-// acquireHostname attempts to acquire a hostname for the trace-agent by connecting to the core agent's
-// gRPC endpoints. If it fails, it will return an error.
-func (c *AgentConfig) acquireHostname() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	client, err := grpc.GetDDAgentClient(ctx)
-	if err != nil {
-		return err
-	}
-	reply, err := client.GetHostname(ctx, &pbgo.HostnameRequest{})
-	if err != nil {
-		return err
-	}
-	if features.Has("disable_empty_hostname") && reply.Hostname == "" {
-		log.Debugf("Acquired empty hostname from gRPC but it's disallowed.")
-		return errors.New("empty hostname disallowed")
-	}
-	c.Hostname = reply.Hostname
-	log.Debugf("Acquired hostname from gRPC: %s", c.Hostname)
-	return nil
-}
-
-// acquireHostnameFallback attempts to acquire a hostname for this configuration. It
-// tries to shell out to the infrastructure agent for this, if DD_AGENT_BIN is
-// set, otherwise falling back to os.Hostname.
-func (c *AgentConfig) acquireHostnameFallback() error {
-	var out bytes.Buffer
-	cmd := exec.Command(c.DDAgentBin, "hostname")
-	cmd.Env = append(os.Environ(), cmd.Env...) // needed for Windows
-	cmd.Stdout = &out
-	err := cmd.Run()
-	c.Hostname = strings.TrimSpace(out.String())
-	if emptyDisallowed := features.Has("disable_empty_hostname") && c.Hostname == ""; err != nil || emptyDisallowed {
-		if emptyDisallowed {
-			log.Debugf("Core agent returned empty hostname but is disallowed by disable_empty_hostname feature flag. Falling back to os.Hostname.")
-		}
-		// There was either an error retrieving the hostname from the core agent, or
-		// it was empty and its disallowed by the disable_empty_hostname feature flag.
-		host, err2 := fallbackHostnameFunc()
-		if err2 != nil {
-			return fmt.Errorf("couldn't get hostname from agent (%q), nor from OS (%q). Try specifying it by means of config or the DD_HOSTNAME env var", err, err2)
-		}
-		if emptyDisallowed && host == "" {
-			return errors.New("empty hostname disallowed")
-		}
-		c.Hostname = host
-		log.Debugf("Acquired hostname from OS: %q. Core agent was unreachable at %q: %v.", c.Hostname, c.DDAgentBin, err)
-		return nil
-	}
-	log.Debugf("Acquired hostname from core agent (%s): %q.", c.DDAgentBin, c.Hostname)
-	return nil
 }
 
 // NewHTTPClient returns a new http.Client to be used for outgoing connections to the
@@ -293,7 +323,7 @@ func (c *AgentConfig) NewHTTPTransport() *http.Transport {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: c.SkipSSLValidation},
 		// below field values are from http.DefaultTransport (go1.12)
-		Proxy: http.ProxyFromEnvironment,
+		Proxy: c.ProxyTransportFunc(),
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
@@ -304,34 +334,5 @@ func (c *AgentConfig) NewHTTPTransport() *http.Transport {
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
-	if p := coreconfig.GetProxies(); p != nil {
-		transport.Proxy = httputils.GetProxyTransportFunc(p)
-	}
 	return transport
-}
-
-// Load returns a new configuration based on the given path. The path must not necessarily exist
-// and a valid configuration can be returned based on defaults and environment variables. If a
-// valid configuration can not be obtained, an error is returned.
-func Load(path string) (*AgentConfig, error) {
-	cfg, err := prepareConfig(path)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return nil, err
-		}
-	} else {
-		log.Infof("Loaded configuration: %s", cfg.ConfigPath)
-	}
-	cfg.applyDatadogConfig()
-	return cfg, cfg.validate()
-}
-
-func prepareConfig(path string) (*AgentConfig, error) {
-	cfg := New()
-	config.Datadog.SetConfigFile(path)
-	if _, err := config.Load(); err != nil {
-		return cfg, err
-	}
-	cfg.ConfigPath = path
-	return cfg, nil
 }
