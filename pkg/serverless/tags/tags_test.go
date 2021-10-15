@@ -123,7 +123,11 @@ func TestBuildTagMapFromArnCompleteWithEnvAndVersionAndService(t *testing.T) {
 
 	arn := "arn:aws:lambda:us-east-1:123456789012:function:my-function"
 	tagMap := BuildTagMap(arn, []string{"tag0:value0", "TAG1:VALUE1"})
+<<<<<<< HEAD
 	assert.Equal(t, 15, len(tagMap))
+=======
+	assert.Equal(t, 14, len(tagMap))
+>>>>>>> maxday/7.32.0-rc.7
 	assert.Equal(t, "mytestenv", tagMap["env"])
 	assert.Equal(t, "mytestversion", tagMap["version"])
 	assert.Equal(t, "mytestservice", tagMap["service"])
