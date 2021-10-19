@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/DataDog/datadog-agent/pkg/util/cleaner"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
@@ -78,7 +79,7 @@ func (f *RedactingWriter) Write(p []byte) (int, error) {
 		return 0, errors.New("No viable target defined")
 	}
 
-	cleaned, err := log.CredentialsCleanerBytes(p)
+	cleaned, err := cleaner.CredentialsCleanerBytes(p)
 	if err != nil {
 		return 0, err
 	}
