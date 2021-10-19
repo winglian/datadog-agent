@@ -6,6 +6,7 @@
 package aggregator
 
 import (
+	"github.com/DataDog/sketches-go/ddsketch"
 	"math"
 
 	"github.com/DataDog/datadog-agent/pkg/aggregator/ckey"
@@ -32,6 +33,18 @@ func (m sketchMap) insert(ts int64, ck ckey.ContextKey, v float64, sampleRate fl
 	}
 
 	m.getOrCreate(ts, ck).Insert(v, sampleRate)
+	return true
+}
+
+func (m sketchMap) insertSketch(ts int64, ck ckey.ContextKey, sketch *ddsketch.DDSketch) bool {
+	q := m.getOrCreate(ts, ck)
+	sketch.ForEach(func(value, count float64) bool {
+		if count > 0 && value >= 0{
+			// skip 0 counts, and negative values.
+			q.Insert(value, 1/count)
+		}
+		return false
+	})
 	return true
 }
 

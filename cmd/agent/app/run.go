@@ -8,6 +8,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"github.com/DataDog/datadog-agent/cmd/agent/pkg/distributions"
 	"net/http"
 	"os"
 	"os/signal"
@@ -387,6 +388,9 @@ func StartAgent() error {
 	s := serializer.NewSerializer(common.Forwarder, orchestratorForwarder)
 	agg := aggregator.InitAggregator(s, eventPlatformForwarder, hostname)
 	agg.AddAgentStartupTelemetry(version.AgentVersion)
+
+	distServer := distributions.NewServer(agg)
+	distServer.Start()
 
 	// start dogstatsd
 	if config.Datadog.GetBool("use_dogstatsd") {

@@ -119,7 +119,8 @@ var (
 	aggregatorOrchestratorMetadataErrors       = expvar.Int{}
 	aggregatorDogstatsdContexts                = expvar.Int{}
 	aggregatorEventPlatformEvents              = expvar.Map{}
-	aggregatorEventPlatformEventsErrors        = expvar.Map{}
+	aggregatorEventPlatformEventsErrors = expvar.Map{}
+	aggregatorDistributions             = expvar.Int{}
 
 	tlmFlush = telemetry.NewCounter("aggregator", "flush",
 		[]string{"data_type", "state"}, "Number of metrics/service checks/events flushed")
@@ -159,6 +160,7 @@ func init() {
 	aggregatorExpvars.Set("EventsFlushed", &aggregatorEventsFlushed)
 	aggregatorExpvars.Set("NumberOfFlush", &aggregatorNumberOfFlush)
 	aggregatorExpvars.Set("DogstatsdMetricSample", &aggregatorDogstatsdMetricSample)
+	aggregatorExpvars.Set("Distributions", &aggregatorDistributions)
 	aggregatorExpvars.Set("ChecksMetricSample", &aggregatorChecksMetricSample)
 	aggregatorExpvars.Set("ChecksHistogramBucketMetricSample", &aggregatorCheckHistogramBucketMetricSample)
 	aggregatorExpvars.Set("ServiceCheck", &aggregatorServiceCheck)
@@ -214,6 +216,7 @@ type BufferedAggregator struct {
 	bufferedEventIn        chan []*metrics.Event
 
 	metricIn       chan *metrics.MetricSample
+	distributionsIn       chan *metrics.Distribution
 	eventIn        chan metrics.Event
 	serviceCheckIn chan metrics.ServiceCheck
 
@@ -270,6 +273,7 @@ func NewBufferedAggregator(s serializer.MetricSerializer, eventPlatformForwarder
 		bufferedEventIn:        make(chan []*metrics.Event, bufferSize),
 
 		metricIn:       make(chan *metrics.MetricSample, bufferSize),
+		distributionsIn:       make(chan *metrics.Distribution, bufferSize),
 		serviceCheckIn: make(chan metrics.ServiceCheck, bufferSize),
 		eventIn:        make(chan metrics.Event, bufferSize),
 
@@ -318,6 +322,10 @@ func (agg *BufferedAggregator) IsInputQueueEmpty() bool {
 // GetChannels returns a channel which can be subsequently used to send MetricSamples, Event or ServiceCheck
 func (agg *BufferedAggregator) GetChannels() (chan *metrics.MetricSample, chan metrics.Event, chan metrics.ServiceCheck) {
 	return agg.metricIn, agg.eventIn, agg.serviceCheckIn
+}
+
+func (agg *BufferedAggregator) GetDistributionsChannel() chan *metrics.Distribution {
+	return agg.distributionsIn
 }
 
 // GetBufferedChannels returns a channel which can be subsequently used to send MetricSamples, Event or ServiceCheck
@@ -450,6 +458,10 @@ func (agg *BufferedAggregator) addEvent(e metrics.Event) {
 // addSample adds the metric sample
 func (agg *BufferedAggregator) addSample(metricSample *metrics.MetricSample, timestamp float64) {
 	agg.statsdSampler.addSample(metricSample, timestamp)
+}
+
+func (agg *BufferedAggregator) addSketch(distribution *metrics.Distribution, timestamp float64) {
+	agg.statsdSampler.addSketch(distribution, timestamp)
 }
 
 // GetSeriesAndSketches grabs all the series & sketches from the queue and clears the queue
@@ -763,6 +775,10 @@ func (agg *BufferedAggregator) run() {
 			aggregatorDogstatsdMetricSample.Add(1)
 			tlmProcessed.Inc("dogstatsd_metrics")
 			agg.addSample(metric, timeNowNano())
+		case distribution := <-agg.distributionsIn:
+			aggregatorDistributions.Add(1)
+			tlmProcessed.Inc("distributions")
+			agg.addSketch(distribution, timeNowNano())
 		case event := <-agg.eventIn:
 			aggregatorEvent.Add(1)
 			tlmProcessed.Inc("events")

@@ -52,6 +52,13 @@ func (s *TimeSampler) isBucketStillOpen(bucketStartTimestamp, timestamp int64) b
 	return bucketStartTimestamp+s.interval > timestamp
 }
 
+func (s *TimeSampler) addSketch(distribution *metrics.Distribution, timestamp float64) {
+	log.Info("Adding sketch")
+	contextKey := s.contextResolver.trackContext(&metrics.MetricSample{Name: distribution.Name, Tags: distribution.Tags}, timestamp)
+	bucketStart := s.calculateBucketStart(timestamp)
+	s.sketchMap.insertSketch(bucketStart, contextKey, distribution.Value)
+}
+
 // Add the metricSample to the correct bucket
 func (s *TimeSampler) addSample(metricSample *metrics.MetricSample, timestamp float64) {
 	// Keep track of the context

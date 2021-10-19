@@ -8,6 +8,7 @@ package metrics
 import (
 	"github.com/DataDog/datadog-agent/pkg/tagger"
 	"github.com/DataDog/datadog-agent/pkg/util"
+	"github.com/DataDog/sketches-go/ddsketch"
 )
 
 // MetricType is the representation of an aggregator metric type
@@ -80,6 +81,13 @@ type MetricSample struct {
 	OriginID        string
 	K8sOriginID     string
 	Cardinality     string
+}
+
+type Distribution struct {
+	Name string
+	Tags []string
+	Value *ddsketch.DDSketch
+	Timestamp       float64
 }
 
 // Implement the MetricSampleContext interface
