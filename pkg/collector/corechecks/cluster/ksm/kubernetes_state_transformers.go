@@ -353,6 +353,7 @@ func validateJob(val float64, tags []string) ([]string, bool) {
 
 // jobServiceCheck sends a service check for jobs
 func jobServiceCheck(s aggregator.Sender, metric ksmstore.DDMetric, status metrics.ServiceCheckStatus, hostname string, tags []string) {
+	// !TAGS modifying tags in place
 	if strippedTags, valid := validateJob(metric.Val, tags); valid {
 		s.ServiceCheck(ksmMetricPrefix+"job.complete", status, hostname, strippedTags, "")
 	}
@@ -388,6 +389,7 @@ func jobStatusFailedTransformer(s aggregator.Sender, name string, metric ksmstor
 	}
 
 	if reasonTagIndex != -1 {
+		// !TAGS modifying tags in place
 		tags = append(tags[:reasonTagIndex], tags[reasonTagIndex+1:]...)
 	}
 

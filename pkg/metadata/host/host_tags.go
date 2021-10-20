@@ -27,6 +27,7 @@ type providerDef struct {
 
 // this is a "low-tech" version of tagger/utils/taglist.go
 // but host tags are handled separately here for now
+// !TAGS splitting foo:bar1,bar2,bar2 -> foo:bar1, foo:bar2, foo:bar3 with variable separator
 func appendAndSplitTags(target []string, tags []string, splits map[string]string) []string {
 	if len(splits) == 0 {
 		return append(target, tags...)
@@ -59,6 +60,7 @@ func appendAndSplitTags(target []string, tags []string, splits map[string]string
 func GetHostTags(ctx context.Context, cached bool) *Tags {
 	key := buildKey("hostTags")
 	if cached {
+		// !TAGS caching tags by key
 		if x, found := cache.Cache.Get(key); found {
 			tags := x.(*Tags)
 			return tags
@@ -143,6 +145,7 @@ func GetHostTags(ctx context.Context, cached bool) *Tags {
 	}
 
 	t := &Tags{
+		// !TAGS sortuniq
 		System:              util.SortUniqInPlace(hostTags),
 		GoogleCloudPlatform: gceTags,
 	}

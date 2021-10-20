@@ -222,6 +222,7 @@ func (c *Data) MergeAdditionalTags(tags []string) error {
 	if err != nil {
 		return err
 	}
+	// !TAGS tag building by appending single tags
 	rTags, _ := rawConfig["tags"].([]interface{})
 	// convert raw tags to string
 	cTags := make([]string, len(rTags))
@@ -304,6 +305,7 @@ func (c *Config) Digest() string {
 			log.Debugf("Error while calculating config digest for %s, skipping: %v", c.Name, err)
 			continue
 		}
+		// !TAGS tags included in larger hash
 		h.Write(out) //nolint:errcheck
 	}
 	h.Write([]byte(c.InitConfig)) //nolint:errcheck

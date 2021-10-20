@@ -65,6 +65,7 @@ func nextField(message []byte) ([]byte, []byte) {
 }
 
 func (p *parser) parseTags(rawTags []byte) []string {
+	// !TAGS parse from dsd-format rawTags
 	if len(rawTags) == 0 {
 		return nil
 	}

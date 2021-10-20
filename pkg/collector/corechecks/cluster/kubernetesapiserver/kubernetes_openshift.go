@@ -59,6 +59,7 @@ func (k *KubeASCheck) reportClusterQuotas(quotas []osq.ClusterResourceQuota, sen
 		k.reportQuota(remaining, "openshift.clusterquota", "remaining", quotaTags, sender)
 
 		for _, nsQuota := range quota.Status.Namespaces {
+			// !TAGS overwriting slice repeatedly
 			nsTags := append(quotaTags, fmt.Sprintf("kube_namespace:%s", nsQuota.Namespace))
 			k.reportQuota(nsQuota.Status.Hard, "openshift.appliedclusterquota", "limit", nsTags, sender)
 			k.reportQuota(nsQuota.Status.Used, "openshift.appliedclusterquota", "used", nsTags, sender)

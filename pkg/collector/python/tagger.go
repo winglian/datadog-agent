@@ -42,6 +42,7 @@ func Tags(id *C.char, cardinality C.int) **C.char {
 		return nil
 	}
 
+	// !TAGS conversion to C array
 	cTags := C._malloc(C.size_t(length+1) * C.size_t(unsafe.Sizeof(uintptr(0))))
 	if cTags == nil {
 		log.Errorf("could not allocate memory for tags")

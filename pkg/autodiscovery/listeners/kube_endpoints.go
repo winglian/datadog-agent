@@ -308,6 +308,7 @@ func processEndpoints(kep *v1.Endpoints, alreadyExistingService bool, tags []str
 				creationTime: integration.After,
 				hosts:        map[string]string{"endpoint": host.IP},
 				ports:        ports,
+				// !TAGS initialize from strings with formatting
 				tags: []string{
 					fmt.Sprintf("kube_service:%s", kep.Name),
 					fmt.Sprintf("kube_namespace:%s", kep.Namespace),

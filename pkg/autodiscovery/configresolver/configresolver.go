@@ -10,9 +10,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/DataDog/datadog-agent/pkg/util/tmplvar"
 	"os"
 	"strconv"
+
+	"github.com/DataDog/datadog-agent/pkg/util/tmplvar"
 
 	"github.com/DataDog/datadog-agent/pkg/autodiscovery/integration"
 	"github.com/DataDog/datadog-agent/pkg/autodiscovery/listeners"
@@ -109,6 +110,7 @@ func Resolve(tpl integration.Config, svc listeners.Service) (integration.Config,
 		return resolvedConfig, "", fmt.Errorf("%w, skipping service %s", err, svc.GetEntity())
 	}
 
+	// !TAGS hashed to a string here
 	tags, tagsHash, err := svc.GetTags()
 	if err != nil {
 		return resolvedConfig, "", fmt.Errorf("couldn't get tags for service '%s', err: %w", svc.GetEntity(), err)
@@ -194,6 +196,7 @@ func resolveDataWithEnvs(data integration.Data) ([]byte, error) {
 
 func addServiceTags(resolvedConfig *integration.Config, tags []string) error {
 	for i := 0; i < len(resolvedConfig.Instances); i++ {
+		// !TAGS union operation
 		if err := resolvedConfig.Instances[i].MergeAdditionalTags(tags); err != nil {
 			return err
 		}

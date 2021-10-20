@@ -181,6 +181,7 @@ func (c *CheckConfig) RefreshWithProfile(profile string) error {
 
 // UpdateDeviceIDAndTags updates DeviceID and DeviceIDTags
 func (c *CheckConfig) UpdateDeviceIDAndTags() {
+	// !TAGS SortUniqInPlace - why do these need to be sorted?
 	c.DeviceIDTags = util.SortUniqInPlace(c.getDeviceIDTags())
 	c.DeviceID = c.Namespace + ":" + c.IPAddress
 }
@@ -192,6 +193,7 @@ func (c *CheckConfig) addUptimeMetric() {
 
 // GetStaticTags return static tags built from configuration
 func (c *CheckConfig) GetStaticTags() []string {
+	// !TAGS copy tagset
 	tags := common.CopyStrings(c.ExtraTags)
 	tags = append(tags, deviceNamespaceTagKey+":"+c.Namespace)
 	if c.IPAddress != "" {
@@ -215,6 +217,7 @@ func (c *CheckConfig) GetNetworkTags() []string {
 // warning: changing getDeviceIDTags logic might lead to different deviceID
 func (c *CheckConfig) getDeviceIDTags() []string {
 	tags := []string{deviceNamespaceTagKey + ":" + c.Namespace, deviceIPTagKey + ":" + c.IPAddress}
+	// !TAGS sort (again?)
 	sort.Strings(tags)
 	return tags
 }
@@ -638,6 +641,7 @@ func GetProfileForSysObjectID(profiles profileDefinitionMap, sysObjectID string)
 }
 
 func getSubnetFromTags(tags []string) (string, error) {
+	// !TAGS parsing information passed within agent as a tag
 	for _, tag := range tags {
 		// `autodiscovery_subnet` is set as tags in AD Template
 		// e.g. cmd/agent/dist/conf.d/snmp.d/auto_conf.yaml

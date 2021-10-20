@@ -40,6 +40,7 @@ func getDockerImageShortName(containerID string, tags []string) (string, bool) {
 	// Cache miss
 	var shortName string
 	for _, tag := range tags {
+		// !TAGS string prefix check
 		if strings.HasPrefix(tag, imageTagKey) {
 			tagParts := strings.Split(tag, tagSeparator)
 			if len(tagParts) == 2 {

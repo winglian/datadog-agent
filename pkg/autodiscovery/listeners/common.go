@@ -28,6 +28,7 @@ const (
 	legacyIdentifierLabel      = "com.datadoghq.sd.check.id"
 	dockerADTemplateCheckNames = "com.datadoghq.ad.check_names"
 	// Keys of standard tags
+	// !TAGS define std tags in tagset?
 	tagKeyEnv     = "env"
 	tagKeyVersion = "version"
 	tagKeyService = "service"
@@ -96,6 +97,7 @@ func getStandardTags(labels map[string]string) []string {
 	}
 	for labelKey, tagKey := range labelToTagKeys {
 		if tagValue, found := labels[labelKey]; found {
+			// !TAGS add tags in k:v format
 			tags = append(tags, fmt.Sprintf("%s:%s", tagKey, tagValue))
 		}
 	}
@@ -104,6 +106,7 @@ func getStandardTags(labels map[string]string) []string {
 
 // standardTagsDigest computes the hash of standard tags in a map
 func standardTagsDigest(labels map[string]string) string {
+	// !TAGS hash specific tags in a set
 	if labels == nil {
 		return ""
 	}

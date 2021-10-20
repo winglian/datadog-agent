@@ -123,6 +123,7 @@ func (c *CRICheck) generateMetrics(sender aggregator.Sender, containerStats map[
 		if err != nil {
 			log.Errorf("Could not collect tags for container %s: %s", cid[:12], err)
 		}
+		// !TAGS modifying tags from tagger in-place
 		tags = append(tags, "runtime:"+criUtil.GetRuntime())
 
 		currentUnixTime := time.Now().UnixNano()

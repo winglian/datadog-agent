@@ -25,6 +25,7 @@ func CreateStringBatches(elements []string, size int) ([][]string, error) {
 }
 
 // CopyStrings makes a copy of a list of strings
+// !TAGS tag-copy function
 func CopyStrings(tags []string) []string {
 	newTags := make([]string, len(tags))
 	copy(newTags, tags)

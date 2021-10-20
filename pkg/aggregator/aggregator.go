@@ -244,8 +244,9 @@ type BufferedAggregator struct {
 	health                 *health.Handle
 	agentName              string // Name of the agent for telemetry metrics
 
-	tlmContainerTagsEnabled bool                                              // Whether we should call the tagger to tag agent telemetry metrics
-	agentTags               func(collectors.TagCardinality) ([]string, error) // This function gets the agent tags from the tagger (defined as a struct field to ease testing)
+	tlmContainerTagsEnabled bool // Whether we should call the tagger to tag agent telemetry metrics
+	// !TAGS agg.agentTags(card) -> (fixed) tagset
+	agentTags func(collectors.TagCardinality) ([]string, error) // This function gets the agent tags from the tagger (defined as a struct field to ease testing)
 }
 
 // NewBufferedAggregator instantiates a BufferedAggregator
@@ -342,8 +343,9 @@ func (agg *BufferedAggregator) SetHostname(hostname string) {
 func (agg *BufferedAggregator) AddAgentStartupTelemetry(agentVersion string) {
 
 	metric := &metrics.MetricSample{
-		Name:       fmt.Sprintf("datadog.%s.started", agg.agentName),
-		Value:      1,
+		Name:  fmt.Sprintf("datadog.%s.started", agg.agentName),
+		Value: 1,
+		// !TAGS just uses agg tags
 		Tags:       agg.tags(true),
 		Host:       agg.hostname,
 		Mtype:      metrics.CountType,
@@ -391,6 +393,7 @@ func (agg *BufferedAggregator) handleSenderSample(ss senderMetricSample) {
 		if ss.commit {
 			checkSampler.commit(timeNowNano())
 		} else {
+			// !TAGS sort-uniq for tags that came from a check (should be done earlier?)
 			ss.metricSample.Tags = util.SortUniqInPlace(ss.metricSample.Tags)
 			checkSampler.addSample(ss.metricSample)
 		}
@@ -404,6 +407,7 @@ func (agg *BufferedAggregator) handleSenderBucket(checkBucket senderHistogramBuc
 	defer agg.mu.Unlock()
 
 	if checkSampler, ok := agg.checkSamplers[checkBucket.id]; ok {
+		// !TAGS same
 		checkBucket.bucket.Tags = util.SortUniqInPlace(checkBucket.bucket.Tags)
 		checkSampler.addBucket(checkBucket.bucket)
 	} else {
@@ -425,6 +429,7 @@ func (agg *BufferedAggregator) addServiceCheck(sc metrics.ServiceCheck) {
 	if sc.Ts == 0 {
 		sc.Ts = time.Now().Unix()
 	}
+	// !TAGS enrich check's tags with tags from tagger and replace sc.Tags
 	tb := tagset.NewHashlessTagsAccumulatorFromSlice(sc.Tags)
 	tagger.EnrichTags(tb, sc.OriginID, sc.K8sOriginID, sc.Cardinality)
 
@@ -439,6 +444,7 @@ func (agg *BufferedAggregator) addEvent(e metrics.Event) {
 	if e.Ts == 0 {
 		e.Ts = time.Now().Unix()
 	}
+	// !TAGS same as addServiceCheck
 	tb := tagset.NewHashlessTagsAccumulatorFromSlice(e.Tags)
 	tagger.EnrichTags(tb, e.OriginID, e.K8sOriginID, e.Cardinality)
 
@@ -512,6 +518,7 @@ func (agg *BufferedAggregator) sendSeries(start time.Time, series metrics.Series
 			extra.SourceTypeName = "System"
 		}
 
+		// !TAGS union extra.Tags, aggregator tags (probably repeated!)
 		tags := append(extra.Tags, agg.tags(false)...)
 		newSerie := &metrics.Serie{
 			Name:           extra.Name,
@@ -538,8 +545,9 @@ func (agg *BufferedAggregator) sendSeries(start time.Time, series metrics.Series
 	// Send along a metric that showcases that this Agent is running (internally, in backend,
 	// a `datadog.`-prefixed metric allows identifying this host as an Agent host, used for dogbone icon)
 	series = append(series, &metrics.Serie{
-		Name:           fmt.Sprintf("datadog.%s.running", agg.agentName),
-		Points:         []metrics.Point{{Value: 1, Ts: float64(start.Unix())}},
+		Name:   fmt.Sprintf("datadog.%s.running", agg.agentName),
+		Points: []metrics.Point{{Value: 1, Ts: float64(start.Unix())}},
+		// !TAGS just use agg tags
 		Tags:           agg.tags(true),
 		Host:           agg.hostname,
 		MType:          metrics.APIGaugeType,
@@ -548,8 +556,9 @@ func (agg *BufferedAggregator) sendSeries(start time.Time, series metrics.Series
 
 	// Send along a metric that counts the number of times we dropped some payloads because we couldn't split them.
 	series = append(series, &metrics.Serie{
-		Name:           fmt.Sprintf("n_o_i_n_d_e_x.datadog.%s.payload.dropped", agg.agentName),
-		Points:         []metrics.Point{{Value: float64(split.GetPayloadDrops()), Ts: float64(start.Unix())}},
+		Name:   fmt.Sprintf("n_o_i_n_d_e_x.datadog.%s.payload.dropped", agg.agentName),
+		Points: []metrics.Point{{Value: float64(split.GetPayloadDrops()), Ts: float64(start.Unix())}},
+		// !TAGS same
 		Tags:           agg.tags(false),
 		Host:           agg.hostname,
 		MType:          metrics.APIGaugeType,
@@ -620,8 +629,9 @@ func (agg *BufferedAggregator) flushServiceChecks(start time.Time, waitForSerial
 	agg.addServiceCheck(metrics.ServiceCheck{
 		CheckName: fmt.Sprintf("datadog.%s.up", agg.agentName),
 		Status:    metrics.ServiceCheckOK,
-		Tags:      agg.tags(false),
-		Host:      agg.hostname,
+		// !TAGS same
+		Tags: agg.tags(false),
+		Host: agg.hostname,
 	})
 
 	serviceChecks := agg.GetServiceChecks()
@@ -842,6 +852,7 @@ func (agg *BufferedAggregator) run() {
 
 // tags returns the list of tags that should be added to the agent telemetry metrics
 // Container agent tags may be missing in the first seconds after agent startup
+// !TAGS: union's two fixed sets of tags
 func (agg *BufferedAggregator) tags(withVersion bool) []string {
 	tags := []string{}
 	if agg.tlmContainerTagsEnabled {

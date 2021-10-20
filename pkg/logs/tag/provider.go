@@ -62,6 +62,7 @@ func (p *provider) GetTags() []string {
 		return []string{}
 	}
 
+	// !TAGS modifying tags from tagger in-place
 	localTags := p.localTagProvider.GetTags()
 	if localTags != nil {
 		tags = append(tags, localTags...)

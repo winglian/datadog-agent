@@ -156,6 +156,7 @@ func (l *CloudFoundryListener) createService(adID cloudfoundry.ADIdentifier, fir
 				Port: int(p),
 			})
 		}
+		// !TAGS tags organized by instanceGUID
 		nodeTags, err := l.bbsCache.GetTagsForNode(aLRP.CellID)
 		if err != nil {
 			log.Errorf("Error getting node tags: %v", err)
@@ -230,6 +231,7 @@ func (s *CloudFoundryService) GetPorts(context.Context) ([]ContainerPort, error)
 
 // GetTags returns the list of container tags
 func (s *CloudFoundryService) GetTags() ([]string, string, error) {
+	// !TAGS getter returning mutable slice
 	return s.tags, "", nil
 }
 

@@ -125,6 +125,7 @@ func (m *OOMKillCheck) Run() error {
 			triggerType = "system"
 			triggerTypeText = "This OOM kill was invoked by the system."
 		}
+		// !TAGS appends to tags from tagger
 		tags = append(tags, "trigger_type:"+triggerType)
 
 		tags = append(tags, "trigger_process_name:"+line.FComm)

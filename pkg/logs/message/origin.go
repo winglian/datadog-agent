@@ -73,6 +73,7 @@ func (o *Origin) TagsToString() string {
 func (o *Origin) tagsToStringArray() []string {
 	tags := o.tags
 
+	// !TAGS overwrite tags array in-place; maybe just lazy?
 	sourceCategory := o.LogSource.Config.SourceCategory
 	if sourceCategory != "" {
 		tags = append(tags, "sourcecategory"+":"+sourceCategory)

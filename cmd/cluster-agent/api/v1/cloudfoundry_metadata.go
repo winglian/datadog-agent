@@ -47,6 +47,7 @@ func getCFAppsMetadataForNode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// !TAGS tagsBytes is instanceGUID -> tags; needs to be JSON marshalled
 	tagsBytes, err := json.Marshal(tags)
 	if err != nil {
 		log.Errorf("Could not process tags for CF applications: %v", err)

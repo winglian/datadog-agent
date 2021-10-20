@@ -159,6 +159,7 @@ func computeEvents(events []containerdEvent, sender aggregator.Sender, fil *ddCo
 		output.Title = fmt.Sprintf("Event on %s from Containerd", split[1])
 		if split[1] == "containers" || split[1] == "tasks" {
 			// For task events, we use the container ID in order to query the Tagger's API
+			// !TAGS union operation
 			tags, err := tagger.Tag(ddContainers.ContainerEntityPrefix+e.ID, collectors.HighCardinality)
 			if err != nil {
 				// If there is an error retrieving tags from the Tagger, we can still submit the event as is.

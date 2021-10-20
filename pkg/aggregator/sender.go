@@ -24,6 +24,7 @@ var senderPool *checkSenderPool
 // Sender allows sending metrics from checks/a check
 type Sender interface {
 	Commit()
+	// !TAGS all sender methods expect []string -- sorted? uniq?
 	Gauge(metric string, value float64, hostname string, tags []string)
 	Rate(metric string, value float64, hostname string, tags []string)
 	Count(metric string, value float64, hostname string, tags []string)
@@ -225,8 +226,10 @@ func (s *checkSender) SendRawMetricSample(sample *metrics.MetricSample) {
 }
 
 func (s *checkSender) sendMetricSample(metric string, value float64, hostname string, tags []string, mType metrics.MetricType, flushFirstValue bool) {
+	// !TAGS overwrites passed tags with checkTags
 	tags = append(tags, s.checkTags...)
 
+	// !TAGS formatting (.String()?)
 	log.Trace(mType.String(), " sample: ", metric, ": ", value, " for hostname: ", hostname, " tags: ", tags)
 
 	metricSample := &metrics.MetricSample{
@@ -292,6 +295,7 @@ func (s *checkSender) Histogram(metric string, value float64, hostname string, t
 
 // HistogramBucket should be called to directly send raw buckets to be submitted as distribution metrics
 func (s *checkSender) HistogramBucket(metric string, value int64, lowerBound, upperBound float64, monotonic bool, hostname string, tags []string, flushFirstValue bool) {
+	// !TAGS overwrites passed tags with checkTags
 	tags = append(tags, s.checkTags...)
 
 	log.Tracef(
@@ -348,8 +352,9 @@ func (s *checkSender) ServiceCheck(checkName string, status metrics.ServiceCheck
 		Status:    status,
 		Host:      hostname,
 		Ts:        time.Now().Unix(),
-		Tags:      append(tags, s.checkTags...),
-		Message:   message,
+		// !TAGS overwrites passed tags with checkTags
+		Tags:    append(tags, s.checkTags...),
+		Message: message,
 	}
 
 	if hostname == "" && !s.defaultHostnameDisabled {
@@ -365,6 +370,7 @@ func (s *checkSender) ServiceCheck(checkName string, status metrics.ServiceCheck
 
 // Event submits an event
 func (s *checkSender) Event(e metrics.Event) {
+	// !TAGS overwrites passed tags with checkTags
 	e.Tags = append(e.Tags, s.checkTags...)
 
 	log.Trace("Event submitted: ", e.Title, " for hostname: ", e.Host, " tags: ", e.Tags)

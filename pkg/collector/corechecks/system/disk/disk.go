@@ -133,6 +133,7 @@ func (c *Check) instanceConfigure(data integration.Data) error {
 	deviceTagRe, found := conf["device_tag_re"]
 	if deviceTagRe, ok := deviceTagRe.(map[interface{}]interface{}); found && ok {
 		c.cfg.deviceTagRe = make(map[*regexp.Regexp][]string)
+		// !TAGS unmarshalling
 		for reString, tags := range deviceTagRe {
 			if reString, ok := reString.(string); ok {
 				if tags, ok := tags.(string); ok {

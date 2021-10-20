@@ -136,6 +136,7 @@ func eventLike(expectedEvent, actualEvent metrics.Event) bool {
 }
 
 // Return a bool value if all the elements of expected are inside the actual array
+// !TAGS an isSubsetOf operation
 func expectedInActual(expected, actual []string) bool {
 	expectedCount := 0
 	for _, e := range expected {

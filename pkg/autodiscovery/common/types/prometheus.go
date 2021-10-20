@@ -66,25 +66,26 @@ type OpenmetricsInstance struct {
 	BearerTokenPath               string                      `mapstructure:"bearer_token_path" yaml:"bearer_token_path,omitempty" json:"bearer_token_path,omitempty"`
 	IgnoreMetrics                 []string                    `mapstructure:"ignore_metrics" yaml:"ignore_metrics,omitempty" json:"ignore_metrics,omitempty"`
 	IgnoreMetricsByLabels         map[string]interface{}      `mapstructure:"ignore_metrics_by_labels" yaml:"ignore_metrics_by_labels,omitempty" json:"ignore_metrics_by_labels,omitempty"`
-	IgnoreTags                    []string                    `mapstructure:"ignore_tags" yaml:"ignore_tags,omitempty" json:"ignore_tags,omitempty"`
-	Proxy                         map[string]string           `mapstructure:"proxy" yaml:"proxy,omitempty" json:"proxy,omitempty"`
-	SkipProxy                     bool                        `mapstructure:"skip_proxy" yaml:"skip_proxy,omitempty" json:"skip_proxy,omitempty"`
-	Username                      string                      `mapstructure:"username" yaml:"username,omitempty" json:"username,omitempty"`
-	Password                      string                      `mapstructure:"password" yaml:"password,omitempty" json:"password,omitempty"`
-	TLSVerify                     bool                        `mapstructure:"tls_verify" yaml:"tls_verify,omitempty" json:"tls_verify,omitempty"`
-	TLSHostHeader                 bool                        `mapstructure:"tls_use_host_header" yaml:"tls_use_host_header,omitempty" json:"tls_use_host_header,omitempty"`
-	TLSIgnoreWarn                 bool                        `mapstructure:"tls_ignore_warning" yaml:"tls_ignore_warning,omitempty" json:"tls_ignore_warning,omitempty"`
-	TLSCert                       string                      `mapstructure:"tls_cert" yaml:"tls_cert,omitempty" json:"tls_cert,omitempty"`
-	TLSPrivateKey                 string                      `mapstructure:"tls_private_key" yaml:"tls_private_key,omitempty" json:"tls_private_key,omitempty"`
-	TLSCACert                     string                      `mapstructure:"tls_ca_cert" yaml:"tls_ca_cert,omitempty" json:"tls_ca_cert,omitempty"`
-	Headers                       map[string]string           `mapstructure:"headers" yaml:"headers,omitempty" json:"headers,omitempty"`
-	ExtraHeaders                  map[string]string           `mapstructure:"extra_headers" yaml:"extra_headers,omitempty" json:"extra_headers,omitempty"`
-	Timeout                       int                         `mapstructure:"timeout" yaml:"timeout,omitempty" json:"timeout,omitempty"`
-	Tags                          []string                    `mapstructure:"tags" yaml:"tags,omitempty" json:"tags,omitempty"`
-	Service                       string                      `mapstructure:"service" yaml:"service,omitempty" json:"service,omitempty"`
-	MinCollectInterval            int                         `mapstructure:"min_collection_interval" yaml:"min_collection_interval,omitempty" json:"min_collection_interval,omitempty"`
-	EmptyDefaultHost              bool                        `mapstructure:"empty_default_hostname" yaml:"empty_default_hostname,omitempty" json:"empty_default_hostname,omitempty"`
-	MaxReturnedMetrics            int                         `mapstructure:"max_returned_metrics" yaml:"max_returned_metrics,omitempty" json:"max_returned_metrics,omitempty"`
+	// !TAGS parsed from JSON/YAML
+	IgnoreTags         []string          `mapstructure:"ignore_tags" yaml:"ignore_tags,omitempty" json:"ignore_tags,omitempty"`
+	Proxy              map[string]string `mapstructure:"proxy" yaml:"proxy,omitempty" json:"proxy,omitempty"`
+	SkipProxy          bool              `mapstructure:"skip_proxy" yaml:"skip_proxy,omitempty" json:"skip_proxy,omitempty"`
+	Username           string            `mapstructure:"username" yaml:"username,omitempty" json:"username,omitempty"`
+	Password           string            `mapstructure:"password" yaml:"password,omitempty" json:"password,omitempty"`
+	TLSVerify          bool              `mapstructure:"tls_verify" yaml:"tls_verify,omitempty" json:"tls_verify,omitempty"`
+	TLSHostHeader      bool              `mapstructure:"tls_use_host_header" yaml:"tls_use_host_header,omitempty" json:"tls_use_host_header,omitempty"`
+	TLSIgnoreWarn      bool              `mapstructure:"tls_ignore_warning" yaml:"tls_ignore_warning,omitempty" json:"tls_ignore_warning,omitempty"`
+	TLSCert            string            `mapstructure:"tls_cert" yaml:"tls_cert,omitempty" json:"tls_cert,omitempty"`
+	TLSPrivateKey      string            `mapstructure:"tls_private_key" yaml:"tls_private_key,omitempty" json:"tls_private_key,omitempty"`
+	TLSCACert          string            `mapstructure:"tls_ca_cert" yaml:"tls_ca_cert,omitempty" json:"tls_ca_cert,omitempty"`
+	Headers            map[string]string `mapstructure:"headers" yaml:"headers,omitempty" json:"headers,omitempty"`
+	ExtraHeaders       map[string]string `mapstructure:"extra_headers" yaml:"extra_headers,omitempty" json:"extra_headers,omitempty"`
+	Timeout            int               `mapstructure:"timeout" yaml:"timeout,omitempty" json:"timeout,omitempty"`
+	Tags               []string          `mapstructure:"tags" yaml:"tags,omitempty" json:"tags,omitempty"`
+	Service            string            `mapstructure:"service" yaml:"service,omitempty" json:"service,omitempty"`
+	MinCollectInterval int               `mapstructure:"min_collection_interval" yaml:"min_collection_interval,omitempty" json:"min_collection_interval,omitempty"`
+	EmptyDefaultHost   bool              `mapstructure:"empty_default_hostname" yaml:"empty_default_hostname,omitempty" json:"empty_default_hostname,omitempty"`
+	MaxReturnedMetrics int               `mapstructure:"max_returned_metrics" yaml:"max_returned_metrics,omitempty" json:"max_returned_metrics,omitempty"`
 }
 
 // LabelJoinsConfig contains the label join configuration fields

@@ -16,6 +16,7 @@ import (
 // Context holds the elements that form a context, and can be serialized into a context key
 type Context struct {
 	Name string
+	// !TAGS tags in this context
 	Tags []string
 	Host string
 }
@@ -44,6 +45,7 @@ func newContextResolver() *contextResolver {
 
 // trackContext returns the contextKey associated with the context of the metricSample and tracks that context
 func (cr *contextResolver) trackContext(metricSampleContext metrics.MetricSampleContext) ckey.ContextKey {
+	// !TAGS get tags from the sample, writing into a buffer (presumed to be reset)
 	metricSampleContext.GetTags(cr.tagsBuffer)               // tags here are not sorted and can contain duplicates
 	contextKey := cr.generateContextKey(metricSampleContext) // the generator will remove duplicates from cr.tagsBuffer (and doesn't mind the order)
 
@@ -53,6 +55,7 @@ func (cr *contextResolver) trackContext(metricSampleContext metrics.MetricSample
 		// per context instead of one per sample.
 		cr.contextsByKey[contextKey] = &Context{
 			Name: metricSampleContext.GetName(),
+			// TAGS! copy the buffer and later reset it
 			Tags: cr.tagsBuffer.Copy(),
 			Host: metricSampleContext.GetHost(),
 		}

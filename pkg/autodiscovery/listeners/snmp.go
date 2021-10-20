@@ -431,6 +431,7 @@ func (s *SNMPService) GetExtraConfig(key []byte) ([]byte, error) {
 }
 
 func convertToCommaSepTags(tags []string) string {
+	// !TAGS render as comma-separated
 	normalizedTags := make([]string, 0, len(tags))
 	for _, tag := range tags {
 		// Convert comma `,` to `_` since comma is used as separator.

@@ -157,6 +157,7 @@ func (d *DockerCheck) Run() error {
 		}
 		// Track image_name and image_tag tags by image for use in countAndWeightImages
 		for _, t := range tags {
+			// !TAGS tag prefix matching
 			if strings.HasPrefix(t, "image_name:") || strings.HasPrefix(t, "image_tag:") {
 				if _, found := imageTagsByImageID[c.ImageID]; !found {
 					imageTagsByImageID[c.ImageID] = []string{t}
@@ -234,6 +235,7 @@ func (d *DockerCheck) Run() error {
 					log.Debugf("Ignore network stat with empty name for container %s", c.ID[:12])
 					continue
 				}
+				// !TAGS reusing slice with one tag added
 				ifaceTags := append(tags, fmt.Sprintf("docker_network:%s", netStat.NetworkName))
 				sender.Rate("docker.net.bytes_sent", float64(netStat.BytesSent), "", ifaceTags)
 				sender.Rate("docker.net.bytes_rcvd", float64(netStat.BytesRcvd), "", ifaceTags)

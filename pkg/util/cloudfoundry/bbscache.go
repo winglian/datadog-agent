@@ -50,8 +50,9 @@ type BBSCache struct {
 	actualLRPsByProcessGUID map[string][]*ActualLRP
 	actualLRPsByCellID      map[string][]*ActualLRP
 	desiredLRPs             map[string]*DesiredLRP
-	tagsByCellID            map[string]map[string][]string
-	lastUpdated             time.Time
+	// cellId -> instanceGuid -> tags
+	tagsByCellID map[string]map[string][]string
+	lastUpdated  time.Time
 }
 
 var (

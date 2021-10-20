@@ -53,6 +53,7 @@ func (s *cappedSender) Rate(metric string, value float64, hostname string, tags 
 	}
 
 	// Previous value lookup
+	// !TAGS sorts argument tags in-place (why?)
 	sort.Strings(tags)
 	cacheKeyParts := []string{dockerRateCacheKey, metric, hostname}
 	cacheKeyParts = append(cacheKeyParts, tags...)
