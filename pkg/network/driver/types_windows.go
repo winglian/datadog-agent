@@ -3,7 +3,7 @@
 
 package driver
 
-const Signature = 0xddfd0000000b
+const Signature = 0xddfd0000000c
 
 const (
 	GetStatsIOCTL      = 0x122004
@@ -77,10 +77,16 @@ type TransportStats struct {
 	Read_packets_skipped int64
 	Packets_reported     int64
 }
+type HttpStats struct {
+	Packets_processed             int64
+	Num_flow_collisions           int64
+	Num_flows_missed_max_exceeded int64
+}
 type Stats struct {
 	Handle_stats    HandleStats
 	Flow_stats      FlowStats
 	Transport_stats TransportStats
+	Http_stats      HttpStats
 }
 type DriverStats struct {
 	FilterVersion uint64
@@ -88,7 +94,7 @@ type DriverStats struct {
 	Handle        Stats
 }
 
-const DriverStatsSize = 0x148
+const DriverStatsSize = 0x178
 
 type PerFlowData struct {
 	FlowHandle         uint64
