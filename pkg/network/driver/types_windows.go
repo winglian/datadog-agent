@@ -3,7 +3,7 @@
 
 package driver
 
-const Signature = 0xddfd0000000a
+const Signature = 0xddfd0000000b
 
 const (
 	GetStatsIOCTL      = 0x122004
