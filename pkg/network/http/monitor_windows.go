@@ -6,6 +6,10 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/network/config"
 )
 
+const (
+	defaultMaxTrackedConnections = 65536
+)
+
 // Monitor is responsible for:
 // TODO
 type Monitor struct {
@@ -17,6 +21,10 @@ func NewMonitor(c *config.Config) (*Monitor, error) {
 	di, err := newDriverInterface()
 	if err != nil {
 		return nil, err
+	}
+
+	if (uint64(c.MaxTrackedConnections) != defaultMaxTrackedConnections) {
+		di.setMaxFlows(uint64(c.MaxTrackedConnections))
 	}
 
 	return &Monitor{

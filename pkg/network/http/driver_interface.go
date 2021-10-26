@@ -1,6 +1,7 @@
 package http
 
 import (
+	"unsafe"
 	"fmt"
 	"net"
 
@@ -37,13 +38,6 @@ func (di *httpDriverInterface) setupHTTPHandle() error {
 		return err
 	}
 
-	return nil
-}
-
-func (di *httpDriverInterface) Close() error {
-	if err := di.driverHTTPHandle.Close(); err != nil {
-		return fmt.Errorf("error closing HTTP file handle: %w", err)
-	}
 	return nil
 }
 
@@ -95,4 +89,25 @@ func createHTTPFilters() ([]driver.FilterDefinition, error) {
 	}
 
 	return filters, nil
+}
+
+func (di *httpDriverInterface) setMaxFlows(maxFlows uint64) error {
+	log.Debugf("Setting max flows in driver http filter to %v", maxFlows)
+	err := windows.DeviceIoControl(di.driverHTTPHandle.Handle,
+		driver.SetMaxFlowsIOCTL,
+		(*byte)(unsafe.Pointer(&maxFlows)),
+		uint32(unsafe.Sizeof(maxFlows)),
+		nil,
+		uint32(0), nil, nil)
+	if err != nil {
+		log.Warnf("Failed to set max number of flows in driver http filter to %v %v", maxFlows, err)
+	}
+	return err
+}
+
+func (di *httpDriverInterface) Close() error {
+	if err := di.driverHTTPHandle.Close(); err != nil {
+		return fmt.Errorf("error closing HTTP file handle: %w", err)
+	}
+	return nil
 }
