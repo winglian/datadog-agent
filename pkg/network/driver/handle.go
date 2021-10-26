@@ -12,8 +12,13 @@ import (
 )
 
 const (
-	// deviceName identifies the name and location of the windows driver
-	deviceName = `\\.\ddnpm`
+	// Each type of handle has its own framework file object. These objects must live within the
+	// ddnpm device's namespace, so their paths must be prepended by '\\.\ddnpm\'.
+	// See https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/controlling-device-namespace-access
+	driverStatsHandlePathName = `\\.\ddnpm\driverstatshandle`
+	flowHandlePathName        = `\\.\ddnpm\flowstatshandle`
+	transportHandlePathName   = `\\.\ddnpm\transporthandle`
+	httpHandlePathName        = `\\.\ddnpm\httphandle`
 )
 
 var (
@@ -58,7 +63,21 @@ type Handle struct {
 
 // NewHandle creates a new windows handle attached to the driver
 func NewHandle(flags uint32, handleType HandleType) (*Handle, error) {
-	p, err := windows.UTF16PtrFromString(deviceName)
+	var handlePath string
+	switch handleType {
+	case FlowHandle:
+		handlePath = flowHandlePathName
+	case DataHandle:
+		handlePath = transportHandlePathName
+	case StatsHandle:
+		handlePath = driverStatsHandlePathName
+	case HTTPHandle:
+		handlePath = httpHandlePathName
+	default:
+		return nil, fmt.Errorf("unrecognized handle type: %v", handleType)
+	}
+
+	p, err := windows.UTF16PtrFromString(handlePath)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +86,7 @@ func NewHandle(flags uint32, handleType HandleType) (*Handle, error) {
 		windows.GENERIC_READ|windows.GENERIC_WRITE,
 		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE,
 		nil,
-		windows.OPEN_EXISTING,
+		windows.CREATE_NEW,
 		flags,
 		windows.Handle(0))
 	if err != nil {
