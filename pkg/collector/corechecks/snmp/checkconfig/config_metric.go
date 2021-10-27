@@ -82,18 +82,18 @@ type MetricsConfig struct {
 	Options    MetricsConfigOption `yaml:"options"`
 }
 
-// MetadataConfig holds configs for a metadata
-type MetadataConfig struct {
-	// Symbol configs
-	Symbol SymbolConfig `yaml:"symbol"`
-
-	// Table configs
-	Symbols []SymbolConfig `yaml:"symbols"`
-
-	// TODO: Implement tags
-	//       Should we use the same structure as for metrics ?
-	Tags MetricTagConfigList `yaml:"tags"`
-}
+//// MetadataConfig holds configs for a metadata
+//type MetadataConfig struct {
+//	// Symbol configs
+//	Symbol SymbolConfig `yaml:"symbol"`
+//
+//	// Table configs
+//	Symbols []SymbolConfig `yaml:"symbols"`
+//
+//	// TODO: Implement tags
+//	//       Should we use the same structure as for metrics ?
+//	Tags MetricTagConfigList `yaml:"tags"`
+//}
 
 // GetTags retrieve tags using the metric config and values
 func (m *MetricsConfig) GetTags(fullIndex string, values *valuestore.ResultValueStore) []string {

@@ -130,7 +130,7 @@ type CheckConfig struct {
 	ContextName           string
 	OidConfig             OidConfig
 	Metrics               []MetricsConfig
-	Metadata              []MetadataConfig
+	Metadata              []MetricsConfig
 	MetricTags            []MetricTagConfig
 	OidBatchSize          int
 	BulkMaxRepetitions    uint32
@@ -544,7 +544,7 @@ func (c *CheckConfig) Copy() *CheckConfig {
 	for _, metric := range c.Metrics {
 		newConfig.Metrics = append(newConfig.Metrics, metric)
 	}
-	newConfig.Metadata = make([]MetadataConfig, 0, len(c.Metadata))
+	newConfig.Metadata = make([]MetricsConfig, 0, len(c.Metadata))
 	for _, metric := range c.Metadata {
 		newConfig.Metadata = append(newConfig.Metadata, metric)
 	}
@@ -586,7 +586,7 @@ func (c *CheckConfig) IsDiscovery() bool {
 	return c.Network != ""
 }
 
-func parseScalarOids(metrics []MetricsConfig, metricTags []MetricTagConfig, metadataConfigs []MetadataConfig) []string {
+func parseScalarOids(metrics []MetricsConfig, metricTags []MetricTagConfig, metadataConfigs []MetricsConfig) []string {
 	var oids []string
 	for _, metric := range metrics {
 		if metric.Symbol.OID != "" {
@@ -606,7 +606,7 @@ func parseScalarOids(metrics []MetricsConfig, metricTags []MetricTagConfig, meta
 	return oids
 }
 
-func parseColumnOids(metrics []MetricsConfig, metadataConfigs []MetadataConfig) []string {
+func parseColumnOids(metrics []MetricsConfig, metadataConfigs []MetricsConfig) []string {
 	var oids []string
 	for _, metric := range metrics {
 		for _, symbol := range metric.Symbols {
@@ -622,7 +622,7 @@ func parseColumnOids(metrics []MetricsConfig, metadataConfigs []MetadataConfig) 
 		for _, symbol := range metadataConfig.Symbols {
 			oids = append(oids, symbol.OID)
 		}
-		for _, metricTag := range metadataConfig.Tags {
+		for _, metricTag := range metadataConfig.MetricTags {
 			if metricTag.Column.OID != "" {
 				oids = append(oids, metricTag.Column.OID)
 			}

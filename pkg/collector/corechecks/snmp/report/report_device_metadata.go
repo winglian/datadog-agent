@@ -2,7 +2,6 @@ package report
 
 import (
 	json "encoding/json"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -28,10 +27,7 @@ func (ms *MetricSender) ReportNetworkDeviceMetadata(config *checkconfig.CheckCon
 
 	device := buildNetworkDeviceMetadata(config.DeviceID, config.DeviceIDTags, config, metadataStore, tags, deviceStatus)
 
-	interfaces, err := buildNetworkInterfacesMetadata(config.DeviceID, store)
-	if err != nil {
-		log.Debugf("Unable to build interfaces metadata: %s", err)
-	}
+	interfaces := buildNetworkInterfacesMetadata(config.DeviceID, metadataStore)
 
 	metadataPayloads := batchPayloads(config.Namespace, config.ResolvedSubnetName, collectTime, metadata.PayloadMetadataBatchSize, device, interfaces)
 
@@ -45,16 +41,38 @@ func (ms *MetricSender) ReportNetworkDeviceMetadata(config *checkconfig.CheckCon
 	}
 }
 
-func buildMetadata(metadataConfigs []checkconfig.MetadataConfig, values *valuestore.ResultValueStore) *metadata.Store {
+func buildMetadata(metadataConfigs []checkconfig.MetricsConfig, values *valuestore.ResultValueStore) *metadata.Store {
 	metadataStore := metadata.NewMetadataStore()
 
 	for _, metadataConfig := range metadataConfigs {
-		value, err := values.GetScalarValue(metadataConfig.Symbol.OID)
-		if err != nil {
-			log.Debugf("report scalar: error getting scalar value: %v", err)
-			continue
+		if metadataConfig.IsScalar() {
+			value, err := values.GetScalarValue(metadataConfig.Symbol.OID)
+			if err != nil {
+				log.Debugf("report scalar: error getting scalar value: %v", err)
+				continue
+			}
+			metadataStore.AddScalarValue(metadataConfig.Symbol.MetadataField, value)
+		} else if metadataConfig.IsColumn() {
+			rowTagsCache := make(map[string][]string)
+			for _, symbol := range metadataConfig.Symbols {
+				metricValues, err := values.GetColumnValues(symbol.OID)
+				if err != nil {
+					continue
+				}
+				for fullIndex, value := range metricValues {
+					var tags []string
+					// cache row tags by fullIndex to avoid rebuilding it for every column rows
+					if _, ok := rowTagsCache[fullIndex]; !ok {
+						rowTagsCache[fullIndex] = append(common.CopyStrings(tags), metadataConfig.GetTags(fullIndex, values)...)
+					}
+					rowTags := rowTagsCache[fullIndex]
+					log.Warnf("rowTags: %v %v", rowTags, value)
+					//ms.sendMetric(symbol.Name, value, rowTags, metadataConfig.ForcedType, metadataConfig.Options, symbol.ExtractValuePattern)
+					// TODO: add tags
+					metadataStore.AddColumnValue(symbol.MetadataField, fullIndex, value)
+				}
+			}
 		}
-		metadataStore.Add(metadataConfig.Symbol.MetadataField, value)
 	}
 	return metadataStore
 }
@@ -62,9 +80,9 @@ func buildMetadata(metadataConfigs []checkconfig.MetadataConfig, values *valuest
 func buildNetworkDeviceMetadata(deviceID string, idTags []string, config *checkconfig.CheckConfig, store *metadata.Store, tags []string, deviceStatus metadata.DeviceStatus) metadata.DeviceMetadata {
 	var vendor, sysName, sysDescr, sysObjectID string
 	if store != nil {
-		sysName = store.GetString("device.name")
-		sysDescr = store.GetString("device.description")
-		sysObjectID = store.GetString("device.sys_object_id")
+		sysName = store.GetScalarAsString("device.name")
+		sysDescr = store.GetScalarAsString("device.description")
+		sysObjectID = store.GetScalarAsString("device.sys_object_id")
 	}
 
 	if config.ProfileDef != nil {
@@ -86,16 +104,16 @@ func buildNetworkDeviceMetadata(deviceID string, idTags []string, config *checkc
 	}
 }
 
-func buildNetworkInterfacesMetadata(deviceID string, store *valuestore.ResultValueStore) ([]metadata.InterfaceMetadata, error) {
+func buildNetworkInterfacesMetadata(deviceID string, store *metadata.Store) []metadata.InterfaceMetadata {
 	if store == nil {
 		// it's expected that the value store is nil if we can't reach the device
 		// in that case, we just return an nil slice.
-		return nil, nil
+		return nil
 	}
-	indexes, err := store.GetColumnIndexes(metadata.IfNameOID)
-	if err != nil {
-		return nil, fmt.Errorf("no interface indexes found: %s", err)
-	}
+	indexes := store.GetColumnIndexes("interface.name")
+	//if err != nil {
+	//	return nil, fmt.Errorf("no interface indexes found: %s", err)
+	//}
 
 	var interfaces []metadata.InterfaceMetadata
 	for _, strIndex := range indexes {
@@ -105,21 +123,21 @@ func buildNetworkInterfacesMetadata(deviceID string, store *valuestore.ResultVal
 			continue
 		}
 
-		name := store.GetColumnValueAsString(metadata.IfNameOID, strIndex)
+		name := store.GetColumnAsString("interface.name", strIndex)
 		networkInterface := metadata.InterfaceMetadata{
 			DeviceID:    deviceID,
 			Index:       int32(index),
 			Name:        name,
-			Alias:       store.GetColumnValueAsString(metadata.IfAliasOID, strIndex),
-			Description: store.GetColumnValueAsString(metadata.IfDescrOID, strIndex),
-			MacAddress:  store.GetColumnValueAsString(metadata.IfPhysAddressOID, strIndex),
-			AdminStatus: int32(store.GetColumnValueAsFloat(metadata.IfAdminStatusOID, strIndex)),
-			OperStatus:  int32(store.GetColumnValueAsFloat(metadata.IfOperStatusOID, strIndex)),
+			Alias:       store.GetColumnAsString("interface.alias", strIndex),
+			Description: store.GetColumnAsString("interface.description", strIndex),
+			MacAddress:  store.GetColumnAsString("interface.mac_address", strIndex),
+			AdminStatus: int32(store.GetColumnAsFloat("interface.admin_status", strIndex)),
+			OperStatus:  int32(store.GetColumnAsFloat("interface.oper_status", strIndex)),
 			IDTags:      []string{interfaceNameTagKey + ":" + name},
 		}
 		interfaces = append(interfaces, networkInterface)
 	}
-	return interfaces, err
+	return interfaces
 }
 
 func batchPayloads(namespace string, subnet string, collectTime time.Time, batchSize int, device metadata.DeviceMetadata, interfaces []metadata.InterfaceMetadata) []metadata.NetworkDevicesMetadata {
