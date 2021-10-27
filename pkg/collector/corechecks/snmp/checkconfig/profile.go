@@ -155,6 +155,7 @@ func recursivelyExpandBaseProfiles(definition *profileDefinition, extends []stri
 			return err
 		}
 		definition.Metrics = append(definition.Metrics, baseDefinition.Metrics...)
+		definition.Metadata = append(definition.Metadata, baseDefinition.Metadata...)
 		definition.MetricTags = append(definition.MetricTags, baseDefinition.MetricTags...)
 
 		newExtendsHistory := append(common.CopyStrings(extendsHistory), basePath)

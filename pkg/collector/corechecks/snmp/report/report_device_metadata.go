@@ -24,6 +24,7 @@ func (ms *MetricSender) ReportNetworkDeviceMetadata(config *checkconfig.CheckCon
 	tags := common.CopyStrings(origTags)
 	tags = util.SortUniqInPlace(tags)
 
+	// TODO: use config.Metadata to build metadata
 	device := buildNetworkDeviceMetadata(config.DeviceID, config.DeviceIDTags, config, store, tags, deviceStatus)
 
 	interfaces, err := buildNetworkInterfacesMetadata(config.DeviceID, store)

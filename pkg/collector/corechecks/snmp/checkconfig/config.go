@@ -544,6 +544,10 @@ func (c *CheckConfig) Copy() *CheckConfig {
 	for _, metric := range c.Metrics {
 		newConfig.Metrics = append(newConfig.Metrics, metric)
 	}
+	newConfig.Metadata = make([]MetadataConfig, 0, len(c.Metadata))
+	for _, metric := range c.Metadata {
+		newConfig.Metadata = append(newConfig.Metadata, metric)
+	}
 	newConfig.MetricTags = make([]MetricTagConfig, 0, len(c.MetricTags))
 	for _, metricTag := range c.MetricTags {
 		newConfig.MetricTags = append(newConfig.MetricTags, metricTag)
