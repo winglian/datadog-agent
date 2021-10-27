@@ -24,8 +24,9 @@ func (ms *MetricSender) ReportNetworkDeviceMetadata(config *checkconfig.CheckCon
 	tags := common.CopyStrings(origTags)
 	tags = util.SortUniqInPlace(tags)
 
-	// TODO: use config.Metadata to build metadata
-	device := buildNetworkDeviceMetadata(config.DeviceID, config.DeviceIDTags, config, store, tags, deviceStatus)
+	metadataStore := buildMetadata(config.Metadata, store)
+
+	device := buildNetworkDeviceMetadata(config.DeviceID, config.DeviceIDTags, config, metadataStore, tags, deviceStatus)
 
 	interfaces, err := buildNetworkInterfacesMetadata(config.DeviceID, store)
 	if err != nil {
@@ -44,12 +45,26 @@ func (ms *MetricSender) ReportNetworkDeviceMetadata(config *checkconfig.CheckCon
 	}
 }
 
-func buildNetworkDeviceMetadata(deviceID string, idTags []string, config *checkconfig.CheckConfig, store *valuestore.ResultValueStore, tags []string, deviceStatus metadata.DeviceStatus) metadata.DeviceMetadata {
+func buildMetadata(metadataConfigs []checkconfig.MetadataConfig, values *valuestore.ResultValueStore) *metadata.Store {
+	metadataStore := metadata.NewMetadataStore()
+
+	for _, metadataConfig := range metadataConfigs {
+		value, err := values.GetScalarValue(metadataConfig.Symbol.OID)
+		if err != nil {
+			log.Debugf("report scalar: error getting scalar value: %v", err)
+			continue
+		}
+		metadataStore.Add(metadataConfig.Symbol.MetadataField, value)
+	}
+	return metadataStore
+}
+
+func buildNetworkDeviceMetadata(deviceID string, idTags []string, config *checkconfig.CheckConfig, store *metadata.Store, tags []string, deviceStatus metadata.DeviceStatus) metadata.DeviceMetadata {
 	var vendor, sysName, sysDescr, sysObjectID string
 	if store != nil {
-		sysName = store.GetScalarValueAsString(metadata.SysNameOID)
-		sysDescr = store.GetScalarValueAsString(metadata.SysDescrOID)
-		sysObjectID = store.GetScalarValueAsString(metadata.SysObjectIDOID)
+		sysName = store.GetString("device.name")
+		sysDescr = store.GetString("device.description")
+		sysObjectID = store.GetString("device.sys_object_id")
 	}
 
 	if config.ProfileDef != nil {
