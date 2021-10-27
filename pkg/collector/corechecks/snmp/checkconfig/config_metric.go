@@ -11,11 +11,18 @@ import (
 
 // SymbolConfig holds info for a single symbol/oid
 type SymbolConfig struct {
-	OID          string `yaml:"OID"`
-	Name         string `yaml:"name"`
-	ExtractValue string `yaml:"extract_value"`
+	OID  string `yaml:"OID"`
+	Name string `yaml:"name"`
 
+	ExtractValue        string `yaml:"extract_value"`
 	ExtractValuePattern *regexp.Regexp
+
+	// TODO: Use a different SymbolConfig ?
+	MetadataField string `yaml:"field"`
+
+	// TODO: Implement index_transforms or
+	//       - index_transform
+	//       - index_from_value
 }
 
 // MetricTagConfig holds metric tag info
@@ -73,6 +80,19 @@ type MetricsConfig struct {
 
 	ForcedType string              `yaml:"forced_type"`
 	Options    MetricsConfigOption `yaml:"options"`
+}
+
+// MetadataConfig holds configs for a metadata
+type MetadataConfig struct {
+	// Symbol configs
+	Symbol SymbolConfig `yaml:"symbol"`
+
+	// Table configs
+	Symbols []SymbolConfig `yaml:"symbols"`
+
+	// TODO: Implement tags
+	//       Should we use the same structure as for metrics ?
+	Tags MetricTagConfigList `yaml:"tags"`
 }
 
 // GetTags retrieve tags using the metric config and values
