@@ -1,4 +1,4 @@
-// +build linux_bpf
+// +build linux_bpf windows,npm
 
 package http
 
@@ -82,9 +82,9 @@ func (h *httpStatKeeper) add(tx httpTX) {
 // parts of the transactions are joined here by src port
 func (h *httpStatKeeper) handleIncomplete(tx httpTX) {
 	key := Key{
-		SrcIPHigh: uint64(tx.tup.saddr_h),
-		SrcIPLow:  uint64(tx.tup.saddr_l),
-		SrcPort:   uint16(tx.tup.sport),
+		SrcIPHigh: tx.SrcIPHigh(),
+		SrcIPLow:  tx.SrcIPLow(),
+		SrcPort:   tx.SrcPort(),
 	}
 
 	otherHalf, ok := h.incomplete[key]
@@ -114,14 +114,15 @@ func (h *httpStatKeeper) handleIncomplete(tx httpTX) {
 	}
 
 	// Merge response into request
-	request.response_status_code = response.response_status_code
-	request.response_last_seen = response.response_last_seen
+	request.SetStatusCode(response.StatusCode())
+	request.SetLastSeen(response.LastSeen())
 	h.add(request)
 	delete(h.incomplete, key)
 }
 
 func (h *httpStatKeeper) newKey(tx httpTX, path string) Key {
 	return Key{
+<<<<<<< HEAD
 		SrcIPHigh: uint64(tx.tup.saddr_h),
 		SrcIPLow:  uint64(tx.tup.saddr_l),
 		SrcPort:   uint16(tx.tup.sport),
@@ -130,6 +131,16 @@ func (h *httpStatKeeper) newKey(tx httpTX, path string) Key {
 		DstPort:   uint16(tx.tup.dport),
 		Path:      path,
 		Method:    Method(tx.request_method),
+=======
+		SrcIPHigh: tx.SrcIPHigh(),
+		SrcIPLow:  tx.SrcIPLow(),
+		SrcPort:   tx.SrcPort(),
+		DstIPHigh: tx.DstIPHigh(),
+		DstIPLow:  tx.DstIPLow(),
+		DstPort:   tx.DstPort(),
+		Path:      pathString,
+		Method:    tx.Method(),
+>>>>>>> e98359169 (Process batches of completed http transactions)
 	}
 }
 
