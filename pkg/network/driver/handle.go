@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	// deviceName identifies the name and location of the windows driver
-	deviceName = `\\.\ddnpm`
+	// DeviceName identifies the name and location of the windows driver
+	DeviceName = `\\.\ddnpm`
 )
 
 var (
@@ -48,6 +48,9 @@ const (
 
 	// StatsHandle has no filter set and is used to pull total stats from the driver
 	StatsHandle HandleType = "Stats"
+
+	// HTTPHandle is keyed to return batches of completed HTTP transactions from the driver. Used with: #define FILTER_LAYER_TRANSPORT ((uint64_t) 1)
+	HTTPHandle HandleType = "HTTP"
 )
 
 // handleTypeToPathName maps the handle type to the path name that the driver is expecting.
@@ -55,6 +58,7 @@ var handleTypeToPathName = map[HandleType]string{
 	FlowHandle:  "flowstatshandle",
 	DataHandle:  "transporthandle",
 	StatsHandle: "driverstatshandle", // for now just use that; any path will do
+	HTTPHandle:  "httphandle",
 }
 
 // Handle struct stores the windows handle for the driver as well as information about what type of filter is set
@@ -68,11 +72,14 @@ type Handle struct {
 
 // NewHandle creates a new windows handle attached to the driver
 func NewHandle(flags uint32, handleType HandleType) (*Handle, error) {
+	// Each type of handle has its own framework file object. These objects must live within the
+	// ddnpm device's namespace, so their paths must be prepended by the device name.
+	// See https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/controlling-device-namespace-access
 	pathext, ok := handleTypeToPathName[handleType]
 	if !ok {
 		return nil, fmt.Errorf("Unknown Handle type %v", handleType)
 	}
-	fullpath := deviceName + `\` + pathext
+	fullpath := DeviceName + `\` + pathext
 	p, err := windows.UTF16PtrFromString(fullpath)
 	if err != nil {
 		return nil, err
@@ -82,7 +89,7 @@ func NewHandle(flags uint32, handleType HandleType) (*Handle, error) {
 		windows.GENERIC_READ|windows.GENERIC_WRITE,
 		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE,
 		nil,
-		windows.OPEN_EXISTING,
+		windows.CREATE_NEW,
 		flags,
 		windows.Handle(0))
 	if err != nil {
@@ -119,6 +126,23 @@ func (dh *Handle) SetDataFilters(filters []FilterDefinition) error {
 	for _, filter := range filters {
 		err := windows.DeviceIoControl(dh.Handle,
 			SetDataFilterIOCTL,
+			(*byte)(unsafe.Pointer(&filter)),
+			uint32(unsafe.Sizeof(filter)),
+			(*byte)(unsafe.Pointer(&id)),
+			uint32(unsafe.Sizeof(id)), nil, nil)
+		if err != nil {
+			return fmt.Errorf("failed to set filter: %v", err)
+		}
+	}
+	return nil
+}
+
+// SetHTTPFilters installs the provided filters for http messages
+func (dh *Handle) SetHTTPFilters(filters []FilterDefinition) error {
+	var id int64
+	for _, filter := range filters {
+		err := windows.DeviceIoControl(dh.Handle,
+			SetHTTPFilterIOCTL,
 			(*byte)(unsafe.Pointer(&filter)),
 			uint32(unsafe.Sizeof(filter)),
 			(*byte)(unsafe.Pointer(&id)),
@@ -204,6 +228,22 @@ func (dh *Handle) GetStatsForHandle() (map[string]int64, error) {
 			"packets_processed_transport": stats.Handle.Transport_stats.Packets_processed,
 			"read_packets_skipped":        stats.Handle.Transport_stats.Read_packets_skipped,
 			"packets_reported":            stats.Handle.Transport_stats.Packets_reported,
+		}, nil
+	// A HTTPHandle handle returns http stats specific to this handle
+	case HTTPHandle:
+		return map[string]int64{
+			"read_calls":                    stats.Handle.Handle_stats.Read_calls,
+			"read_calls_outstanding":        stats.Handle.Handle_stats.Read_calls_outstanding,
+			"read_calls_completed":          stats.Handle.Handle_stats.Read_calls_completed,
+			"read_calls_cancelled":          stats.Handle.Handle_stats.Read_calls_cancelled,
+			"write_calls":                   stats.Handle.Handle_stats.Write_calls,
+			"write_bytes":                   stats.Handle.Handle_stats.Write_bytes,
+			"ioctl_calls":                   stats.Handle.Handle_stats.Ioctl_calls,
+			"packets_processed":             stats.Handle.Http_stats.Packets_processed,
+			"num_flows_missed_max_exceeded": stats.Handle.Http_stats.Num_flows_missed_max_exceeded,
+			"num_flow_collisions":           stats.Handle.Http_stats.Num_flow_collisions,
+			"read_batches_skipped":          stats.Handle.Http_stats.Read_batch_skipped,
+			"batches_reported":              stats.Handle.Http_stats.Batches_reported,
 		}, nil
 	default:
 		return nil, fmt.Errorf("no matching handle type for pulling handle stats")

@@ -3,8 +3,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
-//go:build linux_bpf
-// +build linux_bpf
+//go:build linux_bpf || (windows && npm)
+// +build linux_bpf windows,npm
 
 package http
 
@@ -88,9 +88,9 @@ func (h *httpStatKeeper) add(tx httpTX) {
 // parts of the transactions are joined here by src port
 func (h *httpStatKeeper) handleIncomplete(tx httpTX) {
 	key := Key{
-		SrcIPHigh: uint64(tx.tup.saddr_h),
-		SrcIPLow:  uint64(tx.tup.saddr_l),
-		SrcPort:   uint16(tx.tup.sport),
+		SrcIPHigh: tx.SrcIPHigh(),
+		SrcIPLow:  tx.SrcIPLow(),
+		SrcPort:   tx.SrcPort(),
 	}
 
 	otherHalf, ok := h.incomplete[key]
@@ -109,8 +109,7 @@ func (h *httpStatKeeper) handleIncomplete(tx httpTX) {
 		request, response = response, request
 	}
 
-	if request.request_started == 0 || response.response_status_code == 0 || request.request_started > response.response_last_seen {
-		// This means we can't join these parts as they don't belong to the same transaction.
+	if !partsCanBeJoined(request, response) {
 		// In this case, as a best-effort we override the incomplete entry with the latest one
 		// we got from eBPF, so it can be joined by it's other half at a later moment.
 		// This can happen because we can get out-of-order half transactions from eBPF
@@ -120,27 +119,27 @@ func (h *httpStatKeeper) handleIncomplete(tx httpTX) {
 	}
 
 	// Merge response into request
-	request.response_status_code = response.response_status_code
-	request.response_last_seen = response.response_last_seen
+	request.SetStatusCode(response.StatusCode())
+	request.SetLastSeen(response.LastSeen())
 	h.add(request)
 	delete(h.incomplete, key)
 }
 
 func (h *httpStatKeeper) newKey(tx httpTX, path string) Key {
 	return Key{
-		SrcIPHigh: uint64(tx.tup.saddr_h),
-		SrcIPLow:  uint64(tx.tup.saddr_l),
-		SrcPort:   uint16(tx.tup.sport),
-		DstIPHigh: uint64(tx.tup.daddr_h),
-		DstIPLow:  uint64(tx.tup.daddr_l),
-		DstPort:   uint16(tx.tup.dport),
+		SrcIPHigh: tx.SrcIPHigh(),
+		SrcIPLow:  tx.SrcIPLow(),
+		SrcPort:   tx.SrcPort(),
+		DstIPHigh: tx.DstIPHigh(),
+		DstIPLow:  tx.DstIPLow(),
+		DstPort:   tx.DstPort(),
 		Path:      path,
-		Method:    Method(tx.request_method),
+		Method:    tx.Method(),
 	}
 }
 
 func (h *httpStatKeeper) processHTTPPath(tx httpTX) (pathStr string, rejected bool) {
-	path := tx.Path(h.buffer)
+	path := getPath(tx.ReqFragment(), h.buffer)
 
 	for _, r := range h.replaceRules {
 		if r.Re.Match(path) {
@@ -163,4 +162,34 @@ func (h *httpStatKeeper) intern(b []byte) string {
 		h.interned[v] = v
 	}
 	return v
+}
+
+// getPath returns the URL from a request fragment with GET variables excluded.
+// Example:
+// For a request fragment "GET /foo?var=bar HTTP/1.1", this method will return "/foo"
+func getPath(reqFragment, buffer []byte) []byte {
+	// reqLen might contain a null terminator in the middle
+	reqLen := len(reqFragment)
+	for i := 0; i < reqLen; i++ {
+		if reqFragment[i] == 0 {
+			reqLen = i
+			break
+		}
+	}
+
+	var i, j int
+	for i = 0; i < reqLen && reqFragment[i] != ' '; i++ {
+	}
+
+	i++
+
+	for j = i; j < reqLen && reqFragment[j] != ' ' && reqFragment[j] != '?'; j++ {
+	}
+
+	if i < j && j <= reqLen {
+		n := copy(buffer, reqFragment[i:j])
+		return buffer[:n]
+	}
+
+	return nil
 }
