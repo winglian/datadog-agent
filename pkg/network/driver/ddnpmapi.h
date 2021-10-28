@@ -16,7 +16,7 @@ typedef __int64 LONG64;
 typedef unsigned char       uint8_t;
 
 // define a version signature so that the driver won't load out of date structures, etc.
-#define DD_NPMDRIVER_VERSION       0x0a
+#define DD_NPMDRIVER_VERSION       0x0c
 #define DD_NPMDRIVER_SIGNATURE     ((uint64_t)0xDDFD << 32 | DD_NPMDRIVER_VERSION)
 
 // for more information on defining control codes, see
@@ -51,6 +51,11 @@ typedef unsigned char       uint8_t;
 
 #define DDNPMDRIVER_IOCTL_SET_MAX_FLOWS  CTL_CODE(FILE_DEVICE_NETWORK, \
                                               0x806, \
+                                              METHOD_BUFFERED,\
+                                              FILE_ANY_ACCESS)
+
+#define DDNPMDRIVER_IOCTL_SET_HTTP_FILTER CTL_CODE(FILE_DEVICE_NETWORK, \
+                                              0x807, \
                                               METHOD_BUFFERED,\
                                               FILE_ANY_ACCESS)
 
@@ -101,11 +106,21 @@ typedef struct _transport_handle_stats {
     volatile LONG64       packets_reported; // number of packets sent up
 
 } TRANSPORT_STATS;
+
+typedef struct _http_handle_stats {
+
+    volatile LONG64       packets_processed; // number of packets through the driver
+    volatile LONG64       num_flow_collisions;
+    volatile LONG64       num_flows_missed_max_exceeded;
+
+} HTTP_STATS;
+
 typedef struct _stats
 {
     HANDLE_STATS            handle_stats;
     FLOW_STATS              flow_stats;
     TRANSPORT_STATS         transport_stats;
+    HTTP_STATS              http_stats;
 } STATS;
 
 /*!

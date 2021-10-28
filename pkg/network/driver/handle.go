@@ -12,8 +12,13 @@ import (
 )
 
 const (
-	// deviceName identifies the name and location of the windows driver
-	deviceName = `\\.\ddnpm`
+	// Each type of handle has its own framework file object. These objects must live within the
+	// ddnpm device's namespace, so their paths must be prepended by '\\.\ddnpm\'.
+	// See https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/controlling-device-namespace-access
+	driverStatsHandlePathName = `\\.\ddnpm\driverstatshandle`
+	flowHandlePathName        = `\\.\ddnpm\flowstatshandle`
+	transportHandlePathName   = `\\.\ddnpm\transporthandle`
+	httpHandlePathName        = `\\.\ddnpm\httphandle`
 )
 
 var (
@@ -42,6 +47,9 @@ const (
 
 	// StatsHandle has no filter set and is used to pull total stats from the driver
 	StatsHandle HandleType = "Stats"
+
+	// TODO
+	HTTPHandle HandleType = "HTTP"
 )
 
 // Handle struct stores the windows handle for the driver as well as information about what type of filter is set
@@ -55,7 +63,21 @@ type Handle struct {
 
 // NewHandle creates a new windows handle attached to the driver
 func NewHandle(flags uint32, handleType HandleType) (*Handle, error) {
-	p, err := windows.UTF16PtrFromString(deviceName)
+	var handlePath string
+	switch handleType {
+	case FlowHandle:
+		handlePath = flowHandlePathName
+	case DataHandle:
+		handlePath = transportHandlePathName
+	case StatsHandle:
+		handlePath = driverStatsHandlePathName
+	case HTTPHandle:
+		handlePath = httpHandlePathName
+	default:
+		return nil, fmt.Errorf("unrecognized handle type: %v", handleType)
+	}
+
+	p, err := windows.UTF16PtrFromString(handlePath)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +86,7 @@ func NewHandle(flags uint32, handleType HandleType) (*Handle, error) {
 		windows.GENERIC_READ|windows.GENERIC_WRITE,
 		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE,
 		nil,
-		windows.OPEN_EXISTING,
+		windows.CREATE_NEW,
 		flags,
 		windows.Handle(0))
 	if err != nil {
@@ -101,6 +123,23 @@ func (dh *Handle) SetDataFilters(filters []FilterDefinition) error {
 	for _, filter := range filters {
 		err := windows.DeviceIoControl(dh.Handle,
 			SetDataFilterIOCTL,
+			(*byte)(unsafe.Pointer(&filter)),
+			uint32(unsafe.Sizeof(filter)),
+			(*byte)(unsafe.Pointer(&id)),
+			uint32(unsafe.Sizeof(id)), nil, nil)
+		if err != nil {
+			return fmt.Errorf("failed to set filter: %v", err)
+		}
+	}
+	return nil
+}
+
+// SetHTTPFilters installs the provided filters for http messages
+func (dh *Handle) SetHTTPFilters(filters []FilterDefinition) error {
+	var id int64
+	for _, filter := range filters {
+		err := windows.DeviceIoControl(dh.Handle,
+			SetHTTPFilterIOCTL,
 			(*byte)(unsafe.Pointer(&filter)),
 			uint32(unsafe.Sizeof(filter)),
 			(*byte)(unsafe.Pointer(&id)),
@@ -186,6 +225,13 @@ func (dh *Handle) GetStatsForHandle() (map[string]int64, error) {
 			"packets_processed_transport": stats.Handle.Transport_stats.Packets_processed,
 			"read_packets_skipped":        stats.Handle.Transport_stats.Read_packets_skipped,
 			"packets_reported":            stats.Handle.Transport_stats.Packets_reported,
+		}, nil
+	// A HTTPHandle handle returns http stats specific to this handle
+	case HTTPHandle:
+		return map[string]int64{
+			"packets_processed_http":             stats.Handle.Http_stats.Packets_processed,
+			"num_flows_missed_max_exceeded_http": stats.Handle.Http_stats.Num_flows_missed_max_exceeded,
+			"num_flow_collisions_http":           stats.Handle.Http_stats.Num_flow_collisions,
 		}, nil
 	default:
 		return nil, fmt.Errorf("no matching handle type for pulling handle stats")
