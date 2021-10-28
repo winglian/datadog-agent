@@ -16,11 +16,12 @@ import "C"
 const Signature = C.DD_NPMDRIVER_SIGNATURE
 
 const (
-	GetStatsIOCTL      = C.DDNPMDRIVER_IOCTL_GETSTATS
-	SetFlowFilterIOCTL = C.DDNPMDRIVER_IOCTL_SET_FLOW_FILTER
-	SetDataFilterIOCTL = C.DDNPMDRIVER_IOCTL_SET_DATA_FILTER
-	SetMaxFlowsIOCTL   = C.DDNPMDRIVER_IOCTL_SET_MAX_FLOWS
-	SetHTTPFilterIOCTL = C.DDNPMDRIVER_IOCTL_SET_HTTP_FILTER
+	GetStatsIOCTL             = C.DDNPMDRIVER_IOCTL_GETSTATS
+	SetFlowFilterIOCTL        = C.DDNPMDRIVER_IOCTL_SET_FLOW_FILTER
+	SetDataFilterIOCTL        = C.DDNPMDRIVER_IOCTL_SET_DATA_FILTER
+	SetMaxFlowsIOCTL          = C.DDNPMDRIVER_IOCTL_SET_MAX_FLOWS
+	SetHTTPFilterIOCTL        = C.DDNPMDRIVER_IOCTL_SET_HTTP_FILTER
+	FlushPendingHttpTxnsIOCTL = C.DDNPMDRIVER_IOCTL_FLUSH_PENDING_HTTP_TRANSACTIONS
 )
 
 type FilterAddress C.struct__filterAddress
@@ -66,3 +67,7 @@ const (
 const (
 	LayerTransport = C.FILTER_LAYER_TRANSPORT
 )
+
+type HttpTransactionType C.struct__HttpTransactionType
+type ConnTupleType C.struct__ConnTupleType
+type HttpMethodType C.enum__HttpMethodType
