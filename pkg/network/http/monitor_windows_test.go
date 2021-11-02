@@ -17,7 +17,7 @@ import (
 func TestHTTPMonitorIntegration(t *testing.T) {
 	targetAddr := "localhost:8080"
 	serverAddr := "localhost:8080"
-	testHTTPMonitor(t, targetAddr, serverAddr, 1)
+	testHTTPMonitor(t, targetAddr, serverAddr, 5)
 }
 
 /*
@@ -49,15 +49,35 @@ func testHTTPMonitor(t *testing.T, targetAddr, serverAddr string, numReqs int) {
 	requestFn := requestGenerator(t, targetAddr)
 	var requests []*nethttp.Request
 	for i := 0; i < numReqs; i++ {
-		requests = append(requests, requestFn())
+		req := requestFn()
+		requests = append(requests, req)
+		t.Logf(
+		"Sending request: path=%s method=%s status=%d \n",
+		req.URL.Path,
+		req.Method,
+		testutil.StatusFromPath(req.URL.Path),
+		)
 	}
 
 	// Ensure all captured transactions get sent to user-space
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(15 * time.Second)
 	monitor.di.flushPendingTransactions()
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(5 * time.Second)
 
 	stats := monitor.GetHTTPStats()
+
+	for key, s := range stats {
+		t.Logf(
+		"Found transaction: path=%s method=%s \n    100_count=%d 200_count=%d 300_count=%d 400_count=%d 500_count=%d\n",
+		key.Path,
+		key.Method,
+		s[0].Count,
+		s[1].Count,
+		s[2].Count,
+		s[3].Count,
+		s[4].Count,
+		)
+	}
 
 	// Assert all requests made were correctly captured by the monitor
 	for _, req := range requests {
@@ -91,17 +111,17 @@ func requestGenerator(t *testing.T, targetAddr string) func() *nethttp.Request {
 
 func includesRequest(t *testing.T, allStats map[Key]RequestStats, req *nethttp.Request) {
 	expectedStatus := testutil.StatusFromPath(req.URL.Path)
-	i := expectedStatus/100 - 1
 	for key, stats := range allStats {
-		t.Errorf(
-		"Found transaction:\n path=%s method=%s status[%d].Count=%d. Expected:\n path=%s method=%s status=%d",
-		key.Path,
-		key.Method,
-		expectedStatus,
-		stats[i].Count,
+		i := expectedStatus/100 - 1
+		if key.Path == req.URL.Path && stats[i].Count == 1 {
+			return
+		}
+	}
+
+	t.Errorf(
+		"could not find HTTP transaction matching the following criteria:\n path=%s method=%s status=%d",
 		req.URL.Path,
 		req.Method,
 		expectedStatus,
-		)
-	}
+	)
 }
