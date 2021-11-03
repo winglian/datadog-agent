@@ -717,6 +717,8 @@ func (agg *BufferedAggregator) Flush(start time.Time, waitForSerializer bool) {
 	agg.updateChecksTelemetry()
 }
 
+// FlushStats flushes the data contained in the BufferedAggregator into the Forwarder.
+// This method can be called from multiple routines.
 func (agg *BufferedAggregator) FlushStats(start time.Time, waitForSerializer bool) {
 	agg.flushMutex.Lock()
 	defer agg.flushMutex.Unlock()
