@@ -14,8 +14,12 @@ metadata:
   device:
     fields:
       vendor: "f5"
-      types:  # why not use tags ?
-        - "router"
+    tags:
+      - "type:router"
+      - "type:printer"
+
+    #   types:  # why not use tags ?
+    #     - "router"
     # device level tags are from metric_tags (rename to tags)
 
 metric_tags:
