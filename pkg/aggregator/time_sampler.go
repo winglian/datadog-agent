@@ -24,7 +24,8 @@ type SerieSignature struct {
 type TimeSampler struct {
 	interval                    int64
 	contextResolver             *timestampContextResolver
-	metricsByTimestamp          map[int64]metrics.ContextMetrics
+	contextMetrics              metrics.ContextMetrics
+	contextMetricsTimestamp     int64
 	counterLastSampledByContext map[ckey.ContextKey]float64
 	lastCutOffTime              int64
 	sketchMap                   sketchMap
@@ -38,7 +39,6 @@ func NewTimeSampler(interval int64) *TimeSampler {
 	return &TimeSampler{
 		interval:                    interval,
 		contextResolver:             newTimestampContextResolver(),
-		metricsByTimestamp:          map[int64]metrics.ContextMetrics{},
 		counterLastSampledByContext: map[ckey.ContextKey]float64{},
 		sketchMap:                   make(sketchMap),
 	}
@@ -63,10 +63,9 @@ func (s *TimeSampler) addSample(metricSample *metrics.MetricSample, timestamp fl
 		s.sketchMap.insert(bucketStart, contextKey, metricSample.Value, metricSample.SampleRate)
 	default:
 		// If it's a new bucket, initialize it
-		bucketMetrics, ok := s.metricsByTimestamp[bucketStart]
-		if !ok {
-			bucketMetrics = metrics.MakeContextMetrics()
-			s.metricsByTimestamp[bucketStart] = bucketMetrics
+		if s.contextMetrics == nil {
+			s.contextMetrics = metrics.MakeContextMetrics()
+			s.contextMetricsTimestamp = bucketStart
 		}
 		// Update LastSampled timestamp for counters
 		if metricSample.Mtype == metrics.CounterType {
@@ -74,7 +73,7 @@ func (s *TimeSampler) addSample(metricSample *metrics.MetricSample, timestamp fl
 		}
 
 		// Add sample to bucket
-		if err := bucketMetrics.AddSample(contextKey, metricSample, timestamp, s.interval, nil); err != nil {
+		if err := s.contextMetrics.AddSample(contextKey, metricSample, timestamp, s.interval, nil); err != nil {
 			log.Debugf("Ignoring sample '%s' on host '%s' and tags '%s': %s", metricSample.Name, metricSample.Host, metricSample.Tags, err)
 		}
 	}
@@ -102,21 +101,17 @@ func (s *TimeSampler) flushSeries(cutoffTime int64) metrics.Series {
 	// Map to hold the expired contexts that will need to be deleted after the flush so that we stop sending zeros
 	counterContextsToDelete := map[ckey.ContextKey]struct{}{}
 
-	if len(s.metricsByTimestamp) > 0 {
-		for bucketTimestamp, contextMetrics := range s.metricsByTimestamp {
-			// disregard when the timestamp is too recent
-			if s.isBucketStillOpen(bucketTimestamp, cutoffTime) {
-				continue
-			}
+	if s.contextMetrics != nil {
+		bucketTimestamp := s.contextMetricsTimestamp
 
-			// Add a 0 sample to all the counters that are not expired.
-			// It is ok to add 0 samples to a counter that was already sampled for real in the bucket, since it won't change its value
-			s.countersSampleZeroValue(bucketTimestamp, contextMetrics, counterContextsToDelete)
+		// Add a 0 sample to all the counters that are not expired.
+		// It is ok to add 0 samples to a counter that was already sampled for real in the bucket, since it won't change its value
+		s.countersSampleZeroValue(bucketTimestamp, s.contextMetrics, counterContextsToDelete)
 
-			rawSeries = append(rawSeries, s.flushContextMetrics(bucketTimestamp, contextMetrics)...)
+		rawSeries = append(rawSeries, s.flushContextMetrics(bucketTimestamp, s.contextMetrics)...)
 
-			delete(s.metricsByTimestamp, bucketTimestamp)
-		}
+		s.contextMetrics = nil
+
 	} else if s.lastCutOffTime+s.interval <= cutoffTime {
 		// Even if there is no metric in this flush, recreate empty counters,
 		// but only if we've passed an interval since the last flush

@@ -466,7 +466,7 @@ func runCheck(c check.Check, agg *aggregator.BufferedAggregator) *check.Stats {
 }
 
 func printMetrics(agg *aggregator.BufferedAggregator, checkFileOutput *bytes.Buffer) {
-	series, sketches := agg.GetSeriesAndSketches(time.Now())
+	series, sketches := agg.GetSeriesAndSketches(time.Now(), true) // TODO
 	if len(series) != 0 {
 		fmt.Fprintln(color.Output, fmt.Sprintf("=== %s ===", color.BlueString("Series")))
 
@@ -611,7 +611,7 @@ func toDebugEpEvents(events map[string][]*message.Message) map[string][]eventPla
 func getMetricsData(agg *aggregator.BufferedAggregator) map[string]interface{} {
 	aggData := make(map[string]interface{})
 
-	series, sketches := agg.GetSeriesAndSketches(time.Now())
+	series, sketches := agg.GetSeriesAndSketches(time.Now(), false)
 	if len(series) != 0 {
 		// Workaround to get the raw sequence of metrics, see:
 		// https://github.com/DataDog/datadog-agent/blob/b2d9527ec0ec0eba1a7ae64585df443c5b761610/pkg/metrics/series.go#L109-L122

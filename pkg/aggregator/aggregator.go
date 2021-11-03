@@ -239,7 +239,8 @@ type BufferedAggregator struct {
 	hostname               string
 	hostnameUpdate         chan string
 	hostnameUpdateDone     chan struct{}    // signals that the hostname update is finished
-	TickerChan             <-chan time.Time // For test/benchmark purposes: it allows the flush to be controlled from the outside
+	TickerCheckChan        <-chan time.Time // For test/benchmark purposes: it allows the flush to be controlled from the outside
+	TickerStatsChan        <-chan time.Time // For test/benchmark purposes: it allows the flush to be controlled from the outside
 	ServerlessFlush        chan bool
 	ServerlessFlushDone    chan struct{}
 	stopChan               chan struct{}
@@ -460,15 +461,21 @@ func (agg *BufferedAggregator) addSample(metricSample *metrics.MetricSample, tim
 // GetSeriesAndSketches grabs all the series & sketches from the queue and clears the queue
 // The parameter `before` is used as an end interval while retrieving series and sketches
 // from the time sampler. Metrics and sketches before this timestamp should be returned.
-func (agg *BufferedAggregator) GetSeriesAndSketches(before time.Time) (metrics.Series, metrics.SketchSeriesList) {
+func (agg *BufferedAggregator) GetSeriesAndSketches(before time.Time, flushStats bool) (metrics.Series, metrics.SketchSeriesList) {
 	agg.mu.Lock()
 	defer agg.mu.Unlock()
 
-	series, sketches := agg.statsdSampler.flush(float64(before.UnixNano()) / float64(time.Second))
-	for _, checkSampler := range agg.checkSamplers {
-		s, sk := checkSampler.flush()
-		series = append(series, s...)
-		sketches = append(sketches, sk...)
+	var series metrics.Series
+	var sketches metrics.SketchSeriesList
+
+	if flushStats {
+		series, sketches = agg.statsdSampler.flush(float64(before.UnixNano()) / float64(time.Second))
+	} else {
+		for _, checkSampler := range agg.checkSamplers {
+			s, sk := checkSampler.flush()
+			series = append(series, s...)
+			sketches = append(sketches, sk...)
+		}
 	}
 	return series, sketches
 }
@@ -589,8 +596,8 @@ func (agg *BufferedAggregator) sendSketches(start time.Time, sketches metrics.Sk
 	}
 }
 
-func (agg *BufferedAggregator) flushSeriesAndSketches(start time.Time, waitForSerializer bool) {
-	series, sketches := agg.GetSeriesAndSketches(start)
+func (agg *BufferedAggregator) flushSeriesAndSketches(start time.Time, waitForSerializer bool, flushStats bool) {
+	series, sketches := agg.GetSeriesAndSketches(start, flushStats)
 
 	agg.sendSketches(start, sketches, waitForSerializer)
 	agg.sendSeries(start, series, waitForSerializer)
@@ -704,10 +711,17 @@ func (agg *BufferedAggregator) flushEvents(start time.Time, waitForSerializer bo
 func (agg *BufferedAggregator) Flush(start time.Time, waitForSerializer bool) {
 	agg.flushMutex.Lock()
 	defer agg.flushMutex.Unlock()
-	agg.flushSeriesAndSketches(start, waitForSerializer)
+	agg.flushSeriesAndSketches(start, waitForSerializer, false)
 	agg.flushServiceChecks(start, waitForSerializer)
 	agg.flushEvents(start, waitForSerializer)
 	agg.updateChecksTelemetry()
+}
+
+func (agg *BufferedAggregator) FlushStats(start time.Time, waitForSerializer bool) {
+	agg.flushMutex.Lock()
+	defer agg.flushMutex.Unlock()
+	agg.flushSeriesAndSketches(start, waitForSerializer, true)
+	//agg.updateChecksTelemetry() TODO
 }
 
 // Stop stops the aggregator. Based on 'flushData' waiting metrics (from checks
@@ -733,12 +747,16 @@ func (agg *BufferedAggregator) Stop() {
 }
 
 func (agg *BufferedAggregator) run() {
-	if agg.TickerChan == nil {
+	if agg.TickerCheckChan == nil {
 		if agg.flushInterval != 0 {
-			agg.TickerChan = time.NewTicker(agg.flushInterval).C
+			agg.TickerCheckChan = time.NewTicker(agg.flushInterval).C
 		} else {
 			log.Debugf("aggregator flushInterval set to 0: aggregator won't flush data")
 		}
+	}
+
+	if agg.TickerStatsChan == nil {
+		agg.TickerStatsChan = time.NewTicker(time.Second * 10).C
 	}
 
 	// ensures event platform errors are logged at most once per flush
@@ -750,10 +768,16 @@ func (agg *BufferedAggregator) run() {
 			log.Info("Stopping aggregator")
 			return
 		case <-agg.health.C:
-		case <-agg.TickerChan:
+		case <-agg.TickerCheckChan:
 			start := time.Now()
 			agg.Flush(start, false)
-			addFlushTime("MainFlushTime", int64(time.Since(start)))
+			//	addFlushTime("CheckFlushTime", int64(time.Since(start)))
+			aggregatorNumberOfFlush.Add(1)
+			aggregatorEventPlatformErrorLogged = false
+		case <-agg.TickerStatsChan:
+			start := time.Now()
+			agg.FlushStats(start, false)
+			//addFlushTime("StatsFlushTime", int64(time.Since(start)))
 			aggregatorNumberOfFlush.Add(1)
 			aggregatorEventPlatformErrorLogged = false
 		case <-agg.ServerlessFlush:
