@@ -38,7 +38,7 @@ type Opts struct {
 
 // OpOverride defines a operator override function suite
 type OpOverrides struct {
-	StringEquals func(a *StringEvaluator, b *StringEvaluator, opts *Opts, state *state) (*BoolEvaluator, error)
+	StringEquals func(a *StringEvaluator, b *StringEvaluator, opts *Opts, state *State) (*BoolEvaluator, error)
 }
 
 // BoolEvalFnc describe a eval function return a boolean
@@ -70,7 +70,7 @@ type ident struct {
 	Ident *string
 }
 
-func identToEvaluator(obj *ident, opts *Opts, state *state) (interface{}, lexer.Position, error) {
+func identToEvaluator(obj *ident, opts *Opts, state *State) (interface{}, lexer.Position, error) {
 	if accessor, ok := opts.Constants[*obj.Ident]; ok {
 		return accessor, obj.Pos, nil
 	}
@@ -158,57 +158,15 @@ func identToEvaluator(obj *ident, opts *Opts, state *state) (interface{}, lexer.
 	return accessor, obj.Pos, nil
 }
 
-func arrayToEvaluator(array *ast.Array, opts *Opts, state *state) (interface{}, lexer.Position, error) {
+func arrayToEvaluator(array *ast.Array, opts *Opts, state *State) (interface{}, lexer.Position, error) {
 	if len(array.Numbers) != 0 {
 		var evaluator IntArrayEvaluator
 		evaluator.AppendMembers(array.Numbers...)
 		return &evaluator, array.Pos, nil
 	} else if len(array.StringMembers) != 0 {
-<<<<<<< HEAD
-		var se StringArrayEvaluator
-
-		for _, member := range array.StringMembers {
-			if member.Pattern != nil {
-				reg, err := PatternToRegexp(*member.Pattern)
-				if err != nil {
-					return nil, array.Pos, NewError(array.Pos, fmt.Sprintf("invalid pattern `%s`: %s", *member.Pattern, err))
-				}
-				se.Values = append(se.Values, *member.Pattern)
-				se.regexps = append(se.regexps, reg)
-				se.fieldValues = append(se.fieldValues, FieldValue{
-					Value:  *member.Pattern,
-					Type:   PatternValueType,
-					Regexp: reg,
-				})
-			} else if member.Regexp != nil {
-				reg, err := regexp.Compile(*member.Regexp)
-				if err != nil {
-					return nil, array.Pos, NewError(array.Pos, fmt.Sprintf("invalid regexp `%s`: %s", *member.Regexp, err))
-				}
-				se.Values = append(se.Values, *member.Regexp)
-				se.regexps = append(se.regexps, reg)
-
-				se.fieldValues = append(se.fieldValues, FieldValue{
-					Value:  *member.Regexp,
-					Type:   RegexpValueType,
-					Regexp: reg,
-				})
-			} else {
-				if se.scalars == nil {
-					se.scalars = make(map[string]bool)
-				}
-				se.Values = append(se.Values, *member.String)
-				se.scalars[*member.String] = true
-				se.fieldValues = append(se.fieldValues, FieldValue{
-					Value: *member.String,
-					Type:  ScalarValueType,
-				})
-			}
-=======
 		var evaluator StringArrayEvaluator
 		if err := evaluator.AppendMembers(array.StringMembers...); err != nil {
 			return nil, array.Pos, NewError(array.Pos, err.Error())
->>>>>>> b0fcfda13 (Introduce operator override)
 		}
 		return &evaluator, array.Pos, nil
 	} else if array.Ident != nil {
@@ -225,7 +183,7 @@ func arrayToEvaluator(array *ast.Array, opts *Opts, state *state) (interface{}, 
 	return nil, array.Pos, NewError(array.Pos, "unknow array element type")
 }
 
-func nodeToEvaluator(obj interface{}, opts *Opts, state *state) (interface{}, lexer.Position, error) {
+func nodeToEvaluator(obj interface{}, opts *Opts, state *State) (interface{}, lexer.Position, error) {
 	var err error
 	var boolEvaluator *BoolEvaluator
 	var pos lexer.Position
