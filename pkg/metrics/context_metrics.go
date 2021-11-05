@@ -103,3 +103,52 @@ func (m ContextMetrics) Flush(timestamp float64) ([]*Serie, map[ckey.ContextKey]
 
 	return series, errors
 }
+
+type TimestampedContextMetrics struct {
+	BucketTimestamp float64
+	ContextMetrics  ContextMetrics
+}
+
+type TODO []TimestampedContextMetrics
+
+func (t TODO) FlushAndClear() ([]*Serie, map[ckey.ContextKey][]error) {
+	var series []*Serie
+	errors := make(map[ckey.ContextKey][]error)
+
+	t.merge(func(contextKey ckey.ContextKey, m Metric, bucketTimestamp float64) {
+		metricSeries, err := m.flush(bucketTimestamp)
+		if err == nil {
+			for _, serie := range metricSeries {
+				serie.ContextKey = contextKey
+				series = append(series, serie)
+			}
+		} else {
+			switch err.(type) {
+			case NoSerieError:
+				// this error happens in nominal conditions and shouldn't be returned
+			default:
+				errors[contextKey] = append(errors[contextKey], err)
+			}
+		}
+	})
+
+	return series, errors
+}
+
+func (t *TODO) merge(callback func(ckey.ContextKey, Metric, float64)) {
+	for i := 0; i < len(*t); i++ {
+		for contextKey, metrics := range (*t)[i].ContextMetrics {
+			callback(contextKey, metrics, (*t)[i].BucketTimestamp)
+
+			for j := i + 1; j < len(*t); j++ {
+				contextMetrics := (*t)[j].ContextMetrics
+				if m, found := contextMetrics[contextKey]; found {
+					callback(contextKey, m, (*t)[j].BucketTimestamp)
+					if j != i {
+						delete(contextMetrics, contextKey)
+					}
+				}
+			}
+		}
+	}
+}

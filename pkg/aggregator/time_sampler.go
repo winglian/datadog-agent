@@ -101,6 +101,7 @@ func (s *TimeSampler) flushSeries(cutoffTime int64) metrics.Series {
 	serieBySignature := make(map[SerieSignature]*metrics.Serie)
 	// Map to hold the expired contexts that will need to be deleted after the flush so that we stop sending zeros
 	counterContextsToDelete := map[ckey.ContextKey]struct{}{}
+	var contextMetricsToFlush metrics.TODO
 
 	if len(s.metricsByTimestamp) > 0 {
 		for bucketTimestamp, contextMetrics := range s.metricsByTimestamp {
@@ -112,8 +113,10 @@ func (s *TimeSampler) flushSeries(cutoffTime int64) metrics.Series {
 			// Add a 0 sample to all the counters that are not expired.
 			// It is ok to add 0 samples to a counter that was already sampled for real in the bucket, since it won't change its value
 			s.countersSampleZeroValue(bucketTimestamp, contextMetrics, counterContextsToDelete)
-
-			rawSeries = append(rawSeries, s.flushContextMetrics(bucketTimestamp, contextMetrics)...)
+			contextMetricsToFlush = append(contextMetricsToFlush, metrics.TimestampedContextMetrics{
+				BucketTimestamp: float64(bucketTimestamp),
+				ContextMetrics:  contextMetrics,
+			})
 
 			delete(s.metricsByTimestamp, bucketTimestamp)
 		}
@@ -124,9 +127,13 @@ func (s *TimeSampler) flushSeries(cutoffTime int64) metrics.Series {
 		contextMetrics := metrics.MakeContextMetrics()
 
 		s.countersSampleZeroValue(cutoffTime-s.interval, contextMetrics, counterContextsToDelete)
-
-		rawSeries = append(rawSeries, s.flushContextMetrics(cutoffTime-s.interval, contextMetrics)...)
+		contextMetricsToFlush = append(contextMetricsToFlush, metrics.TimestampedContextMetrics{
+			BucketTimestamp: float64(cutoffTime - s.interval),
+			ContextMetrics:  contextMetrics,
+		})
 	}
+
+	rawSeries = append(rawSeries, s.flushContextMetrics(contextMetricsToFlush)...)
 
 	// Delete the contexts associated to an expired counter
 	for context := range counterContextsToDelete {
@@ -192,8 +199,8 @@ func (s *TimeSampler) flush(timestamp float64) (metrics.Series, metrics.SketchSe
 }
 
 // flushContextMetrics flushes the passed contextMetrics, handles its errors, and returns its series
-func (s *TimeSampler) flushContextMetrics(timestamp int64, contextMetrics metrics.ContextMetrics) []*metrics.Serie {
-	series, errors := contextMetrics.Flush(float64(timestamp))
+func (s *TimeSampler) flushContextMetrics(contextMetricsToFlush metrics.TODO) []*metrics.Serie {
+	series, errors := contextMetricsToFlush.FlushAndClear()
 	for ckey, err := range errors {
 		context, ok := s.contextResolver.get(ckey)
 		if !ok {
