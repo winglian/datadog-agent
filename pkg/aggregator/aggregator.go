@@ -248,6 +248,8 @@ type BufferedAggregator struct {
 
 	tlmContainerTagsEnabled bool                                              // Whether we should call the tagger to tag agent telemetry metrics
 	agentTags               func(collectors.TagCardinality) ([]string, error) // This function gets the agent tags from the tagger (defined as a struct field to ease testing)
+
+	pushSerieDone chan struct{}
 }
 
 // NewBufferedAggregator instantiates a BufferedAggregator
@@ -299,6 +301,7 @@ func NewBufferedAggregator(s serializer.MetricSerializer, eventPlatformForwarder
 		agentTags:               tagger.AgentTags,
 		ServerlessFlush:         make(chan bool),
 		ServerlessFlushDone:     make(chan struct{}),
+		pushSerieDone:           make(chan struct{}),
 	}
 
 	return aggregator
@@ -460,17 +463,19 @@ func (agg *BufferedAggregator) addSample(metricSample *metrics.MetricSample, tim
 // GetSeriesAndSketches grabs all the series & sketches from the queue and clears the queue
 // The parameter `before` is used as an end interval while retrieving series and sketches
 // from the time sampler. Metrics and sketches before this timestamp should be returned.
-func (agg *BufferedAggregator) GetSeriesAndSketches(before time.Time) (metrics.Series, metrics.SketchSeriesList) {
+func (agg *BufferedAggregator) GetSeriesAndSketches(before time.Time, serieChan chan<- *metrics.Serie) metrics.SketchSeriesList {
 	agg.mu.Lock()
 	defer agg.mu.Unlock()
 
-	series, sketches := agg.statsdSampler.flush(float64(before.UnixNano()) / float64(time.Second))
+	sketches := agg.statsdSampler.flush(float64(before.UnixNano())/float64(time.Second), serieChan)
 	for _, checkSampler := range agg.checkSamplers {
-		s, sk := checkSampler.flush()
-		series = append(series, s...)
+		series, sk := checkSampler.flush()
+		for _, s := range series {
+			serieChan <- s
+		}
 		sketches = append(sketches, sk...)
 	}
-	return series, sketches
+	return sketches
 }
 
 func (agg *BufferedAggregator) pushSketches(start time.Time, sketches metrics.SketchSeriesList) {
@@ -489,23 +494,24 @@ func (agg *BufferedAggregator) pushSketches(start time.Time, sketches metrics.Sk
 	tagsetTlm.updateHugeSketchesTelemetry(&sketches)
 }
 
-func (agg *BufferedAggregator) pushSeries(start time.Time, series metrics.Series) {
-	log.Debugf("Flushing %d series to the forwarder", len(series))
+func (agg *BufferedAggregator) pushSeries(start time.Time, series *metrics.Series2) {
+	//	log.Debugf("Flushing %d series to the forwarder", len(series))
+
 	err := agg.serializer.SendSeries(series)
-	state := stateOk
+	//state := stateOk
 	if err != nil {
 		log.Warnf("Error flushing series: %v", err)
 		aggregatorSeriesFlushErrors.Add(1)
-		state = stateError
+		//	state = stateError
 	}
 	addFlushTime("ChecksMetricSampleFlushTime", int64(time.Since(start)))
-	aggregatorSeriesFlushed.Add(int64(len(series)))
-	tlmFlush.Add(float64(len(series)), "series", state)
+	//	aggregatorSeriesFlushed.Add(int64(len(series)))
+	//	tlmFlush.Add(float64(len(series)), "series", state)
 
-	tagsetTlm.updateHugeSeriesTelemetry(&series)
+	//tagsetTlm.updateHugeSeriesTelemetry(&series)
 }
 
-func (agg *BufferedAggregator) sendSeries(start time.Time, series metrics.Series, waitForSerializer bool) {
+func (agg *BufferedAggregator) sendSeries(start time.Time, seriesChan chan *metrics.Serie, waitForSerializer bool) {
 	recurrentSeriesLock.Lock()
 	// Adding recurrentSeries to the flushed ones
 	for _, extra := range recurrentSeries {
@@ -535,45 +541,51 @@ func (agg *BufferedAggregator) sendSeries(start time.Time, series metrics.Series
 				})
 		}
 		newSerie.Points = updatedPoints
-		series = append(series, newSerie)
+		seriesChan <- newSerie
 	}
 	recurrentSeriesLock.Unlock()
 
 	// Send along a metric that showcases that this Agent is running (internally, in backend,
 	// a `datadog.`-prefixed metric allows identifying this host as an Agent host, used for dogbone icon)
-	series = append(series, &metrics.Serie{
+	seriesChan <- &metrics.Serie{
 		Name:           fmt.Sprintf("datadog.%s.running", agg.agentName),
 		Points:         []metrics.Point{{Value: 1, Ts: float64(start.Unix())}},
 		Tags:           agg.tags(true),
 		Host:           agg.hostname,
 		MType:          metrics.APIGaugeType,
 		SourceTypeName: "System",
-	})
+	}
 
 	// Send along a metric that counts the number of times we dropped some payloads because we couldn't split them.
-	series = append(series, &metrics.Serie{
+	seriesChan <- &metrics.Serie{
 		Name:           fmt.Sprintf("n_o_i_n_d_e_x.datadog.%s.payload.dropped", agg.agentName),
 		Points:         []metrics.Point{{Value: float64(split.GetPayloadDrops()), Ts: float64(start.Unix())}},
 		Tags:           agg.tags(false),
 		Host:           agg.hostname,
 		MType:          metrics.APIGaugeType,
 		SourceTypeName: "System",
-	})
+	}
 
-	addFlushCount("Series", int64(len(series)))
+	//addFlushCount("Series", int64(len(series)))
 
 	// For debug purposes print out all metrics/tag combinations
 	if config.Datadog.GetBool("log_payloads") {
 		log.Debug("Flushing the following metrics:")
-		for _, serie := range series {
-			log.Debugf("%s", serie)
-		}
+		// for _, serie := range series {
+		// 	log.Debugf("%s", serie)
+		// }
 	}
 
 	if waitForSerializer {
-		agg.pushSeries(start, series)
+		go func() {
+			agg.pushSeries(start, metrics.NewSeries2(seriesChan))
+			agg.pushSerieDone <- struct{}{}
+		}()
 	} else {
-		go agg.pushSeries(start, series)
+		go func() {
+			agg.pushSeries(start, metrics.NewSeries2(seriesChan))
+			agg.pushSerieDone <- struct{}{}
+		}()
 	}
 }
 
@@ -590,10 +602,16 @@ func (agg *BufferedAggregator) sendSketches(start time.Time, sketches metrics.Sk
 }
 
 func (agg *BufferedAggregator) flushSeriesAndSketches(start time.Time, waitForSerializer bool) {
-	series, sketches := agg.GetSeriesAndSketches(start)
+	fmt.Println("TEST42 flushSeriesAndSketches")
+	serieChan := make(chan *metrics.Serie, 100000)
 
+	agg.sendSeries(start, serieChan, waitForSerializer)
+
+	sketches := agg.GetSeriesAndSketches(start, serieChan)
 	agg.sendSketches(start, sketches, waitForSerializer)
-	agg.sendSeries(start, series, waitForSerializer)
+	close(serieChan)
+	<-agg.pushSerieDone
+	fmt.Println("TEST42 END flushSeriesAndSketches")
 }
 
 // GetServiceChecks grabs all the service checks from the queue and clears the queue

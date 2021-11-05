@@ -224,3 +224,126 @@ func (b *JSONPayloadBuilder) BuildWithOnErrItemTooBigPolicy(
 
 	return payloads, nil
 }
+
+func (b *JSONPayloadBuilder) BuildWithOnErrItemTooBigPolicy2(
+	m marshaler.StreamJSONMarshaler2,
+	policy OnErrItemTooBigPolicy) (forwarder.Payloads, error) {
+
+	var input, output *bytes.Buffer
+	if b.shareAndLockBuffers {
+		defer b.mu.Unlock()
+
+		tlmCompressorLocks.Inc()
+		expvarsCompressorLocks.Add(1)
+		start := time.Now()
+		b.mu.Lock()
+		elapsed := time.Since(start)
+		expvarsTotalLockTime.Add(int64(elapsed))
+		tlmTotalLockTime.Add(float64(elapsed))
+		tlmCompressorLocks.Dec()
+		expvarsCompressorLocks.Add(-1)
+
+		input = b.input
+		output = b.output
+		input.Reset()
+		output.Reset()
+	} else {
+		input = bytes.NewBuffer(make([]byte, 0, b.inputSizeHint))
+		output = bytes.NewBuffer(make([]byte, 0, b.outputSizeHint))
+	}
+
+	var payloads forwarder.Payloads
+	//	itemCount := m.Len()
+	expvarsTotalCalls.Add(1)
+	tlmTotalCalls.Inc()
+	start := time.Now()
+
+	// Temporary buffers
+	var header, footer bytes.Buffer
+	jsonStream := jsoniter.NewStream(jsonConfig, &header, 4096)
+
+	err := m.WriteHeader(jsonStream)
+	if err != nil {
+		return nil, err
+	}
+
+	jsonStream.Reset(&footer)
+	err = m.WriteFooter(jsonStream)
+	if err != nil {
+		return nil, err
+	}
+
+	compressor, err := NewCompressor(input, output, header.Bytes(), footer.Bytes(), []byte(","))
+	if err != nil {
+		return nil, err
+	}
+
+	m.MoveNext()
+	for m.HasValue() {
+		// We keep reusing the same small buffer in the jsoniter stream. Note that we can do so
+		// because compressor.addItem copies given buffer.
+		jsonStream.Reset(nil)
+		err := m.WriteCurrentItem(jsonStream)
+		if err != nil {
+			log.Warnf("error marshalling an item, skipping: %s", err)
+			m.MoveNext()
+			expvarsWriteItemErrors.Add(1)
+			tlmWriteItemErrors.Inc()
+			continue
+		}
+
+		switch compressor.AddItem(jsonStream.Buffer()) {
+		case ErrPayloadFull:
+			expvarsPayloadFulls.Add(1)
+			tlmPayloadFull.Inc()
+			// payload is full, we need to create a new one
+			payload, err := compressor.Close()
+			if err != nil {
+				return payloads, err
+			}
+			payloads = append(payloads, &payload)
+			input.Reset()
+			output.Reset()
+			compressor, err = NewCompressor(input, output, header.Bytes(), footer.Bytes(), []byte(","))
+			if err != nil {
+				return nil, err
+			}
+		case nil:
+			// All good, continue to next item
+			m.MoveNext()
+			expvarsTotalItems.Add(1)
+			tlmTotalItems.Inc()
+			continue
+		case ErrItemTooBig:
+			if policy == FailOnErrItemTooBig {
+				return nil, ErrItemTooBig
+			}
+			fallthrough
+		default:
+			// Unexpected error, drop the item
+			m.MoveNext()
+			log.Warnf("Dropping an item, %s: %s", m.DescribeCurrentItem(), err)
+			expvarsItemDrops.Add(1)
+			tlmItemDrops.Inc()
+			continue
+		}
+	}
+
+	// Close last payload
+	payload, err := compressor.Close()
+	if err != nil {
+		return payloads, err
+	}
+	payloads = append(payloads, &payload)
+
+	if !b.shareAndLockBuffers {
+		b.inputSizeHint = input.Cap()
+		b.outputSizeHint = output.Cap()
+	}
+
+	elapsed := time.Since(start)
+	expvarsSerializationTime.Add(int64(elapsed))
+	tlmTotalSerializationTime.Add(float64(elapsed))
+
+	return payloads, nil
+}

@@ -94,15 +94,39 @@ func (s *TimeSampler) newSketchSeries(ck ckey.ContextKey, points []metrics.Sketc
 	return ss
 }
 
-func (s *TimeSampler) flushSeries(cutoffTime int64) metrics.Series {
-	var series []*metrics.Serie
-	var rawSeries []*metrics.Serie
+func (s *TimeSampler) flushSeries(cutoffTime int64, serieChan chan<- *metrics.Serie) {
 
-	serieBySignature := make(map[SerieSignature]*metrics.Serie)
+	//serieBySignature := make(map[SerieSignature]*metrics.Serie)
 	// Map to hold the expired contexts that will need to be deleted after the flush so that we stop sending zeros
 	counterContextsToDelete := map[ckey.ContextKey]struct{}{}
 	var contextMetricsToFlush metrics.TODO
+	flush := func(series []*metrics.Serie) {
+		serieBySignature := make(map[SerieSignature]*metrics.Serie)
+		for _, serie := range series {
+			serieSignature := SerieSignature{serie.MType, serie.ContextKey, serie.NameSuffix}
 
+			if existingSerie, ok := serieBySignature[serieSignature]; ok {
+				existingSerie.Points = append(existingSerie.Points, serie.Points[0])
+			} else {
+				// Resolve context and populate new Serie
+				context, ok := s.contextResolver.get(serie.ContextKey)
+				if !ok {
+					log.Errorf("Ignoring all metrics on context key '%v': inconsistent context resolver state: the context is not tracked", serie.ContextKey)
+					continue
+				}
+				serie.Name = context.Name + serie.NameSuffix
+				serie.Tags = context.Tags
+				serie.Host = context.Host
+				serie.Interval = s.interval
+
+				serieBySignature[serieSignature] = serie
+			}
+		}
+		for _, serie := range serieBySignature {
+			serieChan <- serie
+		}
+		//	fmt.Println("TEST42 flushSeries", len(serieBySignature))
+	}
 	if len(s.metricsByTimestamp) > 0 {
 		for bucketTimestamp, contextMetrics := range s.metricsByTimestamp {
 			// disregard when the timestamp is too recent
@@ -133,39 +157,16 @@ func (s *TimeSampler) flushSeries(cutoffTime int64) metrics.Series {
 		})
 	}
 
-	rawSeries = append(rawSeries, s.flushContextMetrics(contextMetricsToFlush)...)
+	s.flushContextMetrics(contextMetricsToFlush, flush)
 
 	// Delete the contexts associated to an expired counter
 	for context := range counterContextsToDelete {
 		delete(s.counterLastSampledByContext, context)
 	}
 
-	for _, serie := range rawSeries {
-		serieSignature := SerieSignature{serie.MType, serie.ContextKey, serie.NameSuffix}
-
-		if existingSerie, ok := serieBySignature[serieSignature]; ok {
-			existingSerie.Points = append(existingSerie.Points, serie.Points[0])
-		} else {
-			// Resolve context and populate new Serie
-			context, ok := s.contextResolver.get(serie.ContextKey)
-			if !ok {
-				log.Errorf("Ignoring all metrics on context key '%v': inconsistent context resolver state: the context is not tracked", serie.ContextKey)
-				continue
-			}
-			serie.Name = context.Name + serie.NameSuffix
-			serie.Tags = context.Tags
-			serie.Host = context.Host
-			serie.Interval = s.interval
-
-			serieBySignature[serieSignature] = serie
-			series = append(series, serie)
-		}
-	}
-
-	return series
 }
 
-func (s TimeSampler) flushSketches(cutoffTime int64) metrics.SketchSeriesList {
+func (s *TimeSampler) flushSketches(cutoffTime int64) metrics.SketchSeriesList {
 	pointsByCtx := make(map[ckey.ContextKey][]metrics.SketchPoint)
 	sketches := make(metrics.SketchSeriesList, 0, len(pointsByCtx))
 
@@ -182,11 +183,11 @@ func (s TimeSampler) flushSketches(cutoffTime int64) metrics.SketchSeriesList {
 	return sketches
 }
 
-func (s *TimeSampler) flush(timestamp float64) (metrics.Series, metrics.SketchSeriesList) {
+func (s *TimeSampler) flush(timestamp float64, serieChan chan<- *metrics.Serie) metrics.SketchSeriesList {
 	// Compute a limit timestamp
 	cutoffTime := s.calculateBucketStart(timestamp)
 
-	series := s.flushSeries(cutoffTime)
+	s.flushSeries(cutoffTime, serieChan)
 	sketches := s.flushSketches(cutoffTime)
 
 	// expiring contexts
@@ -195,12 +196,12 @@ func (s *TimeSampler) flush(timestamp float64) (metrics.Series, metrics.SketchSe
 
 	aggregatorDogstatsdContexts.Set(int64(s.contextResolver.length()))
 	tlmDogstatsdContexts.Set(float64(s.contextResolver.length()))
-	return series, sketches
+	return sketches
 }
 
 // flushContextMetrics flushes the passed contextMetrics, handles its errors, and returns its series
-func (s *TimeSampler) flushContextMetrics(contextMetricsToFlush metrics.TODO) []*metrics.Serie {
-	series, errors := contextMetricsToFlush.FlushAndClear()
+func (s *TimeSampler) flushContextMetrics(contextMetricsToFlush metrics.TODO, flush func([]*metrics.Serie)) {
+	errors := contextMetricsToFlush.FlushAndClear(flush)
 	for ckey, err := range errors {
 		context, ok := s.contextResolver.get(ckey)
 		if !ok {
@@ -209,7 +210,7 @@ func (s *TimeSampler) flushContextMetrics(contextMetricsToFlush metrics.TODO) []
 		}
 		log.Infof("No value returned for dogstatsd metric '%s' on host '%s' and tags '%s': %s", context.Name, context.Host, context.Tags, err)
 	}
-	return series
+
 }
 
 func (s *TimeSampler) countersSampleZeroValue(timestamp int64, contextMetrics metrics.ContextMetrics, counterContextsToDelete map[ckey.ContextKey]struct{}) {

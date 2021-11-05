@@ -93,7 +93,7 @@ type EventsStreamJSONMarshaler interface {
 type MetricSerializer interface {
 	SendEvents(e EventsStreamJSONMarshaler) error
 	SendServiceChecks(sc marshaler.StreamJSONMarshaler) error
-	SendSeries(series marshaler.StreamJSONMarshaler) error
+	SendSeries(series marshaler.StreamJSONMarshaler2) error
 	SendSketch(sketches marshaler.Marshaler) error
 	SendMetadata(m marshaler.JSONMarshaler) error
 	SendHostMetadata(m marshaler.JSONMarshaler) error
@@ -127,6 +127,7 @@ type Serializer struct {
 
 // NewSerializer returns a new Serializer initialized
 func NewSerializer(forwarder forwarder.Forwarder, orchestratorForwarder forwarder.Forwarder) *Serializer {
+	fmt.Println(stream.Available, config.Datadog.GetBool("enable_stream_payload_serialization"))
 	s := &Serializer{
 		Forwarder:                     forwarder,
 		orchestratorForwarder:         orchestratorForwarder,
@@ -202,6 +203,11 @@ func (s Serializer) serializePayloadInternal(payload marshaler.AbstractMarshaler
 
 func (s Serializer) serializeStreamablePayload(payload marshaler.StreamJSONMarshaler, policy stream.OnErrItemTooBigPolicy) (forwarder.Payloads, http.Header, error) {
 	payloads, err := s.seriesJSONPayloadBuilder.BuildWithOnErrItemTooBigPolicy(payload, policy)
+	return payloads, jsonExtraHeadersWithCompression, err
+}
+
+func (s Serializer) serializeStreamablePayload2(payload marshaler.StreamJSONMarshaler2, policy stream.OnErrItemTooBigPolicy) (forwarder.Payloads, http.Header, error) {
+	payloads, err := s.seriesJSONPayloadBuilder.BuildWithOnErrItemTooBigPolicy2(payload, policy)
 	return payloads, jsonExtraHeadersWithCompression, err
 }
 
@@ -297,7 +303,7 @@ func (s *Serializer) SendServiceChecks(sc marshaler.StreamJSONMarshaler) error {
 }
 
 // SendSeries serializes a list of serviceChecks and sends the payload to the forwarder
-func (s *Serializer) SendSeries(series marshaler.StreamJSONMarshaler) error {
+func (s *Serializer) SendSeries(series marshaler.StreamJSONMarshaler2) error {
 	if !s.enableSeries {
 		log.Debug("series payloads are disabled: dropping it")
 		return nil
@@ -310,9 +316,11 @@ func (s *Serializer) SendSeries(series marshaler.StreamJSONMarshaler) error {
 	var err error
 
 	if useV1API && s.enableJSONStream {
-		seriesPayloads, extraHeaders, err = s.serializeStreamablePayload(series, stream.DropItemOnErrItemTooBig)
+		seriesPayloads, extraHeaders, err = s.serializeStreamablePayload2(series, stream.DropItemOnErrItemTooBig)
 	} else {
-		seriesPayloads, extraHeaders, err = s.serializePayloadJSON(series, true)
+		panic("TODO")
+		//seriesPayloads, extraHeaders, err = s.serializePayloadJSON(series, true)
+		//	seriesPayloads, extraHeaders, err = s.serializePayload(series, true, useV1API)
 	}
 
 	if err != nil {

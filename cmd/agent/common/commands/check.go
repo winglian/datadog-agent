@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/olekukonko/tablewriter"
+	//"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
@@ -466,99 +466,100 @@ func runCheck(c check.Check, agg *aggregator.BufferedAggregator) *check.Stats {
 }
 
 func printMetrics(agg *aggregator.BufferedAggregator, checkFileOutput *bytes.Buffer) {
-	series, sketches := agg.GetSeriesAndSketches(time.Now())
-	if len(series) != 0 {
-		fmt.Fprintln(color.Output, fmt.Sprintf("=== %s ===", color.BlueString("Series")))
 
-		if formatTable {
-			headers, data := series.MarshalStrings()
-			var buffer bytes.Buffer
+	// series, sketches := agg.GetSeriesAndSketches(time.Now())
+	// if len(series) != 0 {
+	// 	fmt.Fprintln(color.Output, fmt.Sprintf("=== %s ===", color.BlueString("Series")))
 
-			// plain table with no borders
-			table := tablewriter.NewWriter(&buffer)
-			table.SetHeader(headers)
-			table.SetAutoWrapText(false)
-			table.SetAutoFormatHeaders(true)
-			table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-			table.SetAlignment(tablewriter.ALIGN_LEFT)
-			table.SetCenterSeparator("")
-			table.SetColumnSeparator("")
-			table.SetRowSeparator("")
-			table.SetHeaderLine(false)
-			table.SetBorder(false)
-			table.SetTablePadding("\t")
+	// 	if formatTable {
+	// 		headers, data := series.MarshalStrings()
+	// 		var buffer bytes.Buffer
 
-			table.AppendBulk(data)
-			table.Render()
-			fmt.Println(buffer.String())
-			checkFileOutput.WriteString(buffer.String() + "\n")
-		} else {
-			j, _ := json.MarshalIndent(series, "", "  ")
-			fmt.Println(string(j))
-			checkFileOutput.WriteString(string(j) + "\n")
-		}
-	}
-	if len(sketches) != 0 {
-		fmt.Fprintln(color.Output, fmt.Sprintf("=== %s ===", color.BlueString("Sketches")))
-		j, _ := json.MarshalIndent(sketches, "", "  ")
-		fmt.Println(string(j))
-		checkFileOutput.WriteString(string(j) + "\n")
-	}
+	// 		// plain table with no borders
+	// 		table := tablewriter.NewWriter(&buffer)
+	// 		table.SetHeader(headers)
+	// 		table.SetAutoWrapText(false)
+	// 		table.SetAutoFormatHeaders(true)
+	// 		table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+	// 		table.SetAlignment(tablewriter.ALIGN_LEFT)
+	// 		table.SetCenterSeparator("")
+	// 		table.SetColumnSeparator("")
+	// 		table.SetRowSeparator("")
+	// 		table.SetHeaderLine(false)
+	// 		table.SetBorder(false)
+	// 		table.SetTablePadding("\t")
 
-	serviceChecks := agg.GetServiceChecks()
-	if len(serviceChecks) != 0 {
-		fmt.Fprintln(color.Output, fmt.Sprintf("=== %s ===", color.BlueString("Service Checks")))
+	// 		table.AppendBulk(data)
+	// 		table.Render()
+	// 		fmt.Println(buffer.String())
+	// 		checkFileOutput.WriteString(buffer.String() + "\n")
+	// 	} else {
+	// 		j, _ := json.MarshalIndent(series, "", "  ")
+	// 		fmt.Println(string(j))
+	// 		checkFileOutput.WriteString(string(j) + "\n")
+	// 	}
+	// }
+	// if len(sketches) != 0 {
+	// 	fmt.Fprintln(color.Output, fmt.Sprintf("=== %s ===", color.BlueString("Sketches")))
+	// 	j, _ := json.MarshalIndent(sketches, "", "  ")
+	// 	fmt.Println(string(j))
+	// 	checkFileOutput.WriteString(string(j) + "\n")
+	// }
 
-		if formatTable {
-			headers, data := serviceChecks.MarshalStrings()
-			var buffer bytes.Buffer
+	// serviceChecks := agg.GetServiceChecks()
+	// if len(serviceChecks) != 0 {
+	// 	fmt.Fprintln(color.Output, fmt.Sprintf("=== %s ===", color.BlueString("Service Checks")))
 
-			// plain table with no borders
-			table := tablewriter.NewWriter(&buffer)
-			table.SetHeader(headers)
-			table.SetAutoWrapText(false)
-			table.SetAutoFormatHeaders(true)
-			table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-			table.SetAlignment(tablewriter.ALIGN_LEFT)
-			table.SetCenterSeparator("")
-			table.SetColumnSeparator("")
-			table.SetRowSeparator("")
-			table.SetHeaderLine(false)
-			table.SetBorder(false)
-			table.SetTablePadding("\t")
+	// 	if formatTable {
+	// 		headers, data := serviceChecks.MarshalStrings()
+	// 		var buffer bytes.Buffer
 
-			table.AppendBulk(data)
-			table.Render()
-			fmt.Println(buffer.String())
-			checkFileOutput.WriteString(buffer.String() + "\n")
-		} else {
-			j, _ := json.MarshalIndent(serviceChecks, "", "  ")
-			fmt.Println(string(j))
-			checkFileOutput.WriteString(string(j) + "\n")
-		}
-	}
+	// 		// plain table with no borders
+	// 		table := tablewriter.NewWriter(&buffer)
+	// 		table.SetHeader(headers)
+	// 		table.SetAutoWrapText(false)
+	// 		table.SetAutoFormatHeaders(true)
+	// 		table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+	// 		table.SetAlignment(tablewriter.ALIGN_LEFT)
+	// 		table.SetCenterSeparator("")
+	// 		table.SetColumnSeparator("")
+	// 		table.SetRowSeparator("")
+	// 		table.SetHeaderLine(false)
+	// 		table.SetBorder(false)
+	// 		table.SetTablePadding("\t")
 
-	events := agg.GetEvents()
-	if len(events) != 0 {
-		fmt.Fprintln(color.Output, fmt.Sprintf("=== %s ===", color.BlueString("Events")))
-		checkFileOutput.WriteString("=== Events ===\n")
-		j, _ := json.MarshalIndent(events, "", "  ")
-		fmt.Println(string(j))
-		checkFileOutput.WriteString(string(j) + "\n")
-	}
+	// 		table.AppendBulk(data)
+	// 		table.Render()
+	// 		fmt.Println(buffer.String())
+	// 		checkFileOutput.WriteString(buffer.String() + "\n")
+	// 	} else {
+	// 		j, _ := json.MarshalIndent(serviceChecks, "", "  ")
+	// 		fmt.Println(string(j))
+	// 		checkFileOutput.WriteString(string(j) + "\n")
+	// 	}
+	// }
 
-	for k, v := range toDebugEpEvents(agg.GetEventPlatformEvents()) {
-		if len(v) > 0 {
-			if translated, ok := check.EventPlatformNameTranslations[k]; ok {
-				k = translated
-			}
-			fmt.Fprintln(color.Output, fmt.Sprintf("=== %s ===", color.BlueString(k)))
-			checkFileOutput.WriteString(fmt.Sprintf("=== %s ===\n", k))
-			j, _ := json.MarshalIndent(v, "", "  ")
-			fmt.Println(string(j))
-			checkFileOutput.WriteString(string(j) + "\n")
-		}
-	}
+	// events := agg.GetEvents()
+	// if len(events) != 0 {
+	// 	fmt.Fprintln(color.Output, fmt.Sprintf("=== %s ===", color.BlueString("Events")))
+	// 	checkFileOutput.WriteString("=== Events ===\n")
+	// 	j, _ := json.MarshalIndent(events, "", "  ")
+	// 	fmt.Println(string(j))
+	// 	checkFileOutput.WriteString(string(j) + "\n")
+	// }
+
+	// for k, v := range toDebugEpEvents(agg.GetEventPlatformEvents()) {
+	// 	if len(v) > 0 {
+	// 		if translated, ok := check.EventPlatformNameTranslations[k]; ok {
+	// 			k = translated
+	// 		}
+	// 		fmt.Fprintln(color.Output, fmt.Sprintf("=== %s ===", color.BlueString(k)))
+	// 		checkFileOutput.WriteString(fmt.Sprintf("=== %s ===\n", k))
+	// 		j, _ := json.MarshalIndent(v, "", "  ")
+	// 		fmt.Println(string(j))
+	// 		checkFileOutput.WriteString(string(j) + "\n")
+	// 	}
+	// }
 }
 
 func writeCheckToFile(checkName string, checkFileOutput *bytes.Buffer) {
@@ -611,33 +612,33 @@ func toDebugEpEvents(events map[string][]*message.Message) map[string][]eventPla
 func getMetricsData(agg *aggregator.BufferedAggregator) map[string]interface{} {
 	aggData := make(map[string]interface{})
 
-	series, sketches := agg.GetSeriesAndSketches(time.Now())
-	if len(series) != 0 {
-		// Workaround to get the raw sequence of metrics, see:
-		// https://github.com/DataDog/datadog-agent/blob/b2d9527ec0ec0eba1a7ae64585df443c5b761610/pkg/metrics/series.go#L109-L122
-		var data map[string]interface{}
-		sj, _ := json.Marshal(series)
-		json.Unmarshal(sj, &data) //nolint:errcheck
+	// series, sketches := agg.GetSeriesAndSketches(time.Now())
+	// if len(series) != 0 {
+	// 	// Workaround to get the raw sequence of metrics, see:
+	// 	// https://github.com/DataDog/datadog-agent/blob/b2d9527ec0ec0eba1a7ae64585df443c5b761610/pkg/metrics/series.go#L109-L122
+	// 	var data map[string]interface{}
+	// 	sj, _ := json.Marshal(series)
+	// 	json.Unmarshal(sj, &data) //nolint:errcheck
 
-		aggData["metrics"] = data["series"]
-	}
-	if len(sketches) != 0 {
-		aggData["sketches"] = sketches
-	}
+	// 	aggData["metrics"] = data["series"]
+	// }
+	// if len(sketches) != 0 {
+	// 	aggData["sketches"] = sketches
+	// }
 
-	serviceChecks := agg.GetServiceChecks()
-	if len(serviceChecks) != 0 {
-		aggData["service_checks"] = serviceChecks
-	}
+	// serviceChecks := agg.GetServiceChecks()
+	// if len(serviceChecks) != 0 {
+	// 	aggData["service_checks"] = serviceChecks
+	// }
 
-	events := agg.GetEvents()
-	if len(events) != 0 {
-		aggData["events"] = events
-	}
+	// events := agg.GetEvents()
+	// if len(events) != 0 {
+	// 	aggData["events"] = events
+	// }
 
-	for k, v := range toDebugEpEvents(agg.GetEventPlatformEvents()) {
-		aggData[k] = v
-	}
+	// for k, v := range toDebugEpEvents(agg.GetEventPlatformEvents()) {
+	// 	aggData[k] = v
+	// }
 
 	return aggData
 }

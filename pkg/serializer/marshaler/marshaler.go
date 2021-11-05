@@ -52,6 +52,15 @@ type StreamJSONMarshaler interface {
 	DescribeItem(i int) string
 }
 
+type StreamJSONMarshaler2 interface {
+	WriteHeader(*jsoniter.Stream) error
+	WriteFooter(*jsoniter.Stream) error
+	WriteCurrentItem(*jsoniter.Stream) error
+	DescribeCurrentItem() string
+	HasValue() bool
+	MoveNext()
+}
+
 // BufferContext contains the buffers used for MarshalSplitCompress so they can be shared between invocations
 type BufferContext struct {
 	CompressorInput   *bytes.Buffer

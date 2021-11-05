@@ -337,3 +337,65 @@ func encodePoints(points []Point, stream *jsoniter.Stream) {
 	}
 	stream.WriteArrayEnd()
 }
+
+// Series represents a list of Serie ready to be serialize
+type Series2 struct {
+	c       <-chan *Serie
+	current *Serie
+	count   int
+}
+
+func NewSeries2(c <-chan *Serie) *Series2 {
+	return &Series2{
+		c:       c,
+		current: nil,
+	}
+}
+
+//// The following methods implement the StreamJSONMarshaler interface
+//// for support of the enable_stream_payload_serialization option.
+
+// WriteHeader writes the payload header for this type
+func (series *Series2) WriteHeader(stream *jsoniter.Stream) error {
+	stream.WriteObjectStart()
+	stream.WriteObjectField("series")
+	stream.WriteArrayStart()
+	return stream.Flush()
+}
+
+// WriteFooter prints the payload footer for this type
+func (series *Series2) WriteFooter(stream *jsoniter.Stream) error {
+	stream.WriteArrayEnd()
+	stream.WriteObjectEnd()
+	return stream.Flush()
+}
+
+// WriteItem prints the json representation of an item
+func (series *Series2) WriteCurrentItem(stream *jsoniter.Stream) error {
+	populateDeviceField(series.current)
+	encodeSerie(series.current, stream)
+	return stream.Flush()
+}
+
+// DescribeItem returns a text description for logs
+func (series *Series2) DescribeCurrentItem() string {
+	return fmt.Sprintf("name %q, %d points", series.current.Name, len(series.current.Points))
+}
+
+func (series *Series2) MoveNext() {
+	// must have Finish + move memthod because we do not always move to the next serie when the package is full
+	var ok bool
+	series.current, ok = <-series.c
+	if !ok && series.current != nil {
+		panic("TODO")
+	}
+	if !ok {
+		fmt.Println("TEST42 MoveNext total", series.count)
+	}
+	series.count += 1
+}
+
+func (series *Series2) HasValue() bool {
+	v := series.current != nil
+	return v
+}
