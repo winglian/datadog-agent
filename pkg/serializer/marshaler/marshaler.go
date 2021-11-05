@@ -52,6 +52,7 @@ type StreamJSONMarshaler interface {
 	DescribeItem(i int) string
 }
 
+// StreamJSONMarshaler2 is an interface for metrics that are able to serialize themselves in a stream
 type StreamJSONMarshaler2 interface {
 	WriteHeader(*jsoniter.Stream) error
 	WriteFooter(*jsoniter.Stream) error

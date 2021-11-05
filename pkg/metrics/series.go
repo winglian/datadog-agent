@@ -338,13 +338,14 @@ func encodePoints(points []Point, stream *jsoniter.Stream) {
 	stream.WriteArrayEnd()
 }
 
-// Series represents a list of Serie ready to be serialize
+// Series2 represents a list of Serie ready to be serialize
 type Series2 struct {
 	c       <-chan *Serie
 	current *Serie
 	count   int
 }
 
+// NewSeries2 NewSeries2
 func NewSeries2(c <-chan *Serie) *Series2 {
 	return &Series2{
 		c:       c,
@@ -370,18 +371,19 @@ func (series *Series2) WriteFooter(stream *jsoniter.Stream) error {
 	return stream.Flush()
 }
 
-// WriteItem prints the json representation of an item
+// WriteCurrentItem prints the json representation of an item
 func (series *Series2) WriteCurrentItem(stream *jsoniter.Stream) error {
 	populateDeviceField(series.current)
 	encodeSerie(series.current, stream)
 	return stream.Flush()
 }
 
-// DescribeItem returns a text description for logs
+// DescribeCurrentItem returns a text description for logs
 func (series *Series2) DescribeCurrentItem() string {
 	return fmt.Sprintf("name %q, %d points", series.current.Name, len(series.current.Points))
 }
 
+// MoveNext MoveNext
 func (series *Series2) MoveNext() {
 	// must have Finish + move memthod because we do not always move to the next serie when the package is full
 	var ok bool
@@ -392,9 +394,10 @@ func (series *Series2) MoveNext() {
 	if !ok {
 		fmt.Println("TEST42 MoveNext total", series.count)
 	}
-	series.count += 1
+	series.count++
 }
 
+// HasValue HasValue
 func (series *Series2) HasValue() bool {
 	v := series.current != nil
 	return v

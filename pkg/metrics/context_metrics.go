@@ -104,17 +104,20 @@ func (m ContextMetrics) Flush(timestamp float64) ([]*Serie, map[ckey.ContextKey]
 	return series, errors
 }
 
+// TimestampedContextMetrics TODO
 type TimestampedContextMetrics struct {
 	BucketTimestamp float64
 	ContextMetrics  ContextMetrics
 }
 
+// TODO TODO
 type TODO []TimestampedContextMetrics
 
+// FlushAndClear FlushAndClear
 func (t TODO) FlushAndClear(flush func([]*Serie)) map[ckey.ContextKey][]error {
 	errors := make(map[ckey.ContextKey][]error)
 
-	var lastcontextKey ckey.ContextKey = 0
+	var lastcontextKey ckey.ContextKey
 	var series []*Serie
 	c := 0
 	t.merge(func(contextKey ckey.ContextKey, m Metric, bucketTimestamp float64) {

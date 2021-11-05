@@ -62,5 +62,5 @@ func (c *serializerConsumer) flush(s serializer.MetricSerializer) error {
 	// 	return err
 	// }
 	panic("TODO")
-	return nil
+	//return nil
 }
