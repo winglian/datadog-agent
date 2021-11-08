@@ -62,6 +62,49 @@ type StreamJSONMarshaler2 interface {
 	MoveNext()
 }
 
+// StreamJSONMarshaler2Adapter is an apdater
+type StreamJSONMarshaler2Adapter struct {
+	marshaler StreamJSONMarshaler
+	index     int
+}
+
+// NewStreamJSONMarshaler2Adapter TODO
+func NewStreamJSONMarshaler2Adapter(marshaler StreamJSONMarshaler) *StreamJSONMarshaler2Adapter {
+	return &StreamJSONMarshaler2Adapter{
+		marshaler: marshaler,
+	}
+}
+
+// WriteHeader TODO
+func (s *StreamJSONMarshaler2Adapter) WriteHeader(j *jsoniter.Stream) error {
+	return s.marshaler.WriteHeader(j)
+}
+
+// WriteFooter TODO
+func (s *StreamJSONMarshaler2Adapter) WriteFooter(j *jsoniter.Stream) error {
+	return s.marshaler.WriteFooter(j)
+}
+
+// WriteCurrentItem TODO
+func (s *StreamJSONMarshaler2Adapter) WriteCurrentItem(j *jsoniter.Stream) error {
+	return s.marshaler.WriteItem(j, s.index)
+}
+
+// DescribeCurrentItem TODO
+func (s *StreamJSONMarshaler2Adapter) DescribeCurrentItem() string {
+	return s.marshaler.DescribeItem(s.index)
+}
+
+// HasValue TDOO
+func (s *StreamJSONMarshaler2Adapter) HasValue() bool {
+	return s.index < s.marshaler.Len()
+}
+
+// MoveNext TODO
+func (s *StreamJSONMarshaler2Adapter) MoveNext() {
+	s.index++
+}
+
 // BufferContext contains the buffers used for MarshalSplitCompress so they can be shared between invocations
 type BufferContext struct {
 	CompressorInput   *bytes.Buffer

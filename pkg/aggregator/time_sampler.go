@@ -94,7 +94,7 @@ func (s *TimeSampler) newSketchSeries(ck ckey.ContextKey, points []metrics.Sketc
 	return ss
 }
 
-func (s *TimeSampler) flushSeries(cutoffTime int64, serieChan chan<- *metrics.Serie) {
+func (s *TimeSampler) flushSeries(cutoffTime int64, series2 SeriesStream) {
 
 	//serieBySignature := make(map[SerieSignature]*metrics.Serie)
 	// Map to hold the expired contexts that will need to be deleted after the flush so that we stop sending zeros
@@ -123,7 +123,7 @@ func (s *TimeSampler) flushSeries(cutoffTime int64, serieChan chan<- *metrics.Se
 			}
 		}
 		for _, serie := range serieBySignature {
-			serieChan <- serie
+			series2.Append(serie)
 		}
 		//	fmt.Println("TEST42 flushSeries", len(serieBySignature))
 	}
@@ -183,11 +183,11 @@ func (s *TimeSampler) flushSketches(cutoffTime int64) metrics.SketchSeriesList {
 	return sketches
 }
 
-func (s *TimeSampler) flush(timestamp float64, serieChan chan<- *metrics.Serie) metrics.SketchSeriesList {
+func (s *TimeSampler) flush(timestamp float64, series SeriesStream) metrics.SketchSeriesList {
 	// Compute a limit timestamp
 	cutoffTime := s.calculateBucketStart(timestamp)
 
-	s.flushSeries(cutoffTime, serieChan)
+	s.flushSeries(cutoffTime, series)
 	sketches := s.flushSketches(cutoffTime)
 
 	// expiring contexts

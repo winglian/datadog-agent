@@ -14,6 +14,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/epforwarder"
 	"github.com/DataDog/datadog-agent/pkg/logs/message"
+	"github.com/DataDog/datadog-agent/pkg/serializer/marshaler"
 	"github.com/DataDog/datadog-agent/pkg/serializer/split"
 	"github.com/DataDog/datadog-agent/pkg/tagger"
 	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
@@ -249,7 +250,6 @@ type BufferedAggregator struct {
 	tlmContainerTagsEnabled bool                                              // Whether we should call the tagger to tag agent telemetry metrics
 	agentTags               func(collectors.TagCardinality) ([]string, error) // This function gets the agent tags from the tagger (defined as a struct field to ease testing)
 
-	pushSerieDone chan struct{}
 }
 
 // NewBufferedAggregator instantiates a BufferedAggregator
@@ -301,7 +301,6 @@ func NewBufferedAggregator(s serializer.MetricSerializer, eventPlatformForwarder
 		agentTags:               tagger.AgentTags,
 		ServerlessFlush:         make(chan bool),
 		ServerlessFlushDone:     make(chan struct{}),
-		pushSerieDone:           make(chan struct{}),
 	}
 
 	return aggregator
@@ -463,15 +462,15 @@ func (agg *BufferedAggregator) addSample(metricSample *metrics.MetricSample, tim
 // GetSeriesAndSketches grabs all the series & sketches from the queue and clears the queue
 // The parameter `before` is used as an end interval while retrieving series and sketches
 // from the time sampler. Metrics and sketches before this timestamp should be returned.
-func (agg *BufferedAggregator) GetSeriesAndSketches(before time.Time, serieChan chan<- *metrics.Serie) metrics.SketchSeriesList {
+func (agg *BufferedAggregator) GetSeriesAndSketches(before time.Time, series2 SeriesStream) metrics.SketchSeriesList {
 	agg.mu.Lock()
 	defer agg.mu.Unlock()
 
-	sketches := agg.statsdSampler.flush(float64(before.UnixNano())/float64(time.Second), serieChan)
+	sketches := agg.statsdSampler.flush(float64(before.UnixNano())/float64(time.Second), series2)
 	for _, checkSampler := range agg.checkSamplers {
 		series, sk := checkSampler.flush()
 		for _, s := range series {
-			serieChan <- s
+			series2.Append(s)
 		}
 		sketches = append(sketches, sk...)
 	}
@@ -511,7 +510,7 @@ func (agg *BufferedAggregator) pushSeries(start time.Time, series *metrics.Serie
 	//tagsetTlm.updateHugeSeriesTelemetry(&series)
 }
 
-func (agg *BufferedAggregator) sendSeries(start time.Time, seriesChan chan *metrics.Serie, waitForSerializer bool) {
+func (agg *BufferedAggregator) sendSeries(start time.Time, series *metrics.Series2, pushSerieDone chan struct{}) { //}, waitForSerializer bool) {
 	recurrentSeriesLock.Lock()
 	// Adding recurrentSeries to the flushed ones
 	for _, extra := range recurrentSeries {
@@ -541,30 +540,30 @@ func (agg *BufferedAggregator) sendSeries(start time.Time, seriesChan chan *metr
 				})
 		}
 		newSerie.Points = updatedPoints
-		seriesChan <- newSerie
+		series.Append(newSerie)
 	}
 	recurrentSeriesLock.Unlock()
 
 	// Send along a metric that showcases that this Agent is running (internally, in backend,
 	// a `datadog.`-prefixed metric allows identifying this host as an Agent host, used for dogbone icon)
-	seriesChan <- &metrics.Serie{
+	series.Append(&metrics.Serie{
 		Name:           fmt.Sprintf("datadog.%s.running", agg.agentName),
 		Points:         []metrics.Point{{Value: 1, Ts: float64(start.Unix())}},
 		Tags:           agg.tags(true),
 		Host:           agg.hostname,
 		MType:          metrics.APIGaugeType,
 		SourceTypeName: "System",
-	}
+	})
 
 	// Send along a metric that counts the number of times we dropped some payloads because we couldn't split them.
-	seriesChan <- &metrics.Serie{
+	series.Append(&metrics.Serie{
 		Name:           fmt.Sprintf("n_o_i_n_d_e_x.datadog.%s.payload.dropped", agg.agentName),
 		Points:         []metrics.Point{{Value: float64(split.GetPayloadDrops()), Ts: float64(start.Unix())}},
 		Tags:           agg.tags(false),
 		Host:           agg.hostname,
 		MType:          metrics.APIGaugeType,
 		SourceTypeName: "System",
-	}
+	})
 
 	//addFlushCount("Series", int64(len(series)))
 
@@ -576,17 +575,11 @@ func (agg *BufferedAggregator) sendSeries(start time.Time, seriesChan chan *metr
 		// }
 	}
 
-	if waitForSerializer {
-		go func() {
-			agg.pushSeries(start, metrics.NewSeries2(seriesChan))
-			agg.pushSerieDone <- struct{}{}
-		}()
-	} else {
-		go func() {
-			agg.pushSeries(start, metrics.NewSeries2(seriesChan))
-			agg.pushSerieDone <- struct{}{}
-		}()
-	}
+	go func() {
+		agg.pushSeries(start, series)
+		pushSerieDone <- struct{}{}
+	}()
+
 }
 
 func (agg *BufferedAggregator) sendSketches(start time.Time, sketches metrics.SketchSeriesList, waitForSerializer bool) {
@@ -601,17 +594,33 @@ func (agg *BufferedAggregator) sendSketches(start time.Time, sketches metrics.Sk
 	}
 }
 
+// SeriesStream TODO
+type SeriesStream interface {
+	marshaler.StreamJSONMarshaler2
+	Append(*metrics.Serie)
+}
+
 func (agg *BufferedAggregator) flushSeriesAndSketches(start time.Time, waitForSerializer bool) {
-	fmt.Println("TEST42 flushSeriesAndSketches")
-	serieChan := make(chan *metrics.Serie, 100000)
 
-	agg.sendSeries(start, serieChan, waitForSerializer)
+	pushSerieDone := make(chan struct{})
+	stream := true
+	var sketches metrics.SketchSeriesList
 
-	sketches := agg.GetSeriesAndSketches(start, serieChan)
+	if stream {
+		series := metrics.NewSeries2()
+		agg.sendSeries(start, series, pushSerieDone) //, waitForSerializer)
+		sketches = agg.GetSeriesAndSketches(start, series)
+		series.Close()
+	} else {
+		// var series metrics.Series
+		// sketches = agg.GetSeriesAndSketches(start, series)
+		// agg.sendSeries(start, series, pushSerieDone)
+	}
+
 	agg.sendSketches(start, sketches, waitForSerializer)
-	close(serieChan)
-	<-agg.pushSerieDone
-	fmt.Println("TEST42 END flushSeriesAndSketches")
+	if waitForSerializer {
+		<-pushSerieDone
+	}
 }
 
 // GetServiceChecks grabs all the service checks from the queue and clears the queue

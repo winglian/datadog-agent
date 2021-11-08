@@ -340,17 +340,27 @@ func encodePoints(points []Point, stream *jsoniter.Stream) {
 
 // Series2 represents a list of Serie ready to be serialize
 type Series2 struct {
-	c       <-chan *Serie
+	c       chan *Serie
 	current *Serie
 	count   int
 }
 
 // NewSeries2 NewSeries2
-func NewSeries2(c <-chan *Serie) *Series2 {
+func NewSeries2() *Series2 {
 	return &Series2{
-		c:       c,
+		c:       make(chan *Serie, 1000000),
 		current: nil,
 	}
+}
+
+// Append TODO
+func (series *Series2) Append(serie *Serie) {
+	series.c <- serie
+}
+
+// Close TODO
+func (series *Series2) Close() {
+	close(series.c)
 }
 
 //// The following methods implement the StreamJSONMarshaler interface
