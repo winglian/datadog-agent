@@ -104,6 +104,9 @@ func (p *ProcessCheck) Run(cfg *config.AgentConfig, groupID int32) ([]model.Mess
 		}
 	}
 
+	// Control FD count collection
+	procutil.WithFDCountEnabled(cfg.EnableFDCountCollection)
+
 	procs, err := getAllProcesses(p.probe)
 	if err != nil {
 		return nil, err

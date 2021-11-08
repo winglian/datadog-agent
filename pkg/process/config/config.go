@@ -123,6 +123,9 @@ type AgentConfig struct {
 	EnabledChecks  []string
 	CheckIntervals map[string]time.Duration
 
+	// ProcessCheck config
+	EnableFDCountCollection bool
+
 	// Internal store of a proxy used for generating the Transport
 	proxy proxyFunc
 
@@ -226,6 +229,9 @@ func NewDefaultAgentConfig(canAccessContainers bool) *AgentConfig {
 			ConnectionsCheckName: 30 * time.Second,
 			PodCheckName:         10 * time.Second,
 		},
+
+		// ProcessCheck config
+		EnableFDCountCollection: true,
 
 		// DataScrubber to hide command line sensitive words
 		Scrubber:  NewDefaultDataScrubber(),

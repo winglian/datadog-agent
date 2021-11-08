@@ -79,6 +79,13 @@ func WithBootTimeRefreshInterval(bootTimeRefreshInterval time.Duration) Option {
 	}
 }
 
+// WithFDCountEnabled controls whether the probe collects process FD counts
+func WithFDCountEnabled(enabled bool) Option {
+	return func(p *Probe) {
+		p.collectFDCount = enabled
+	}
+}
+
 // Probe is a service that fetches process related info on current host
 type Probe struct {
 	procRootLoc  string // ProcFS
@@ -93,6 +100,7 @@ type Probe struct {
 	withPermission          bool
 	returnZeroPermStats     bool
 	bootTimeRefreshInterval time.Duration
+	collectFDCount          bool
 }
 
 // NewProcessProbe initializes a new Probe object
@@ -110,6 +118,7 @@ func NewProcessProbe(options ...Option) *Probe {
 		clockTicks:              getClockTicks(),
 		exit:                    make(chan struct{}),
 		bootTimeRefreshInterval: time.Minute,
+		collectFDCount:          true,
 	}
 	atomic.StoreUint64(&p.bootTime, bootTime)
 
@@ -175,7 +184,9 @@ func (p *Probe) StatsForPIDs(pids []int32, now time.Time) (map[int32]*Stats, err
 			NumThreads:  statusInfo.numThreads,  // /proc/[pid]/status
 		}
 		if p.withPermission {
-			stats.OpenFdCount = p.getFDCountImproved(pathForPID) // /proc/[pid]/fd, requires permission checks
+			if p.collectFDCount{
+				stats.OpenFdCount = p.getFDCountImproved(pathForPID) // /proc/[pid]/fd, requires permission checks
+			}
 			stats.IOStat = p.parseIO(pathForPID)                 // /proc/[pid]/io, requires permission checks
 		} else {
 			stats.IOStat = &IOCountersStat{
@@ -238,7 +249,9 @@ func (p *Probe) ProcessesByPID(now time.Time) (map[int32]*Process, error) {
 			},
 		}
 		if p.withPermission {
-			proc.Stats.OpenFdCount = p.getFDCountImproved(pathForPID) // /proc/[pid]/fd, requires permission checks
+			if p.collectFDCount{
+				proc.Stats.OpenFdCount = p.getFDCountImproved(pathForPID) // /proc/[pid]/fd, requires permission checks
+			}
 			proc.Stats.IOStat = p.parseIO(pathForPID)                 // /proc/[pid]/io, requires permission checks
 		} else {
 			proc.Stats.IOStat = &IOCountersStat{
@@ -264,7 +277,10 @@ func (p *Probe) StatsWithPermByPID(pids []int32) (map[int32]*StatsWithPerm, erro
 			continue
 		}
 
-		fds := p.getFDCountImproved(pathForPID)
+		var fds int32
+		if p.collectFDCount{
+			fds = p.getFDCountImproved(pathForPID)
+		}
 		io := p.parseIO(pathForPID)
 
 		// don't return entries with all zero values if returnZeroPermStats is disabled
