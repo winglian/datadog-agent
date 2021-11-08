@@ -43,7 +43,8 @@ type DeviceMetadata struct {
 type InterfaceMetadata struct {
 	DeviceID    string   `json:"device_id"`
 	IDTags      []string `json:"id_tags"` // used to correlate with interface metrics
-	Index       int32    `json:"index"`   // IF-MIB ifIndex type is InterfaceIndex (Integer32 (1..2147483647))
+	Tags        []string `json:"tags"`
+	Index       int32    `json:"index"` // IF-MIB ifIndex type is InterfaceIndex (Integer32 (1..2147483647))
 	Name        string   `json:"name"`
 	Alias       string   `json:"alias"`
 	Description string   `json:"description"`

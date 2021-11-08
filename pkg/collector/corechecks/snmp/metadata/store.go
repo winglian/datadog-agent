@@ -148,5 +148,5 @@ func (s Store) AddIdTags(resource string, index string, tags []string) {
 		indexToTags = make(map[string][]string)
 		s.resourceIdTags[resource] = indexToTags
 	}
-	s.resourceIdTags[resource][index] = append(s.resourceTags[resource][index], tags...)
+	s.resourceIdTags[resource][index] = append(s.resourceIdTags[resource][index], tags...)
 }

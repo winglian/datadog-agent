@@ -635,6 +635,7 @@ profiles:
     {
       "device_id": "default:1.2.3.4",
       "id_tags": ["interface:nameRow1"],
+      "tags":["customTag:nameRow1"],
       "index": 1,
       "name": "nameRow1",
       "alias": "descRow1",
@@ -646,6 +647,7 @@ profiles:
     {
       "device_id": "default:1.2.3.4",
 	  "id_tags": ["interface:nameRow2"],
+      "tags":["customTag:nameRow2"],
       "index": 2,
       "name": "nameRow2",
       "alias": "descRow2",
