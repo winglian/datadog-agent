@@ -25,7 +25,14 @@ func getProcessProbe(cfg *config.AgentConfig) procutil.Probe {
 			}
 			log.Info("Using perf counters probe for process data collection")
 		}
-		processProbe = procutil.NewProcessProbe()
+
+		var options []procutil.Option
+		if !cfg.EnableFDCountCollection {
+			options = append(options, procutil.WithFDCountDisabled())
+		}
+
+		processProbe = procutil.NewProcessProbe(options...)
 	})
+
 	return processProbe
 }
