@@ -38,3 +38,10 @@ func NewJSONPayloadBuilder(shareAndLockBuffers bool) *JSONPayloadBuilder {
 func (b *JSONPayloadBuilder) BuildWithOnErrItemTooBigPolicy(marshaler.StreamJSONMarshaler, OnErrItemTooBigPolicy) (forwarder.Payloads, error) {
 	return nil, fmt.Errorf("not implemented")
 }
+
+// BuildWithOnErrItemTooBigPolicy2 is not implemented when zlib is not available.
+func (b *JSONPayloadBuilder) BuildWithOnErrItemTooBigPolicy2(
+	m marshaler.StreamJSONMarshaler2,
+	policy OnErrItemTooBigPolicy) (forwarder.Payloads, error) {
+	return nil, fmt.Errorf("not implemented")
+}
