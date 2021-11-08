@@ -638,7 +638,7 @@ func parseColumnOids(metrics []MetricsConfig, metadataConfigs MetadataConfig) []
 		for _, symbol := range metadataConfig.Fields {
 			oids = append(oids, symbol.OID)
 		}
-		for _, metricTag := range metadataConfig.Tags {
+		for _, metricTag := range metadataConfig.IDTags {
 			if metricTag.Column.OID != "" {
 				oids = append(oids, metricTag.Column.OID)
 			}

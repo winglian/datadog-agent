@@ -167,11 +167,8 @@ func recursivelyExpandBaseProfiles(definition *profileDefinition, extends []stri
 				definition.Metadata[resourceName] = NewMetadataResourceConfig()
 			}
 			if resource, ok := definition.Metadata[resourceName]; ok {
-				for _, tagConfig := range resourceConfig.Tags {
-					resource.Tags = append(definition.Metadata[resourceName].Tags, tagConfig)
-				}
-				for _, tagConfig := range resourceConfig.IdTags {
-					resource.IdTags = append(definition.Metadata[resourceName].IdTags, tagConfig)
+				for _, tagConfig := range resourceConfig.IDTags {
+					resource.IDTags = append(definition.Metadata[resourceName].IDTags, tagConfig)
 				}
 
 				if resource.Fields == nil {

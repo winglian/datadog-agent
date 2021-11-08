@@ -71,9 +71,7 @@ func buildMetadata(metadataConfigs checkconfig.MetadataConfig, values *valuestor
 			}
 			for fullIndex := range metricValues {
 				// TODO: TEST ME
-				tags := metadataConfig.Tags.GetTags(fullIndex, values)
-				metadataStore.AddTags(resourceName, fullIndex, tags)
-				idTags := metadataConfig.IdTags.GetTags(fullIndex, values)
+				idTags := metadataConfig.IDTags.GetTags(fullIndex, values)
 				metadataStore.AddIdTags(resourceName, fullIndex, idTags)
 			}
 		}
@@ -127,7 +125,6 @@ func buildNetworkInterfacesMetadata(deviceID string, store *metadata.Store) []me
 		}
 
 		ifIdTags := store.GetIdTags("interface", strIndex)
-		ifTags := store.GetTags("interface", strIndex)
 
 		name := store.GetColumnAsString("interface.name", strIndex)
 		networkInterface := metadata.InterfaceMetadata{
@@ -139,7 +136,6 @@ func buildNetworkInterfacesMetadata(deviceID string, store *metadata.Store) []me
 			MacAddress:  store.GetColumnAsString("interface.mac_address", strIndex),
 			AdminStatus: int32(store.GetColumnAsFloat("interface.admin_status", strIndex)),
 			OperStatus:  int32(store.GetColumnAsFloat("interface.oper_status", strIndex)),
-			Tags:        ifTags,
 			IDTags:      ifIdTags,
 		}
 		interfaces = append(interfaces, networkInterface)

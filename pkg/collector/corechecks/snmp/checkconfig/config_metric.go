@@ -92,8 +92,7 @@ type MetadataResourceConfig struct {
 
 	// TODO: Implement tags
 	//       Should we use the same structure as for metrics ?
-	Tags   MetricTagConfigList `yaml:"tags"`
-	IdTags MetricTagConfigList `yaml:"id_tags"`
+	IDTags MetricTagConfigList `yaml:"id_tags"`
 }
 
 func NewMetadataResourceConfig() MetadataResourceConfig {

@@ -19,7 +19,6 @@ type Store struct {
 	columnValues map[string]map[string]valuestore.ResultValue
 
 	// map[<RESOURCE>][<index>][]<TAG>
-	resourceTags   map[string]map[string][]string
 	resourceIdTags map[string]map[string][]string
 }
 
@@ -27,7 +26,6 @@ func NewMetadataStore() *Store {
 	return &Store{
 		scalarValues:   make(map[string]valuestore.ResultValue),
 		columnValues:   make(map[string]map[string]valuestore.ResultValue),
-		resourceTags:   make(map[string]map[string][]string),
 		resourceIdTags: make(map[string]map[string][]string),
 	}
 }
@@ -109,18 +107,6 @@ func (s Store) GetColumnIndexes(field string) []string {
 	return indexes
 }
 
-func (s Store) GetTags(resource string, index string) []string {
-	resTags, ok := s.resourceTags[resource]
-	if !ok {
-		return nil
-	}
-	tags, ok := resTags[index]
-	if !ok {
-		return nil
-	}
-	return tags
-}
-
 func (s Store) GetIdTags(resource string, index string) []string {
 	resTags, ok := s.resourceIdTags[resource]
 	if !ok {
@@ -131,15 +117,6 @@ func (s Store) GetIdTags(resource string, index string) []string {
 		return nil
 	}
 	return tags
-}
-
-func (s Store) AddTags(resource string, index string, tags []string) {
-	indexToTags, ok := s.resourceTags[resource]
-	if !ok {
-		indexToTags = make(map[string][]string)
-		s.resourceTags[resource] = indexToTags
-	}
-	s.resourceTags[resource][index] = append(s.resourceTags[resource][index], tags...)
 }
 
 func (s Store) AddIdTags(resource string, index string, tags []string) {
