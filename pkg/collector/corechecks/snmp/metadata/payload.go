@@ -36,14 +36,14 @@ type DeviceMetadata struct {
 	Subnet       string       `json:"subnet"`
 	Tags         []string     `json:"tags"`
 	Status       DeviceStatus `json:"status"`
-	SerialNumber string       `json:"serial_number"`
+	SerialNumber string       `json:"serial_number,omitempty"`
 }
 
 // InterfaceMetadata contains interface metadata
 type InterfaceMetadata struct {
 	DeviceID    string   `json:"device_id"`
 	IDTags      []string `json:"id_tags"` // used to correlate with interface metrics
-	Index       int32    `json:"index"` // IF-MIB ifIndex type is InterfaceIndex (Integer32 (1..2147483647))
+	Index       int32    `json:"index"`   // IF-MIB ifIndex type is InterfaceIndex (Integer32 (1..2147483647))
 	Name        string   `json:"name"`
 	Alias       string   `json:"alias"`
 	Description string   `json:"description"`

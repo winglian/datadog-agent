@@ -236,6 +236,7 @@ profiles:
 	sess.On("Get", []string{
 		"1.3.6.1.4.1.3375.2.1.1.2.1.44.999",
 		"1.2.3.4.5",
+		"1.3.6.1.4.1.3375.2.1.3.3.3.0",
 	}).Return(&packets[1], nil)
 	sess.On("GetBulk", []string{"1.3.6.1.2.1.2.2.1.13", "1.3.6.1.2.1.2.2.1.14", "1.3.6.1.2.1.2.2.1.2", "1.3.6.1.2.1.2.2.1.6", "1.3.6.1.2.1.2.2.1.7"}, checkconfig.DefaultBulkMaxRepetitions).Return(&bulkPackets[0], nil)
 	sess.On("GetBulk", []string{"1.3.6.1.2.1.2.2.1.8", "1.3.6.1.2.1.31.1.1.1.1", "1.3.6.1.2.1.31.1.1.1.18"}, checkconfig.DefaultBulkMaxRepetitions).Return(&bulkPackets[1], nil)

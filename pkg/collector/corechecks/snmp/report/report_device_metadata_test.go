@@ -112,6 +112,25 @@ func Test_metricSender_reportNetworkDeviceMetadata_withInterfaces(t *testing.T) 
 		DeviceIDTags:       []string{"device_name:127.0.0.1"},
 		ResolvedSubnetName: "127.0.0.0/29",
 		Namespace:          "my-ns",
+		Metadata: checkconfig.MetadataConfig{
+			"interface": {
+				Fields: map[string]checkconfig.SymbolConfig{
+					"name": {
+						OID:  "1.3.6.1.2.1.31.1.1.1.1",
+						Name: "ifName",
+					},
+				},
+				IDTags: checkconfig.MetricTagConfigList{
+					checkconfig.MetricTagConfig{
+						Column: checkconfig.SymbolConfig{
+							OID:  "1.3.6.1.2.1.31.1.1.1.1",
+							Name: "interface",
+						},
+						Tag: "interface",
+					},
+				},
+			},
+		},
 	}
 
 	layout := "2006-01-02 15:04:05"

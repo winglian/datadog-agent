@@ -1208,10 +1208,10 @@ tags:
         "device_namespace:default",
         "snmp_device:1.2.3.4"
       ],
-      "name": "foo_sys_name",
-      "description": "my_desc",
+      "name": "",
+      "description": "",
       "ip_address": "1.2.3.4",
-      "sys_object_id": "1.2.3.4",
+      "sys_object_id": "",
       "profile": "",
       "vendor": "",
       "subnet": "127.0.0.0/30",
@@ -1222,30 +1222,6 @@ tags:
         "snmp_device:1.2.3.4"
       ],
       "status": 1
-    }
-  ],
-  "interfaces": [
-    {
-      "device_id": "default:1.2.3.4",
-      "id_tags": ["interface:nameRow1"],
-      "index": 1,
-      "name": "nameRow1",
-      "alias": "descRow1",
-      "description": "ifDescRow1",
-      "mac_address": "00:00:00:00:00:01",
-      "admin_status": 1,
-      "oper_status": 1
-    },
-    {
-      "device_id": "default:1.2.3.4",
-      "id_tags": ["interface:nameRow2"],
-      "index": 2,
-      "name": "nameRow2",
-      "alias": "descRow2",
-      "description": "ifDescRow2",
-      "mac_address": "00:00:00:00:00:02",
-      "admin_status": 1,
-      "oper_status": 1
     }
   ],
   "collect_timestamp":946684800

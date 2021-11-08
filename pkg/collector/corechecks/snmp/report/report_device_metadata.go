@@ -115,6 +115,9 @@ func buildNetworkInterfacesMetadata(deviceID string, store *metadata.Store) []me
 		return nil
 	}
 	indexes := store.GetColumnIndexes("interface.name")
+	if len(indexes) == 0 {
+		log.Debugf("Unable to build interfaces metadata: no interface indexes found")
+	}
 	sort.Strings(indexes)
 	var interfaces []metadata.InterfaceMetadata
 	for _, strIndex := range indexes {
