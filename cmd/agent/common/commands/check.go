@@ -34,7 +34,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/epforwarder"
 	"github.com/DataDog/datadog-agent/pkg/flare"
-	"github.com/DataDog/datadog-agent/pkg/logs/message"
 	"github.com/DataDog/datadog-agent/pkg/metadata"
 	"github.com/DataDog/datadog-agent/pkg/serializer"
 	"github.com/DataDog/datadog-agent/pkg/status"
@@ -585,29 +584,29 @@ func writeCheckToFile(checkName string, checkFileOutput *bytes.Buffer) {
 	}
 }
 
-type eventPlatformDebugEvent struct {
-	RawEvent          string `json:",omitempty"`
-	EventType         string
-	UnmarshalledEvent map[string]interface{} `json:",omitempty"`
-}
+// type eventPlatformDebugEvent struct {
+// 	RawEvent          string `json:",omitempty"`
+// 	EventType         string
+// 	UnmarshalledEvent map[string]interface{} `json:",omitempty"`
+// }
 
 // toDebugEpEvents transforms the raw event platform messages to eventPlatformDebugEvents which are better for json formatting
-func toDebugEpEvents(events map[string][]*message.Message) map[string][]eventPlatformDebugEvent {
-	result := make(map[string][]eventPlatformDebugEvent)
-	for eventType, messages := range events {
-		var events []eventPlatformDebugEvent
-		for _, m := range messages {
-			e := eventPlatformDebugEvent{EventType: eventType, RawEvent: string(m.Content)}
-			err := json.Unmarshal([]byte(e.RawEvent), &e.UnmarshalledEvent)
-			if err == nil {
-				e.RawEvent = ""
-			}
-			events = append(events, e)
-		}
-		result[eventType] = events
-	}
-	return result
-}
+// func toDebugEpEvents(events map[string][]*message.Message) map[string][]eventPlatformDebugEvent {
+// 	result := make(map[string][]eventPlatformDebugEvent)
+// 	for eventType, messages := range events {
+// 		var events []eventPlatformDebugEvent
+// 		for _, m := range messages {
+// 			e := eventPlatformDebugEvent{EventType: eventType, RawEvent: string(m.Content)}
+// 			err := json.Unmarshal([]byte(e.RawEvent), &e.UnmarshalledEvent)
+// 			if err == nil {
+// 				e.RawEvent = ""
+// 			}
+// 			events = append(events, e)
+// 		}
+// 		result[eventType] = events
+// 	}
+// 	return result
+// }
 
 func getMetricsData(agg *aggregator.BufferedAggregator) map[string]interface{} {
 	aggData := make(map[string]interface{})

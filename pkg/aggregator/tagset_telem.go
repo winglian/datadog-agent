@@ -87,13 +87,13 @@ func (t *tagsetTelemetry) updateHugeSketchesTelemetry(sketches *metrics.SketchSe
 }
 
 // updateHugeSeriesTelemetry counts huge and almost-huge series in the given value
-func (t *tagsetTelemetry) updateHugeSeriesTelemetry(series *metrics.Series) {
-	tagsetSizes := make([]uint64, len(*series))
-	for i, s := range *series {
-		tagsetSizes[i] = uint64(len(s.Tags))
-	}
-	t.updateTelemetry(tagsetSizes, t.hugeSeriesCount, t.tlmHugeSeries)
-}
+// func (t *tagsetTelemetry) updateHugeSeriesTelemetry(series *metrics.Series) {
+// 	tagsetSizes := make([]uint64, len(*series))
+// 	for i, s := range *series {
+// 		tagsetSizes[i] = uint64(len(s.Tags))
+// 	}
+// 	t.updateTelemetry(tagsetSizes, t.hugeSeriesCount, t.tlmHugeSeries)
+// }
 
 func (t *tagsetTelemetry) exp() interface{} {
 	rv := map[string]map[string]uint64{
