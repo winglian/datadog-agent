@@ -26,6 +26,7 @@ func WithPermission(enabled bool) Option {
 	}
 }
 
+// WithFDCountEnabled controls whether the probe collects process FD counts
 func WithFDCountEnabled(enabled bool) Option {
 	return func(p *Probe) {
 		p.collectFDCount = enabled
