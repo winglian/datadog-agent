@@ -26,6 +26,12 @@ func WithPermission(enabled bool) Option {
 	}
 }
 
+func WithFDCountEnabled(enabled bool) Option {
+	return func(p *Probe) {
+		p.collectFDCount = enabled
+	}
+}
+
 // NewProcessProbe returns a Probe object
 func NewProcessProbe(options ...Option) *Probe {
 	return &Probe{}
@@ -35,6 +41,7 @@ func NewProcessProbe(options ...Option) *Probe {
 type Probe struct {
 	returnZeroPermStats bool
 	withPermission      bool
+	collectFDCount      bool
 }
 
 // Close is currently not implemented in non-linux environments

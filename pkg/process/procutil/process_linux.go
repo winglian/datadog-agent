@@ -184,10 +184,10 @@ func (p *Probe) StatsForPIDs(pids []int32, now time.Time) (map[int32]*Stats, err
 			NumThreads:  statusInfo.numThreads,  // /proc/[pid]/status
 		}
 		if p.withPermission {
-			if p.collectFDCount{
+			if p.collectFDCount {
 				stats.OpenFdCount = p.getFDCountImproved(pathForPID) // /proc/[pid]/fd, requires permission checks
 			}
-			stats.IOStat = p.parseIO(pathForPID)                 // /proc/[pid]/io, requires permission checks
+			stats.IOStat = p.parseIO(pathForPID) // /proc/[pid]/io, requires permission checks
 		} else {
 			stats.IOStat = &IOCountersStat{
 				ReadCount:  -1,
@@ -249,10 +249,10 @@ func (p *Probe) ProcessesByPID(now time.Time) (map[int32]*Process, error) {
 			},
 		}
 		if p.withPermission {
-			if p.collectFDCount{
+			if p.collectFDCount {
 				proc.Stats.OpenFdCount = p.getFDCountImproved(pathForPID) // /proc/[pid]/fd, requires permission checks
 			}
-			proc.Stats.IOStat = p.parseIO(pathForPID)                 // /proc/[pid]/io, requires permission checks
+			proc.Stats.IOStat = p.parseIO(pathForPID) // /proc/[pid]/io, requires permission checks
 		} else {
 			proc.Stats.IOStat = &IOCountersStat{
 				ReadCount:  -1,
@@ -278,7 +278,7 @@ func (p *Probe) StatsWithPermByPID(pids []int32) (map[int32]*StatsWithPerm, erro
 		}
 
 		var fds int32
-		if p.collectFDCount{
+		if p.collectFDCount {
 			fds = p.getFDCountImproved(pathForPID)
 		}
 		io := p.parseIO(pathForPID)
