@@ -25,6 +25,10 @@ type SymbolConfig struct {
 	//       - index_from_value
 }
 
+func (s SymbolConfig) IsScalar() bool {
+	return s.OID != "" && s.Name != ""
+}
+
 // MetricTagConfig holds metric tag info
 type MetricTagConfig struct {
 	Tag string `yaml:"tag"`
@@ -82,24 +86,36 @@ type MetricsConfig struct {
 	Options    MetricsConfigOption `yaml:"options"`
 }
 
+// MetadataResourceConfig holds configs for a metadata resource
+type MetadataResourceConfig struct {
+	Fields map[string]SymbolConfig `yaml:"fields"`
+
+	// TODO: Implement tags
+	//       Should we use the same structure as for metrics ?
+	Tags   MetricTagConfigList `yaml:"tags"`
+	IdTags MetricTagConfigList `yaml:"id_tags"`
+}
+
+func NewMetadataResourceConfig() MetadataResourceConfig {
+	return MetadataResourceConfig{
+		Fields: make(map[string]SymbolConfig),
+	}
+}
+
 //// MetadataConfig holds configs for a metadata
 //type MetadataConfig struct {
-//	// Symbol configs
-//	Symbol SymbolConfig `yaml:"symbol"`
-//
-//	// Table configs
-//	Symbols []SymbolConfig `yaml:"symbols"`
-//
-//	// TODO: Implement tags
-//	//       Should we use the same structure as for metrics ?
-//	Tags MetricTagConfigList `yaml:"tags"`
+//	device MetadataResourceConfig `yaml:"device"`
+//	netInterface MetadataResourceConfig `yaml:"interface"`
 //}
 
+// MetadataConfig holds configs for a metadata
+type MetadataConfig map[string]MetadataResourceConfig
+
 // GetTags retrieve tags using the metric config and values
-func (m *MetricsConfig) GetTags(fullIndex string, values *valuestore.ResultValueStore) []string {
+func (mtl MetricTagConfigList) GetTags(fullIndex string, values *valuestore.ResultValueStore) []string {
 	var rowTags []string
 	indexes := strings.Split(fullIndex, ".")
-	for _, metricTag := range m.MetricTags {
+	for _, metricTag := range mtl {
 		// get tag using `index` field
 		if metricTag.Index > 0 {
 			index := metricTag.Index - 1 // `index` metric config is 1-based

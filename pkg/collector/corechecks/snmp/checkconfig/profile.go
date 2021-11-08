@@ -24,12 +24,18 @@ type deviceMeta struct {
 
 type profileDefinition struct {
 	Metrics      []MetricsConfig   `yaml:"metrics"`
-	Metadata     []MetricsConfig  `yaml:"metadata"`
+	Metadata     MetadataConfig    `yaml:"metadata"`
 	MetricTags   []MetricTagConfig `yaml:"metric_tags"`
 	Tags         []MetricTagConfig `yaml:"tags"` // TODO: alias for `metrics_tags`
 	Extends      []string          `yaml:"extends"`
 	Device       deviceMeta        `yaml:"device"`
 	SysObjectIds StringArray       `yaml:"sysobjectid"`
+}
+
+func newProfileDefinition() *profileDefinition {
+	p := &profileDefinition{}
+	p.Metadata = make(MetadataConfig)
+	return p
 }
 
 var defaultProfilesMu = &sync.Mutex{}
@@ -117,7 +123,7 @@ func readProfileDefinition(definitionFile string) (*profileDefinition, error) {
 		return nil, fmt.Errorf("failed to read file `%s`: %s", filePath, err)
 	}
 
-	profileDefinition := &profileDefinition{}
+	profileDefinition := newProfileDefinition()
 	err = yaml.Unmarshal(buf, profileDefinition)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshall %q: %v", filePath, err)
@@ -155,8 +161,25 @@ func recursivelyExpandBaseProfiles(definition *profileDefinition, extends []stri
 			return err
 		}
 		definition.Metrics = append(definition.Metrics, baseDefinition.Metrics...)
-		definition.Metadata = append(definition.Metadata, baseDefinition.Metadata...)
 		definition.MetricTags = append(definition.MetricTags, baseDefinition.MetricTags...)
+		for resourceName, resourceConfig := range baseDefinition.Metadata {
+			if _, ok := definition.Metadata[resourceName]; !ok {
+				definition.Metadata[resourceName] = NewMetadataResourceConfig()
+			}
+			for field, symbol := range resourceConfig.Fields {
+				definition.Metadata[resourceName].Fields[field] = symbol
+			}
+
+			if resource, ok := definition.Metadata[resourceName]; ok {
+				for _, tagConfig := range resourceConfig.Tags {
+					resource.Tags = append(definition.Metadata[resourceName].Tags, tagConfig)
+				}
+				for _, tagConfig := range resourceConfig.IdTags {
+					resource.Tags = append(definition.Metadata[resourceName].IdTags, tagConfig)
+				}
+				definition.Metadata[resourceName] = resource
+			}
+		}
 
 		newExtendsHistory := append(common.CopyStrings(extendsHistory), basePath)
 		err = recursivelyExpandBaseProfiles(definition, baseDefinition.Extends, newExtendsHistory)

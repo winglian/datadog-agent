@@ -5,18 +5,28 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
+// ResourceIndex is a map of resource to field used for index
+// TODO: make private
+var ResourceIndex = map[string]string{
+	"interface": IfNameOID,
+}
+
 // Store MetadataStore stores metadata scalarValues
 type Store struct {
 	scalarValues map[string]valuestore.ResultValue
 
 	// map[<FIELD>][<index>]valuestore.ResultValue
 	columnValues map[string]map[string]valuestore.ResultValue
+
+	// map[<RESOURCE>][<index>][]<TAG>
+	resourceTags map[string]map[string][]string
 }
 
 func NewMetadataStore() *Store {
 	return &Store{
 		scalarValues: make(map[string]valuestore.ResultValue),
 		columnValues: make(map[string]map[string]valuestore.ResultValue),
+		resourceTags: make(map[string]map[string][]string),
 	}
 }
 
@@ -32,7 +42,6 @@ func (s Store) AddColumnValue(field string, index string, value valuestore.Resul
 	}
 	column[index] = value
 }
-
 
 func (s Store) GetColumnAsString(field string, index string) string {
 	column, ok := s.columnValues[field]
@@ -72,8 +81,6 @@ func (s Store) GetColumnAsFloat(field string, index string) float64 {
 	return strVal
 }
 
-
-
 func (s Store) GetScalarAsString(field string) string {
 	value, ok := s.scalarValues[field]
 	if !ok {
@@ -98,4 +105,13 @@ func (s Store) GetColumnIndexes(field string) []string {
 		indexes = append(indexes, key)
 	}
 	return indexes
+}
+
+func (s Store) AddTags(resource string, index string, tags []string) {
+	indexToTags, ok := s.resourceTags[resource]
+	if !ok {
+		indexToTags = make(map[string][]string)
+		s.resourceTags[resource] = indexToTags
+	}
+	s.resourceTags[resource][index] = append(s.resourceTags[resource][index], tags...)
 }

@@ -132,7 +132,7 @@ type CheckConfig struct {
 	ContextName           string
 	OidConfig             OidConfig
 	Metrics               []MetricsConfig
-	Metadata              []MetricsConfig
+	Metadata              MetadataConfig
 	MetricTags            []MetricTagConfig
 	OidBatchSize          int
 	BulkMaxRepetitions    uint32
@@ -170,7 +170,7 @@ func (c *CheckConfig) RefreshWithProfile(profile string) error {
 	c.ProfileDef = &definition
 	c.Profile = profile
 
-	c.Metadata = append(c.Metadata, definition.Metadata...)
+	c.Metadata = definition.Metadata
 	c.Metrics = append(c.Metrics, definition.Metrics...)
 	c.MetricTags = append(c.MetricTags, definition.MetricTags...)
 
@@ -547,10 +547,8 @@ func (c *CheckConfig) Copy() *CheckConfig {
 	for _, metric := range c.Metrics {
 		newConfig.Metrics = append(newConfig.Metrics, metric)
 	}
-	newConfig.Metadata = make([]MetricsConfig, 0, len(c.Metadata))
-	for _, metric := range c.Metadata {
-		newConfig.Metadata = append(newConfig.Metadata, metric)
-	}
+	// TODO: Need deepcopy?
+	newConfig.Metadata = c.Metadata
 	newConfig.MetricTags = make([]MetricTagConfig, 0, len(c.MetricTags))
 	for _, metricTag := range c.MetricTags {
 		newConfig.MetricTags = append(newConfig.MetricTags, metricTag)
@@ -589,16 +587,11 @@ func (c *CheckConfig) IsDiscovery() bool {
 	return c.Network != ""
 }
 
-func parseScalarOids(metrics []MetricsConfig, metricTags []MetricTagConfig, metadataConfigs []MetricsConfig) []string {
+func parseScalarOids(metrics []MetricsConfig, metricTags []MetricTagConfig, metadataConfigs MetadataConfig) []string {
 	var oids []string
 	for _, metric := range metrics {
 		if metric.Symbol.OID != "" {
 			oids = append(oids, metric.Symbol.OID)
-		}
-	}
-	for _, metadata := range metadataConfigs {
-		if metadata.Symbol.OID != "" {
-			oids = append(oids, metadata.Symbol.OID)
 		}
 	}
 	for _, metricTag := range metricTags {
@@ -606,10 +599,21 @@ func parseScalarOids(metrics []MetricsConfig, metricTags []MetricTagConfig, meta
 			oids = append(oids, metricTag.OID)
 		}
 	}
+	for resource, metadataConfig := range metadataConfigs {
+		// TODO: TEST ME
+		if resource != "device" {
+			continue
+		}
+		for _, field := range metadataConfig.Fields {
+			if field.OID != "" {
+				oids = append(oids, field.OID)
+			}
+		}
+	}
 	return oids
 }
 
-func parseColumnOids(metrics []MetricsConfig, metadataConfigs []MetricsConfig) []string {
+func parseColumnOids(metrics []MetricsConfig, metadataConfigs MetadataConfig) []string {
 	var oids []string
 	for _, metric := range metrics {
 		for _, symbol := range metric.Symbols {
@@ -621,11 +625,20 @@ func parseColumnOids(metrics []MetricsConfig, metadataConfigs []MetricsConfig) [
 			}
 		}
 	}
-	for _, metadataConfig := range metadataConfigs {
-		for _, symbol := range metadataConfig.Symbols {
+	for resource, metadataConfig := range metadataConfigs {
+		// TODO: TEST ME
+		if resource != "device" {
+			continue
+		}
+		for _, field := range metadataConfig.Fields {
+			if field.OID != "" {
+				oids = append(oids, field.OID)
+			}
+		}
+		for _, symbol := range metadataConfig.Fields {
 			oids = append(oids, symbol.OID)
 		}
-		for _, metricTag := range metadataConfig.MetricTags {
+		for _, metricTag := range metadataConfig.Tags {
 			if metricTag.Column.OID != "" {
 				oids = append(oids, metricTag.Column.OID)
 			}

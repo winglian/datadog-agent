@@ -41,36 +41,36 @@ func (ms *MetricSender) ReportNetworkDeviceMetadata(config *checkconfig.CheckCon
 	}
 }
 
-func buildMetadata(metadataConfigs []checkconfig.MetricsConfig, values *valuestore.ResultValueStore) *metadata.Store {
+func buildMetadata(metadataConfigs checkconfig.MetadataConfig, values *valuestore.ResultValueStore) *metadata.Store {
 	metadataStore := metadata.NewMetadataStore()
 
-	for _, metadataConfig := range metadataConfigs {
-		if metadataConfig.IsScalar() {
-			value, err := values.GetScalarValue(metadataConfig.Symbol.OID)
-			if err != nil {
-				log.Debugf("report scalar: error getting scalar value: %v", err)
-				continue
-			}
-			metadataStore.AddScalarValue(metadataConfig.Symbol.MetadataField, value)
-		} else if metadataConfig.IsColumn() {
-			rowTagsCache := make(map[string][]string)
-			for _, symbol := range metadataConfig.Symbols {
+	for resourceName, metadataConfig := range metadataConfigs {
+		for fieldName, symbol := range metadataConfig.Fields {
+			if resourceName == "device" {
+				value, err := values.GetScalarValue(symbol.OID)
+				if err != nil {
+					log.Debugf("report scalar: error getting scalar value: %v", err)
+					continue
+				}
+				metadataStore.AddScalarValue(resourceName + "." + fieldName, value)
+			} else {
 				metricValues, err := values.GetColumnValues(symbol.OID)
 				if err != nil {
 					continue
 				}
 				for fullIndex, value := range metricValues {
-					var tags []string
-					// cache row tags by fullIndex to avoid rebuilding it for every column rows
-					if _, ok := rowTagsCache[fullIndex]; !ok {
-						rowTagsCache[fullIndex] = append(common.CopyStrings(tags), metadataConfig.GetTags(fullIndex, values)...)
-					}
-					rowTags := rowTagsCache[fullIndex]
-					log.Warnf("rowTags: %v %v", rowTags, value)
-					//ms.sendMetric(symbol.Name, value, rowTags, metadataConfig.ForcedType, metadataConfig.Options, symbol.ExtractValuePattern)
-					// TODO: add tags
 					metadataStore.AddColumnValue(symbol.MetadataField, fullIndex, value)
 				}
+			}
+		}
+		if indexOid, ok := metadata.ResourceIndex[resourceName]; ok {
+			metricValues, err := values.GetColumnValues(indexOid)
+			if err != nil {
+				continue
+			}
+			for fullIndex, _ := range metricValues {
+				tags := metadataConfig.Tags.GetTags(fullIndex, values)
+				metadataStore.AddTags(resourceName, fullIndex, tags)
 			}
 		}
 	}
