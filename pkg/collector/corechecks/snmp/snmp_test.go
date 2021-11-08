@@ -390,7 +390,7 @@ profiles:
 `)
 
 	err := chk.Configure(rawInstanceConfig, rawInitConfig, "test")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	sender := mocksender.NewMockSender(chk.ID()) // required to initiate aggregator
 	sender.On("Gauge", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()

@@ -627,7 +627,7 @@ func parseColumnOids(metrics []MetricsConfig, metadataConfigs MetadataConfig) []
 	}
 	for resource, metadataConfig := range metadataConfigs {
 		// TODO: TEST ME
-		if resource != "device" {
+		if resource == "device" {
 			continue
 		}
 		for _, field := range metadataConfig.Fields {

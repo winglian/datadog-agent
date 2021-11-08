@@ -18,7 +18,7 @@ type SymbolConfig struct {
 	ExtractValuePattern *regexp.Regexp
 
 	// TODO: Use a different SymbolConfig ?
-	MetadataField string `yaml:"field"`
+	//MetadataField string `yaml:"field"`
 
 	// TODO: Implement index_transforms or
 	//       - index_transform
@@ -97,9 +97,7 @@ type MetadataResourceConfig struct {
 }
 
 func NewMetadataResourceConfig() MetadataResourceConfig {
-	return MetadataResourceConfig{
-		Fields: make(map[string]SymbolConfig),
-	}
+	return MetadataResourceConfig{}
 }
 
 //// MetadataConfig holds configs for a metadata

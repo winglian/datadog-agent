@@ -59,7 +59,7 @@ func buildMetadata(metadataConfigs checkconfig.MetadataConfig, values *valuestor
 					continue
 				}
 				for fullIndex, value := range metricValues {
-					metadataStore.AddColumnValue(symbol.MetadataField, fullIndex, value)
+					metadataStore.AddColumnValue(resourceName + "." + fieldName, fullIndex, value)
 				}
 			}
 		}
