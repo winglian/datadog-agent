@@ -192,6 +192,11 @@ func (a *AgentConfig) LoadProcessYamlConfig(path string) error {
 		}
 	}
 
+	// Enable/Disable process FD count collection
+	if collectFDCount := key(ns, "collect_fd_count"); config.Datadog.IsSet(collectFDCount) {
+		a.EnableFDCountCollection = config.Datadog.GetBool(collectFDCount)
+	}
+
 	// Overrides the path to the Agent bin used for getting the hostname. The default is usually fine.
 	a.DDAgentBin = defaultDDAgentBin
 	if k := key(ns, "dd_agent_bin"); config.Datadog.IsSet(k) {

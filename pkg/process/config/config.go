@@ -241,7 +241,6 @@ func NewDefaultAgentConfig(canAccessContainers bool) *AgentConfig {
 		// ProcessCheck config
 		EnableFDCountCollection: true,
 
-
 		// DataScrubber to hide command line sensitive words
 		Scrubber:  NewDefaultDataScrubber(),
 		Blacklist: make([]*regexp.Regexp, 0),
@@ -433,6 +432,7 @@ func loadEnvVariables() {
 		{"DD_PROCESS_AGENT_CMD_PORT", "process_config.cmd_port"},
 		{"DD_PROCESS_AGENT_WINDOWS_USE_PERF_COUNTERS", "process_config.windows.use_perf_counters"},
 		{"DD_PROCESS_AGENT_DISCOVERY_ENABLED", "process_config.process_discovery.enabled"},
+		{"DD_PROCESS_AGENT_COLLECT_FD_COUNT", "process_config.collect_fd_count"},
 		{"DD_ORCHESTRATOR_URL", "orchestrator_explorer.orchestrator_dd_url"},
 		{"DD_HOSTNAME", "hostname"},
 		{"DD_DOGSTATSD_PORT", "dogstatsd_port"},
