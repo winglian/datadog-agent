@@ -1,8 +1,5 @@
 # Generic network interfaces metrics.
 #
-extends:
-  - _abstract-profile.yaml
-
 metadata:
   interfaces:
     fields:
@@ -14,17 +11,18 @@ metadata:
         name: ifDescr
       mac_address:
         OID: 1.3.6.1.2.1.2.2.1.6
-        name: ifDescr
+        name: ifPhysAddress
       admin_status:
         OID: 1.3.6.1.2.1.2.2.1.7
         name: ifAdminStatus
       oper_status:
         OID: 1.3.6.1.2.1.2.2.1.8
         name: ifOperStatus
-      alias: # another table
+      # TODO: Impl ip_address
+      alias: # from another table
         OID: 1.3.6.1.2.1.31.1.1.1.18
         name: ifAlias
-    id_tags:
+    id_tags:  # id_tags/tags are special fields
       - OID: 1.3.6.1.2.1.31.1.1.1.1
         name: ifName
         tag: interface
