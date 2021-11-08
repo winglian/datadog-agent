@@ -477,14 +477,15 @@ func (c ContainerCgroup) IO() (*metrics.ContainerIOStats, error) {
 	}
 
 	var fileDescCount uint64
-	for _, pid := range c.Pids {
-		fdCount, err := GetFileDescriptorLen(int(pid))
-		if err != nil {
-			log.Debugf("Failed to get file desc length for pid %d, container %s: %s", pid, c.ContainerID[:12], err)
-			continue
-		}
-		fileDescCount += uint64(fdCount)
-	}
+	// TODO: add a setting to switch FD count collection on/off
+	//for _, pid := range c.Pids {
+	//	fdCount, err := GetFileDescriptorLen(int(pid))
+	//	if err != nil {
+	//		log.Debugf("Failed to get file desc length for pid %d, container %s: %s", pid, c.ContainerID[:12], err)
+	//		continue
+	//	}
+	//	fileDescCount += uint64(fdCount)
+	//}
 	ret.OpenFiles = fileDescCount
 
 	return ret, nil
