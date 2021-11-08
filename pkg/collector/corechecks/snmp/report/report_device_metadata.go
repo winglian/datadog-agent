@@ -2,6 +2,7 @@ package report
 
 import (
 	json "encoding/json"
+	"sort"
 	"strconv"
 	"time"
 
@@ -78,11 +79,12 @@ func buildMetadata(metadataConfigs checkconfig.MetadataConfig, values *valuestor
 }
 
 func buildNetworkDeviceMetadata(deviceID string, idTags []string, config *checkconfig.CheckConfig, store *metadata.Store, tags []string, deviceStatus metadata.DeviceStatus) metadata.DeviceMetadata {
-	var vendor, sysName, sysDescr, sysObjectID string
+	var vendor, sysName, sysDescr, sysObjectID, serialNumber string
 	if store != nil {
 		sysName = store.GetScalarAsString("device.name")
 		sysDescr = store.GetScalarAsString("device.description")
 		sysObjectID = store.GetScalarAsString("device.sys_object_id")
+		serialNumber = store.GetScalarAsString("device.serial_number")
 	}
 
 	if config.ProfileDef != nil {
@@ -101,20 +103,18 @@ func buildNetworkDeviceMetadata(deviceID string, idTags []string, config *checkc
 		Tags:        tags,
 		Subnet:      config.ResolvedSubnetName,
 		Status:      deviceStatus,
+		SerialNumber:      serialNumber,
 	}
 }
 
 func buildNetworkInterfacesMetadata(deviceID string, store *metadata.Store) []metadata.InterfaceMetadata {
 	if store == nil {
 		// it's expected that the value store is nil if we can't reach the device
-		// in that case, we just return an nil slice.
+		// in that case, we just return a nil slice.
 		return nil
 	}
 	indexes := store.GetColumnIndexes("interface.name")
-	//if err != nil {
-	//	return nil, fmt.Errorf("no interface indexes found: %s", err)
-	//}
-
+	sort.Strings(indexes)
 	var interfaces []metadata.InterfaceMetadata
 	for _, strIndex := range indexes {
 		index, err := strconv.Atoi(strIndex)

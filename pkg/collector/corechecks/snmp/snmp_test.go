@@ -422,6 +422,11 @@ profiles:
 				Value: 30,
 			},
 			{
+				Name:  "1.3.6.1.4.1.3375.2.1.3.3.3.0",
+				Type:  gosnmp.OctetString,
+				Value: []byte("a-serial-num"),
+			},
+			{
 				Name:  "1.3.6.1.2.1.1.3.0",
 				Type:  gosnmp.TimeTicks,
 				Value: 20,
@@ -562,6 +567,7 @@ profiles:
 		"1.3.6.1.4.1.3375.2.1.1.2.1.44.0",
 		"1.3.6.1.4.1.3375.2.1.1.2.1.44.999",
 		"1.2.3.4.5",
+		"1.3.6.1.4.1.3375.2.1.3.3.3.0",
 		"1.3.6.1.2.1.1.3.0",
 	}).Return(&packet, nil)
 	sess.On("GetBulk", []string{
@@ -621,7 +627,8 @@ profiles:
         "some_tag:some_tag_value",
         "suffix:oo_sys_name"
       ],
-      "status": 1
+      "status": 1,
+      "serial_number": "a-serial-num"
     }
   ],
   "interfaces": [
