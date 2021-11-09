@@ -1,5 +1,9 @@
 package checkconfig
 
+// LegacyMetadataConfig contain metadata config used for backward compatibility
+// When users have their own copy of _base.yaml and _generic_if.yaml files
+// they won't have the new profile based metadata definitions for device and interface resources
+// The LegacyMetadataConfig is used as fallback to provide metadata definitions for those resources.
 var LegacyMetadataConfig = MetadataConfig{
 	"device": {
 		Fields: map[string]SymbolConfig{

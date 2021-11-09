@@ -25,10 +25,6 @@ type SymbolConfig struct {
 	//       - index_from_value
 }
 
-func (s SymbolConfig) IsScalar() bool {
-	return s.OID != "" && s.Name != ""
-}
-
 // MetricTagConfig holds metric tag info
 type MetricTagConfig struct {
 	Tag string `yaml:"tag"`
@@ -95,15 +91,10 @@ type MetadataResourceConfig struct {
 	IDTags MetricTagConfigList `yaml:"id_tags"`
 }
 
+// NewMetadataResourceConfig returns a new metadata resource config
 func NewMetadataResourceConfig() MetadataResourceConfig {
 	return MetadataResourceConfig{}
 }
-
-//// MetadataConfig holds configs for a metadata
-//type MetadataConfig struct {
-//	device MetadataResourceConfig `yaml:"device"`
-//	netInterface MetadataResourceConfig `yaml:"interface"`
-//}
 
 // MetadataConfig holds configs for a metadata
 type MetadataConfig map[string]MetadataResourceConfig

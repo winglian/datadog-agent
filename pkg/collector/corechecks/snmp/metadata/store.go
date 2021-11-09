@@ -19,21 +19,24 @@ type Store struct {
 	columnValues map[string]map[string]valuestore.ResultValue
 
 	// map[<RESOURCE>][<index>][]<TAG>
-	resourceIdTags map[string]map[string][]string
+	resourceIDTags map[string]map[string][]string
 }
 
+// NewMetadataStore returns a new metadata Store
 func NewMetadataStore() *Store {
 	return &Store{
 		scalarValues:   make(map[string]valuestore.ResultValue),
 		columnValues:   make(map[string]map[string]valuestore.ResultValue),
-		resourceIdTags: make(map[string]map[string][]string),
+		resourceIDTags: make(map[string]map[string][]string),
 	}
 }
 
+// AddScalarValue add scalar value to metadata store
 func (s Store) AddScalarValue(field string, value valuestore.ResultValue) {
 	s.scalarValues[field] = value
 }
 
+// AddColumnValue add column value to metadata store
 func (s Store) AddColumnValue(field string, index string, value valuestore.ResultValue) {
 	column, ok := s.columnValues[field]
 	if !ok {
@@ -43,6 +46,7 @@ func (s Store) AddColumnValue(field string, index string, value valuestore.Resul
 	column[index] = value
 }
 
+// GetColumnAsString get column value as string
 func (s Store) GetColumnAsString(field string, index string) string {
 	column, ok := s.columnValues[field]
 	if !ok {
@@ -62,6 +66,7 @@ func (s Store) GetColumnAsString(field string, index string) string {
 	return strVal
 }
 
+// GetColumnAsFloat get column value as float
 func (s Store) GetColumnAsFloat(field string, index string) float64 {
 	column, ok := s.columnValues[field]
 	if !ok {
@@ -81,6 +86,7 @@ func (s Store) GetColumnAsFloat(field string, index string) float64 {
 	return strVal
 }
 
+// GetScalarAsString get scalar value as string
 func (s Store) GetScalarAsString(field string) string {
 	value, ok := s.scalarValues[field]
 	if !ok {
@@ -95,6 +101,7 @@ func (s Store) GetScalarAsString(field string) string {
 	return strVal
 }
 
+// GetColumnIndexes get column indexes for a field
 func (s Store) GetColumnIndexes(field string) []string {
 	column, ok := s.columnValues[field]
 	if !ok {
@@ -107,8 +114,9 @@ func (s Store) GetColumnIndexes(field string) []string {
 	return indexes
 }
 
-func (s Store) GetIdTags(resource string, index string) []string {
-	resTags, ok := s.resourceIdTags[resource]
+// GetIDTags get idTags for a specific resource and index
+func (s Store) GetIDTags(resource string, index string) []string {
+	resTags, ok := s.resourceIDTags[resource]
 	if !ok {
 		return nil
 	}
@@ -119,11 +127,12 @@ func (s Store) GetIdTags(resource string, index string) []string {
 	return tags
 }
 
-func (s Store) AddIdTags(resource string, index string, tags []string) {
-	indexToTags, ok := s.resourceIdTags[resource]
+// AddIDTags add idTags for a specific resource and index
+func (s Store) AddIDTags(resource string, index string, tags []string) {
+	indexToTags, ok := s.resourceIDTags[resource]
 	if !ok {
 		indexToTags = make(map[string][]string)
-		s.resourceIdTags[resource] = indexToTags
+		s.resourceIDTags[resource] = indexToTags
 	}
-	s.resourceIdTags[resource][index] = append(s.resourceIdTags[resource][index], tags...)
+	s.resourceIDTags[resource][index] = append(s.resourceIDTags[resource][index], tags...)
 }
