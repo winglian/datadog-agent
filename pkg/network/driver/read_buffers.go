@@ -8,10 +8,10 @@ package driver
 */
 import "C"
 import (
-	"unsafe"
-	"syscall"
 	"github.com/pkg/errors"
 	"golang.org/x/sys/windows"
+	"syscall"
+	"unsafe"
 )
 
 // ReadBuffer is the type that an overlapped read returns -- the overlapped object, which must be passed
@@ -75,13 +75,13 @@ func GetReadBufferIfReady(iocp windows.Handle) (*ReadBuffer, error, uint32) {
 }
 
 // GetReadBufferWhenReady blocks until a completed ReadBuffer becomes available, then returns it.
-// If the iocp given is closed after GetReadBufferWhenReady is called, it will unblock & return an error. If  
+// If the iocp given is closed after GetReadBufferWhenReady is called, it will unblock & return an error. If
 // the iocp is already closed when GetReadBufferWhenReady is called, it will immediately return an error.
 func GetReadBufferWhenReady(iocp windows.Handle) (*ReadBuffer, error, uint32) {
 	var bytesRead uint32
 	var key uintptr // returned by GetQueuedCompletionStatus, then ignored
 	var ol *windows.Overlapped
-	
+
 	err := windows.GetQueuedCompletionStatus(iocp, &bytesRead, &key, &ol, syscall.INFINITE)
 	if err != nil {
 		return nil, err, 0

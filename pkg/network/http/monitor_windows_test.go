@@ -32,7 +32,7 @@ func testHTTPMonitor(t *testing.T, targetAddr, serverAddr string, numReqs int) {
 		err = monitor.Stop()
 		require.NoError(t, err)
 	}()
-		
+
 	// Perform a number of random requests
 	requestFn := requestGenerator(t, targetAddr)
 	var requests []*nethttp.Request
