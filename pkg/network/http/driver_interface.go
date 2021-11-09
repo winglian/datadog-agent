@@ -145,7 +145,7 @@ func (di *httpDriverInterface) startReadingBuffers() {
 
 		transactionSize := uint32(C.size_of_http_transaction_type())
 		for {
-			buf, err, bytesRead := driver.GetReadBufferWhenReady(di.iocp)
+			buf, bytesRead, err := driver.GetReadBufferWhenReady(di.iocp)
 			if iocpIsClosedError(err) {
 				return
 			}

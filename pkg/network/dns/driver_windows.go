@@ -63,7 +63,7 @@ func (d *dnsDriver) setupDNSHandle() error {
 
 // ReadDNSPacket visits a raw DNS packet if one is available.
 func (d *dnsDriver) ReadDNSPacket(visit func([]byte, time.Time) error) (didRead bool, err error) {
-	buf, err, _ := driver.GetReadBufferIfReady(d.iocp)
+	buf, _, err := driver.GetReadBufferIfReady(d.iocp)
 	if buf == nil || err != nil {
 		return false, errors.Wrap(err, "could not get read buffer")
 	}

@@ -56,7 +56,7 @@ func PrepareCompletionBuffers(handle windows.Handle, count int) (iocp windows.Ha
 
 // GetReadBufferIfReady immediately returns a completed ReadBuffer if one is available. If none
 // are available, it returns a nil buffer.
-func GetReadBufferIfReady(iocp windows.Handle) (*ReadBuffer, error, uint32) {
+func GetReadBufferIfReady(iocp windows.Handle) (*ReadBuffer, uint32, error) {
 	var bytesRead uint32
 	var key uintptr // returned by GetQueuedCompletionStatus, then ignored
 	var ol *windows.Overlapped
@@ -65,29 +65,29 @@ func GetReadBufferIfReady(iocp windows.Handle) (*ReadBuffer, error, uint32) {
 	if err != nil {
 		if err == syscall.Errno(syscall.WAIT_TIMEOUT) {
 			// this indicates that there was no queued completion status, this is fine
-			return nil, nil, 0
+			return nil, 0, nil
 		}
 
-		return nil, err, 0
+		return nil, 0, err
 	}
 
-	return (*ReadBuffer)(unsafe.Pointer(ol)), nil, bytesRead
+	return (*ReadBuffer)(unsafe.Pointer(ol)), bytesRead, nil
 }
 
 // GetReadBufferWhenReady blocks until a completed ReadBuffer becomes available, then returns it.
 // If the iocp given is closed after GetReadBufferWhenReady is called, it will unblock & return an error. If
 // the iocp is already closed when GetReadBufferWhenReady is called, it will immediately return an error.
-func GetReadBufferWhenReady(iocp windows.Handle) (*ReadBuffer, error, uint32) {
+func GetReadBufferWhenReady(iocp windows.Handle) (*ReadBuffer, uint32, error) {
 	var bytesRead uint32
 	var key uintptr // returned by GetQueuedCompletionStatus, then ignored
 	var ol *windows.Overlapped
 
 	err := windows.GetQueuedCompletionStatus(iocp, &bytesRead, &key, &ol, syscall.INFINITE)
 	if err != nil {
-		return nil, err, 0
+		return nil, 0, err
 	}
 
-	return (*ReadBuffer)(unsafe.Pointer(ol)), nil, bytesRead
+	return (*ReadBuffer)(unsafe.Pointer(ol)), bytesRead, nil
 }
 
 // StartNextRead takes a read buffer whose data has been read & sends it back to the driver
