@@ -82,23 +82,6 @@ type MetricsConfig struct {
 	Options    MetricsConfigOption `yaml:"options"`
 }
 
-// MetadataResourceConfig holds configs for a metadata resource
-type MetadataResourceConfig struct {
-	Fields map[string]SymbolConfig `yaml:"fields"`
-
-	// TODO: Implement tags
-	//       Should we use the same structure as for metrics ?
-	IDTags MetricTagConfigList `yaml:"id_tags"`
-}
-
-// NewMetadataResourceConfig returns a new metadata resource config
-func NewMetadataResourceConfig() MetadataResourceConfig {
-	return MetadataResourceConfig{}
-}
-
-// MetadataConfig holds configs for a metadata
-type MetadataConfig map[string]MetadataResourceConfig
-
 // GetTags retrieve tags using the metric config and values
 func (mtl MetricTagConfigList) GetTags(fullIndex string, values *valuestore.ResultValueStore) []string {
 	var rowTags []string

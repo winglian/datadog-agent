@@ -688,9 +688,3 @@ func getSubnetFromTags(tags []string) (string, error) {
 	}
 	return "", fmt.Errorf("subnet not found in tags %v", tags)
 }
-
-// IsMetadataResourceWithScalarOids returns true if the resource is based on scalar OIDs
-// at the moment, we only expect "device" resource to be based on scalar OIDs
-func IsMetadataResourceWithScalarOids(resource string) bool {
-	return resource == "device"
-}

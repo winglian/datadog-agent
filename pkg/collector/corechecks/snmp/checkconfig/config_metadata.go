@@ -63,3 +63,26 @@ var LegacyMetadataConfig = MetadataConfig{
 		},
 	},
 }
+
+// MetadataConfig holds configs for a metadata
+type MetadataConfig map[string]MetadataResourceConfig
+
+// MetadataResourceConfig holds configs for a metadata resource
+type MetadataResourceConfig struct {
+	Fields map[string]SymbolConfig `yaml:"fields"`
+
+	// TODO: Implement tags
+	//       Should we use the same structure as for metrics ?
+	IDTags MetricTagConfigList `yaml:"id_tags"`
+}
+
+// NewMetadataResourceConfig returns a new metadata resource config
+func NewMetadataResourceConfig() MetadataResourceConfig {
+	return MetadataResourceConfig{}
+}
+
+// IsMetadataResourceWithScalarOids returns true if the resource is based on scalar OIDs
+// at the moment, we only expect "device" resource to be based on scalar OIDs
+func IsMetadataResourceWithScalarOids(resource string) bool {
+	return resource == "device"
+}
