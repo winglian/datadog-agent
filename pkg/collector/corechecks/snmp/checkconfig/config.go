@@ -592,9 +592,6 @@ func (c *CheckConfig) IsDiscovery() bool {
 func parseScalarOids(metrics []MetricsConfig, metricTags []MetricTagConfig, metadataConfigs MetadataConfig) []string {
 	var oids []string
 	for _, metric := range metrics {
-		if metric.Symbol.OID != "" {
-
-		}
 		oids = append(oids, metric.Symbol.OID)
 	}
 	for _, metricTag := range metricTags {
