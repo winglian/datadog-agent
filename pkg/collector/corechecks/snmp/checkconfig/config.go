@@ -601,9 +601,11 @@ func parseScalarOids(metrics []MetricsConfig, metricTags []MetricTagConfig, meta
 		if !IsMetadataResourceWithScalarOids(resource) {
 			continue
 		}
-		for _, field := range metadataConfig.Fields {
-			oids = append(oids, field.OID)
+		for _, symbol := range metadataConfig.Fields {
+			oids = append(oids, symbol.OID)
 		}
+		// we don't support tags for now for scalar resource/device
+		// we can use profile root level `metric_tags` (tags used for both metadata, metrics, service checks)
 	}
 	return oids
 }
@@ -622,11 +624,11 @@ func parseColumnOids(metrics []MetricsConfig, metadataConfigs MetadataConfig) []
 		if IsMetadataResourceWithScalarOids(resource) {
 			continue
 		}
-		for _, field := range metadataConfig.Fields {
-			oids = append(oids, field.OID)
+		for _, symbol := range metadataConfig.Fields {
+			oids = append(oids, symbol.OID)
 		}
-		for _, metricTag := range metadataConfig.IDTags {
-			oids = append(oids, metricTag.Column.OID)
+		for _, tagConfig := range metadataConfig.IDTags {
+			oids = append(oids, tagConfig.Column.OID)
 		}
 	}
 	return oids
