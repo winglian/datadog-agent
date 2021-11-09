@@ -5,6 +5,7 @@ var resourceIndex = map[string]string{
 	"interface": IfNameOID,
 }
 
+// GetIndexOIDForResource returns the index OID for a specific resource
 func GetIndexOIDForResource(resource string) string {
 	return resourceIndex[resource]
 }

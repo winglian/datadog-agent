@@ -85,8 +85,8 @@ func mockProfilesDefinitions() profileDefinitionMap {
 						Name: "ifAlias",
 					},
 					"description": {
-						OID:  "1.3.6.1.2.1.2.2.1.2",
-						Name: "ifDescr",
+						OID:  "1.3.6.1.2.1.31.1.1.1.1",
+						Name: "ifName",
 					},
 					"mac_address": {
 						OID:  "1.3.6.1.2.1.2.2.1.6",
@@ -102,6 +102,13 @@ func mockProfilesDefinitions() profileDefinitionMap {
 					},
 				},
 				IDTags: MetricTagConfigList{
+					{
+						Tag: "custom-tag",
+						Column: SymbolConfig{
+							OID:  "1.3.6.1.2.1.31.1.1.1.1",
+							Name: "ifAlias",
+						},
+					},
 					{
 						Tag: "interface",
 						Column: SymbolConfig{
