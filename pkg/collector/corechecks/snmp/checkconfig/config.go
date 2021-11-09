@@ -548,8 +548,8 @@ func (c *CheckConfig) Copy() *CheckConfig {
 		newConfig.Metrics = append(newConfig.Metrics, metric)
 	}
 
-	// Metadata: shallow copy is enough since metadata doesn't change
-	// It might be fully replace, see CheckConfig.RefreshWithProfile
+	// Metadata: shallow copy is enough since metadata is not modified.
+	// However, it might be fully replaced, see CheckConfig.RefreshWithProfile
 	newConfig.Metadata = c.Metadata
 
 	newConfig.MetricTags = make([]MetricTagConfig, 0, len(c.MetricTags))
@@ -603,8 +603,7 @@ func parseScalarOids(metrics []MetricsConfig, metricTags []MetricTagConfig, meta
 		}
 	}
 	for resource, metadataConfig := range metadataConfigs {
-		// TODO: TEST ME
-		if resource != "device" {
+		if !isMetadataResourceWithScalarOids(resource) {
 			continue
 		}
 		for _, field := range metadataConfig.Fields {
@@ -629,8 +628,7 @@ func parseColumnOids(metrics []MetricsConfig, metadataConfigs MetadataConfig) []
 		}
 	}
 	for resource, metadataConfig := range metadataConfigs {
-		// TODO: TEST ME
-		if resource == "device" {
+		if isMetadataResourceWithScalarOids(resource) {
 			continue
 		}
 		for _, field := range metadataConfig.Fields {
@@ -689,4 +687,10 @@ func getSubnetFromTags(tags []string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("subnet not found in tags %v", tags)
+}
+
+// isMetadataResourceWithScalarOids returns true if the resource is based on scalar OIDs
+// at the moment, we only expect "device" resource to be based on scalar OIDs
+func isMetadataResourceWithScalarOids(resource string) bool {
+	return resource == "device"
 }
