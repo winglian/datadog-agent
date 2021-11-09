@@ -604,8 +604,9 @@ func parseScalarOids(metrics []MetricsConfig, metricTags []MetricTagConfig, meta
 		for _, symbol := range metadataConfig.Fields {
 			oids = append(oids, symbol.OID)
 		}
-		// we don't support tags for now for scalar resource/device
-		// we can use profile root level `metric_tags` (tags used for both metadata, metrics, service checks)
+		// we don't support tags for now for resource (e.g. device) based on scalar OIDs
+		// profile root level `metric_tags` (tags used for both metadata, metrics, service checks)
+		// can be used instead
 	}
 	return oids
 }
