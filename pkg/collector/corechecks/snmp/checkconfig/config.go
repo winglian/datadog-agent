@@ -192,7 +192,6 @@ func (c *CheckConfig) UpdateDeviceIDAndTags() {
 
 func (c *CheckConfig) addUptimeMetric() {
 	c.Metrics = append(c.Metrics, uptimeMetricConfig)
-	c.OidConfig.addScalarOids([]string{uptimeMetricConfig.Symbol.OID})
 }
 
 // GetStaticTags return static tags built from configuration
@@ -404,6 +403,14 @@ func NewCheckConfig(rawInstance integration.Data, rawInitConfig integration.Data
 		return nil, fmt.Errorf("namespace cannot be empty")
 	}
 
+	// profile configs
+	profile := instance.Profile
+	if profile != "" || len(c.Metrics) > 0 {
+		c.AutodetectProfile = false
+	} else {
+		c.AutodetectProfile = true
+	}
+
 	// metrics Configs
 	if instance.UseGlobalMetrics {
 		c.Metrics = append(c.Metrics, initConfig.GlobalMetrics...)
@@ -412,6 +419,8 @@ func NewCheckConfig(rawInstance integration.Data, rawInitConfig integration.Data
 
 	c.InstanceTags = instance.Tags
 	c.MetricTags = instance.MetricTags
+
+	c.addUptimeMetric()
 
 	c.Metadata = updateMetadataDefinition(nil)
 	c.OidConfig.addScalarOids(c.parseScalarOids(c.Metrics, c.MetricTags, c.Metadata))
@@ -440,18 +449,11 @@ func NewCheckConfig(rawInstance integration.Data, rawInitConfig integration.Data
 	}
 
 	c.Profiles = profiles
-	profile := instance.Profile
 
 	errors := validateEnrichMetrics(c.Metrics)
 	errors = append(errors, ValidateEnrichMetricTags(c.MetricTags)...)
 	if len(errors) > 0 {
 		return nil, fmt.Errorf("validation errors: %s", strings.Join(errors, "\n"))
-	}
-
-	if profile != "" || len(c.Metrics) > 0 {
-		c.AutodetectProfile = false
-	} else {
-		c.AutodetectProfile = true
 	}
 
 	if profile != "" {
@@ -464,9 +466,6 @@ func NewCheckConfig(rawInstance integration.Data, rawInitConfig integration.Data
 	c.UpdateDeviceIDAndTags()
 
 	c.ResolvedSubnetName = c.getResolvedSubnetName()
-
-	// TODO: move higher to avoid call to c.OidConfig.addScalarOids
-	c.addUptimeMetric()
 	return c, nil
 }
 
