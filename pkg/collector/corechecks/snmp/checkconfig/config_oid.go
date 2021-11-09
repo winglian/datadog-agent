@@ -18,6 +18,9 @@ func (oc *OidConfig) addColumnOids(oidsToAdd []string) {
 
 func (oc *OidConfig) addOidsIfNotPresent(configOids []string, oidsToAdd []string) []string {
 	for _, oidToAdd := range oidsToAdd {
+		if oidToAdd == "" {
+			continue
+		}
 		isAlreadyPresent := false
 		for _, oid := range configOids {
 			if oid == oidToAdd {

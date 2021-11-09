@@ -174,7 +174,6 @@ func (c *CheckConfig) RefreshWithProfile(profile string) error {
 	c.Metrics = append(c.Metrics, definition.Metrics...)
 	c.MetricTags = append(c.MetricTags, definition.MetricTags...)
 
-	// TODO: Add metadata OIDs to Scalar and Column OIDs
 	c.OidConfig.addScalarOids(parseScalarOids(definition.Metrics, definition.MetricTags, definition.Metadata))
 	c.OidConfig.addColumnOids(parseColumnOids(definition.Metrics, definition.Metadata))
 
@@ -594,22 +593,19 @@ func parseScalarOids(metrics []MetricsConfig, metricTags []MetricTagConfig, meta
 	var oids []string
 	for _, metric := range metrics {
 		if metric.Symbol.OID != "" {
-			oids = append(oids, metric.Symbol.OID)
+
 		}
+		oids = append(oids, metric.Symbol.OID)
 	}
 	for _, metricTag := range metricTags {
-		if metricTag.OID != "" {
-			oids = append(oids, metricTag.OID)
-		}
+		oids = append(oids, metricTag.OID)
 	}
 	for resource, metadataConfig := range metadataConfigs {
 		if !IsMetadataResourceWithScalarOids(resource) {
 			continue
 		}
 		for _, field := range metadataConfig.Fields {
-			if field.OID != "" {
-				oids = append(oids, field.OID)
-			}
+			oids = append(oids, field.OID)
 		}
 	}
 	return oids
@@ -622,9 +618,7 @@ func parseColumnOids(metrics []MetricsConfig, metadataConfigs MetadataConfig) []
 			oids = append(oids, symbol.OID)
 		}
 		for _, metricTag := range metric.MetricTags {
-			if metricTag.Column.OID != "" {
-				oids = append(oids, metricTag.Column.OID)
-			}
+			oids = append(oids, metricTag.Column.OID)
 		}
 	}
 	for resource, metadataConfig := range metadataConfigs {
@@ -632,17 +626,10 @@ func parseColumnOids(metrics []MetricsConfig, metadataConfigs MetadataConfig) []
 			continue
 		}
 		for _, field := range metadataConfig.Fields {
-			if field.OID != "" {
-				oids = append(oids, field.OID)
-			}
-		}
-		for _, symbol := range metadataConfig.Fields {
-			oids = append(oids, symbol.OID)
+			oids = append(oids, field.OID)
 		}
 		for _, metricTag := range metadataConfig.IDTags {
-			if metricTag.Column.OID != "" {
-				oids = append(oids, metricTag.Column.OID)
-			}
+			oids = append(oids, metricTag.Column.OID)
 		}
 	}
 	return oids
