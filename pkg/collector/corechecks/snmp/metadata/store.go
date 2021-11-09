@@ -5,12 +5,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
-// ResourceIndex is a map of resource to field used for index
-// TODO: make private
-var ResourceIndex = map[string]string{
-	"interface": IfNameOID,
-}
-
 // Store MetadataStore stores metadata scalarValues
 type Store struct {
 	scalarValues map[string]valuestore.ResultValue

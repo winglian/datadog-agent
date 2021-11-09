@@ -81,13 +81,13 @@ func buildMetadata(metadataConfigs checkconfig.MetadataConfig, values *valuestor
 				}
 			}
 		}
-		if indexOid, ok := metadata.ResourceIndex[resourceName]; ok {
+		indexOid := metadata.GetIndexOIDForResource(resourceName)
+		if indexOid != "" {
 			metricValues, err := values.GetColumnValues(indexOid)
 			if err != nil {
 				continue
 			}
 			for fullIndex := range metricValues {
-				// TODO: TEST ME
 				idTags := metadataConfig.IDTags.GetTags(fullIndex, values)
 				metadataStore.AddIDTags(resourceName, fullIndex, idTags)
 			}
