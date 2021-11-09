@@ -79,3 +79,15 @@ func NewMetadataResourceConfig() MetadataResourceConfig {
 func IsMetadataResourceWithScalarOids(resource string) bool {
 	return resource == "device"
 }
+
+func updateMetadataDefinition(config MetadataConfig) MetadataConfig {
+	if config == nil {
+		config = MetadataConfig{}
+	}
+	for resourceName, resourceConfig := range LegacyMetadataConfig {
+		if _, ok := config[resourceName]; !ok {
+			config[resourceName] = resourceConfig
+		}
+	}
+	return config
+}
