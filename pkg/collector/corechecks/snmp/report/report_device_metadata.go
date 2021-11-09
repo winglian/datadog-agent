@@ -24,7 +24,9 @@ func (ms *MetricSender) ReportNetworkDeviceMetadata(config *checkconfig.CheckCon
 	tags := common.CopyStrings(origTags)
 	tags = util.SortUniqInPlace(tags)
 
-	metadataStore := buildMetadata(config.Metadata, store)
+	metaConfig := updateMetadataDefinition(config.Metadata)
+
+	metadataStore := buildMetadata(metaConfig, store)
 
 	device := buildNetworkDeviceMetadata(config.DeviceID, config.DeviceIDTags, config, metadataStore, tags, deviceStatus)
 
@@ -42,8 +44,23 @@ func (ms *MetricSender) ReportNetworkDeviceMetadata(config *checkconfig.CheckCon
 	}
 }
 
+func updateMetadataDefinition(config checkconfig.MetadataConfig) checkconfig.MetadataConfig {
+	if config == nil {
+		config = checkconfig.MetadataConfig{}
+	}
+	for resourceName, resourceConfig := range checkconfig.LegacyMetadataConfig {
+		if _, ok := config[resourceName]; !ok {
+			config[resourceName] = resourceConfig
+		}
+	}
+	return config
+}
+
 func buildMetadata(metadataConfigs checkconfig.MetadataConfig, values *valuestore.ResultValueStore) *metadata.Store {
 	metadataStore := metadata.NewMetadataStore()
+	if values == nil {
+		return metadataStore
+	}
 
 	for resourceName, metadataConfig := range metadataConfigs {
 		for fieldName, symbol := range metadataConfig.Fields {
