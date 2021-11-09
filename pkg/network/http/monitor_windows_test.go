@@ -17,7 +17,7 @@ import (
 func TestHTTPMonitorIntegration(t *testing.T) {
 	targetAddr := "localhost:8080"
 	serverAddr := "localhost:8080"
-	testHTTPMonitor(t, targetAddr, serverAddr, 5)
+	testHTTPMonitor(t, targetAddr, serverAddr, 100)
 }
 
 func testHTTPMonitor(t *testing.T, targetAddr, serverAddr string, numReqs int) {
