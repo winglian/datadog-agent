@@ -286,9 +286,6 @@ typedef struct filterPacketHeader
 
 #define HTTPS_PORT 443
 
-#define EPHEMERAL_RANGE_BEG 49152
-#define EPHEMERAL_RANGE_END 65535
-
 typedef enum _HttpPacketType {
     HTTP_PACKET_UNKNOWN = 0,
     HTTP_REQUEST,
