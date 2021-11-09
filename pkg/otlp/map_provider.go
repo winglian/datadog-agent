@@ -80,26 +80,24 @@ service:
       exporters: [serializer]
 `
 
-func newMetricsMapProvider() config.MapProvider {
-	return parserprovider.NewInMemoryMapProvider(strings.NewReader(defaultMetricsConfig))
+func newMetricsMapProvider(cfg PipelineConfig) config.MapProvider {
+	configMap := config.NewMap()
+
+	configMap.Set(
+		buildKey("exporters", "serializer", "metrics"),
+		cfg.Metrics,
+	)
+
+	return parserprovider.NewMergeMapProvider(
+		parserprovider.NewInMemoryMapProvider(strings.NewReader(defaultMetricsConfig)),
+		mapProvider(*configMap),
+	)
 }
 
-func newReceiverProvider(cfg PipelineConfig) config.MapProvider {
-	configMap := config.NewMap()
-	if cfg.GRPCPort > 0 {
-		configMap.Set(
-			buildKey("receivers", "otlp", "protocols", "grpc", "endpoint"),
-			fmt.Sprintf("%s:%d", cfg.BindHost, cfg.GRPCPort),
-		)
-	}
-
-	if cfg.HTTPPort > 0 {
-		configMap.Set(
-			buildKey("receivers", "otlp", "protocols", "http", "endpoint"),
-			fmt.Sprintf("%s:%d", cfg.BindHost, cfg.HTTPPort),
-		)
-	}
-
+func newReceiverProvider(otlpReceiverConfig map[string]interface{}) config.MapProvider {
+	configMap := config.NewMapFromStringMap(map[string]interface{}{
+		"receivers": map[string]interface{}{"otlp": otlpReceiverConfig},
+	})
 	return mapProvider(*configMap)
 }
 
@@ -110,8 +108,8 @@ func newMapProvider(cfg PipelineConfig) config.MapProvider {
 		providers = append(providers, newTracesMapProvider(cfg.TracePort))
 	}
 	if cfg.MetricsEnabled {
-		providers = append(providers, newMetricsMapProvider())
+		providers = append(providers, newMetricsMapProvider(cfg))
 	}
-	providers = append(providers, newReceiverProvider(cfg))
+	providers = append(providers, newReceiverProvider(cfg.OTLPReceiverConfig))
 	return parserprovider.NewMergeMapProvider(providers...)
 }
