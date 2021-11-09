@@ -64,7 +64,7 @@ func buildMetadata(metadataConfigs checkconfig.MetadataConfig, values *valuestor
 
 	for resourceName, metadataConfig := range metadataConfigs {
 		for fieldName, symbol := range metadataConfig.Fields {
-			if resourceName == "device" {
+			if checkconfig.IsMetadataResourceWithScalarOids(resourceName) {
 				value, err := values.GetScalarValue(symbol.OID)
 				if err != nil {
 					log.Debugf("report scalar: error getting scalar value: %v", err)

@@ -603,7 +603,7 @@ func parseScalarOids(metrics []MetricsConfig, metricTags []MetricTagConfig, meta
 		}
 	}
 	for resource, metadataConfig := range metadataConfigs {
-		if !isMetadataResourceWithScalarOids(resource) {
+		if !IsMetadataResourceWithScalarOids(resource) {
 			continue
 		}
 		for _, field := range metadataConfig.Fields {
@@ -628,7 +628,7 @@ func parseColumnOids(metrics []MetricsConfig, metadataConfigs MetadataConfig) []
 		}
 	}
 	for resource, metadataConfig := range metadataConfigs {
-		if isMetadataResourceWithScalarOids(resource) {
+		if IsMetadataResourceWithScalarOids(resource) {
 			continue
 		}
 		for _, field := range metadataConfig.Fields {
@@ -689,8 +689,8 @@ func getSubnetFromTags(tags []string) (string, error) {
 	return "", fmt.Errorf("subnet not found in tags %v", tags)
 }
 
-// isMetadataResourceWithScalarOids returns true if the resource is based on scalar OIDs
+// IsMetadataResourceWithScalarOids returns true if the resource is based on scalar OIDs
 // at the moment, we only expect "device" resource to be based on scalar OIDs
-func isMetadataResourceWithScalarOids(resource string) bool {
+func IsMetadataResourceWithScalarOids(resource string) bool {
 	return resource == "device"
 }
