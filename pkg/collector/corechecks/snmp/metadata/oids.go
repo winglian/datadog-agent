@@ -1,5 +1,7 @@
 package metadata
 
+// TODO: REMOVE OIDS
+
 // Scalar OIDs
 const (
 	// SysNameOID is the OID for SysName
