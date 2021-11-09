@@ -634,22 +634,22 @@ profiles:
   "interfaces": [
     {
       "device_id": "default:1.2.3.4",
-      "id_tags": ["interface:nameRow1"],
+      "id_tags": ["custom-tag:nameRow1","interface:nameRow1"],
       "index": 1,
       "name": "nameRow1",
       "alias": "descRow1",
-      "description": "ifDescRow1",
+      "description": "nameRow1",
       "mac_address": "00:00:00:00:00:01",
       "admin_status": 1,
       "oper_status": 1
     },
     {
       "device_id": "default:1.2.3.4",
-	  "id_tags": ["interface:nameRow2"],
+	  "id_tags": ["custom-tag:nameRow2","interface:nameRow2"],
       "index": 2,
       "name": "nameRow2",
       "alias": "descRow2",
-      "description": "ifDescRow2",
+      "description": "nameRow2",
       "mac_address": "00:00:00:00:00:02",
       "admin_status": 1,
       "oper_status": 1
