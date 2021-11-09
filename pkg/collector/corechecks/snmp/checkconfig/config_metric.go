@@ -11,18 +11,10 @@ import (
 
 // SymbolConfig holds info for a single symbol/oid
 type SymbolConfig struct {
-	OID  string `yaml:"OID"`
-	Name string `yaml:"name"`
-
+	OID                 string `yaml:"OID"`
+	Name                string `yaml:"name"`
 	ExtractValue        string `yaml:"extract_value"`
 	ExtractValuePattern *regexp.Regexp
-
-	// TODO: Use a different SymbolConfig ?
-	//MetadataField string `yaml:"field"`
-
-	// TODO: Implement index_transforms or
-	//       - index_transform
-	//       - index_from_value
 }
 
 // MetricTagConfig holds metric tag info
@@ -83,10 +75,10 @@ type MetricsConfig struct {
 }
 
 // GetTags retrieve tags using the metric config and values
-func (mtl MetricTagConfigList) GetTags(fullIndex string, values *valuestore.ResultValueStore) []string {
+func (mtcl MetricTagConfigList) GetTags(fullIndex string, values *valuestore.ResultValueStore) []string {
 	var rowTags []string
 	indexes := strings.Split(fullIndex, ".")
-	for _, metricTag := range mtl {
+	for _, metricTag := range mtcl {
 		// get tag using `index` field
 		if metricTag.Index > 0 {
 			index := metricTag.Index - 1 // `index` metric config is 1-based

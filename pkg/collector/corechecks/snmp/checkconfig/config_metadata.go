@@ -1,6 +1,6 @@
 package checkconfig
 
-// LegacyMetadataConfig contain metadata config used for backward compatibility
+// LegacyMetadataConfig contains metadata config used for backward compatibility
 // When users have their own copy of _base.yaml and _generic_if.yaml files
 // they won't have the new profile based metadata definitions for device and interface resources
 // The LegacyMetadataConfig is used as fallback to provide metadata definitions for those resources.
@@ -66,10 +66,7 @@ type MetadataConfig map[string]MetadataResourceConfig
 // MetadataResourceConfig holds configs for a metadata resource
 type MetadataResourceConfig struct {
 	Fields map[string]SymbolConfig `yaml:"fields"`
-
-	// TODO: Implement tags
-	//       Should we use the same structure as for metrics ?
-	IDTags MetricTagConfigList `yaml:"id_tags"`
+	IDTags MetricTagConfigList     `yaml:"id_tags"`
 }
 
 // NewMetadataResourceConfig returns a new metadata resource config
