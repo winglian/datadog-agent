@@ -37,7 +37,7 @@ func mockProfilesDefinitions() profileDefinitionMap {
 	return profileDefinitionMap{"f5-big-ip": profileDefinition{
 		Metrics:      metrics,
 		Extends:      []string{"_base.yaml", "_generic-if.yaml"},
-		Device:       deviceMeta{Vendor: "f5"},
+		Device:       DeviceMeta{Vendor: "f5"},
 		SysObjectIds: StringArray{"1.3.6.1.4.1.3375.2.1.3.4.*"},
 		MetricTags: []MetricTagConfig{
 			{
@@ -56,6 +56,9 @@ func mockProfilesDefinitions() profileDefinitionMap {
 		Metadata: MetadataConfig{
 			"device": {
 				Fields: map[string]MetadataField{
+					"vendor": {
+						Value: "f5",
+					},
 					"description": {
 						Symbol: SymbolConfig{
 							OID:  "1.3.6.1.2.1.1.1.0",
@@ -159,6 +162,8 @@ func Test_getDefaultProfilesDefinitionFiles(t *testing.T) {
 }
 
 func Test_loadProfiles(t *testing.T) {
+	SetConfdPathAndCleanProfiles()
+
 	defaultTestConfdPath, _ := filepath.Abs(filepath.Join("..", "test", "conf.d"))
 	config.Datadog.Set("confd_path", defaultTestConfdPath)
 	defaultProfilesDef, err := getDefaultProfilesDefinitionFiles()

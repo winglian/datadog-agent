@@ -18,7 +18,9 @@ import (
 
 type profileDefinitionMap map[string]profileDefinition
 
-type deviceMeta struct {
+// DeviceMeta holds device related static metadata
+// DEPRECATED in favour of profile metadata syntax
+type DeviceMeta struct {
 	// deprecated in favour of new `profileDefinition.Metadata` syntax
 	Vendor string `yaml:"vendor"`
 }
@@ -28,7 +30,7 @@ type profileDefinition struct {
 	Metadata     MetadataConfig    `yaml:"metadata"`
 	MetricTags   []MetricTagConfig `yaml:"metric_tags"`
 	Extends      []string          `yaml:"extends"`
-	Device       deviceMeta        `yaml:"device"`
+	Device       DeviceMeta        `yaml:"device"`
 	SysObjectIds StringArray       `yaml:"sysobjectid"`
 }
 

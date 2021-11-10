@@ -873,7 +873,7 @@ func Test_snmpConfig_refreshWithProfile(t *testing.T) {
 		},
 	}
 	profile1 := profileDefinition{
-		Device: deviceMeta{
+		Device: DeviceMeta{
 			Vendor: "a-vendor",
 		},
 		Metrics: metrics,
@@ -1531,12 +1531,12 @@ func TestCheckConfig_Copy(t *testing.T) {
 		OidBatchSize:       10,
 		BulkMaxRepetitions: 10,
 		Profiles: profileDefinitionMap{"f5-big-ip": profileDefinition{
-			Device: deviceMeta{Vendor: "f5"},
+			Device: DeviceMeta{Vendor: "f5"},
 		}},
 		ProfileTags: []string{"profile_tag:atag"},
 		Profile:     "f5",
 		ProfileDef: &profileDefinition{
-			Device: deviceMeta{Vendor: "f5"},
+			Device: DeviceMeta{Vendor: "f5"},
 		},
 		ExtraTags:             []string{"ExtraTags:tag"},
 		InstanceTags:          []string{"InstanceTags:tag"},
