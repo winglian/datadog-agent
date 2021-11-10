@@ -123,10 +123,9 @@ func (s Store) GetIDTags(resource string, index string) []string {
 
 // AddIDTags add idTags for a specific resource and index
 func (s Store) AddIDTags(resource string, index string, tags []string) {
-	indexToTags, ok := s.resourceIDTags[resource]
+	_, ok := s.resourceIDTags[resource]
 	if !ok {
-		indexToTags = make(map[string][]string)
-		s.resourceIDTags[resource] = indexToTags
+		s.resourceIDTags[resource] = make(map[string][]string)
 	}
 	s.resourceIDTags[resource][index] = append(s.resourceIDTags[resource][index], tags...)
 }
