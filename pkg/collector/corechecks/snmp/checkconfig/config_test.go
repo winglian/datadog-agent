@@ -932,6 +932,20 @@ func Test_snmpConfig_refreshWithProfile(t *testing.T) {
 			"1.3.6.1.2.1.31.1.1.1.18",
 		},
 	}, c.OidConfig)
+
+    // With metadata disabled
+    c.CollectDeviceMetadata = false
+	err = c.RefreshWithProfile("profile1")
+	assert.NoError(t, err)
+	assert.Equal(t, OidConfig{
+		ScalarOids: []string{
+			"1.2.3.4.5",
+		},
+		ColumnOids: []string{
+			"1.2.3.4.6",
+			"1.2.3.4.7",
+		},
+	}, c.OidConfig)
 }
 
 func Test_getSubnetFromTags(t *testing.T) {
