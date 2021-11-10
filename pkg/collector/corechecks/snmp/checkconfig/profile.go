@@ -19,6 +19,7 @@ import (
 type profileDefinitionMap map[string]profileDefinition
 
 type deviceMeta struct {
+	// deprecated in favour of new `profileDefinition.Metadata` syntax
 	Vendor string `yaml:"vendor"`
 }
 
