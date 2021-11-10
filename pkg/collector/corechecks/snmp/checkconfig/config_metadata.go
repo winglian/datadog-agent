@@ -80,7 +80,9 @@ func IsMetadataResourceWithScalarOids(resource string) bool {
 	return resource == "device"
 }
 
-func updateMetadataDefinition(config MetadataConfig) MetadataConfig {
+// updateMetadataDefinitionWithLegacyFallback will add metadata config for resources
+// that does not metadata definitions
+func updateMetadataDefinitionWithLegacyFallback(config MetadataConfig) MetadataConfig {
 	if config == nil {
 		config = MetadataConfig{}
 	}

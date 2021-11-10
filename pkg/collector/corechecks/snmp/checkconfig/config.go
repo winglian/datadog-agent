@@ -169,7 +169,7 @@ func (c *CheckConfig) RefreshWithProfile(profile string) error {
 	c.ProfileDef = &definition
 	c.Profile = profile
 
-	c.Metadata = updateMetadataDefinition(definition.Metadata)
+	c.Metadata = updateMetadataDefinitionWithLegacyFallback(definition.Metadata)
 	c.Metrics = append(c.Metrics, definition.Metrics...)
 	c.MetricTags = append(c.MetricTags, definition.MetricTags...)
 
@@ -422,7 +422,7 @@ func NewCheckConfig(rawInstance integration.Data, rawInitConfig integration.Data
 
 	c.addUptimeMetric()
 
-	c.Metadata = updateMetadataDefinition(nil)
+	c.Metadata = updateMetadataDefinitionWithLegacyFallback(nil)
 	c.OidConfig.addScalarOids(c.parseScalarOids(c.Metrics, c.MetricTags, c.Metadata))
 	c.OidConfig.addColumnOids(c.parseColumnOids(c.Metrics, c.Metadata))
 
