@@ -933,8 +933,8 @@ func Test_snmpConfig_refreshWithProfile(t *testing.T) {
 		},
 	}, c.OidConfig)
 
-    // With metadata disabled
-    c.CollectDeviceMetadata = false
+	// With metadata disabled
+	c.CollectDeviceMetadata = false
 	err = c.RefreshWithProfile("profile1")
 	assert.NoError(t, err)
 	assert.Equal(t, OidConfig{
