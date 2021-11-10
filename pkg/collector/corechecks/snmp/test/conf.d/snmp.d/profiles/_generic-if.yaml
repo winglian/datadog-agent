@@ -7,24 +7,30 @@ metadata:
   interface:
     fields:
       name:
-        OID: 1.3.6.1.2.1.31.1.1.1.1
-        name: ifName
+        symbol:
+          OID: 1.3.6.1.2.1.31.1.1.1.1
+          name: ifName
       description:
-        OID: 1.3.6.1.2.1.2.2.1.2
-        name: ifDescr
+        symbol:
+          OID: 1.3.6.1.2.1.2.2.1.2
+          name: ifDescr
       mac_address:
-        OID: 1.3.6.1.2.1.2.2.1.6
-        name: ifPhysAddress
+        symbol:
+          OID: 1.3.6.1.2.1.2.2.1.6
+          name: ifPhysAddress
       admin_status:
-        OID: 1.3.6.1.2.1.2.2.1.7
-        name: ifAdminStatus
+        symbol:
+          OID: 1.3.6.1.2.1.2.2.1.7
+          name: ifAdminStatus
       oper_status:
-        OID: 1.3.6.1.2.1.2.2.1.8
-        name: ifOperStatus
+        symbol:
+          OID: 1.3.6.1.2.1.2.2.1.8
+          name: ifOperStatus
       # TODO: Impl ip_address
       alias: # from another table
-        OID: 1.3.6.1.2.1.31.1.1.1.18
-        name: ifAlias
+        symbol:
+          OID: 1.3.6.1.2.1.31.1.1.1.18
+          name: ifAlias
     id_tags:  # id_tags/tags are special fields
       # TODO: support root OID/name
       - column:

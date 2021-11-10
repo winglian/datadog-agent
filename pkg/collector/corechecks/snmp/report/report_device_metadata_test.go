@@ -114,10 +114,12 @@ func Test_metricSender_reportNetworkDeviceMetadata_withInterfaces(t *testing.T) 
 		Namespace:          "my-ns",
 		Metadata: checkconfig.MetadataConfig{
 			"interface": {
-				Fields: map[string]checkconfig.SymbolConfig{
+				Fields: map[string]checkconfig.MetadataField{
 					"name": {
-						OID:  "1.3.6.1.2.1.31.1.1.1.1",
-						Name: "ifName",
+						Symbol: checkconfig.SymbolConfig{
+							OID:  "1.3.6.1.2.1.31.1.1.1.1",
+							Name: "ifName",
+						},
 					},
 				},
 				IDTags: checkconfig.MetricTagConfigList{

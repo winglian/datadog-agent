@@ -23,7 +23,9 @@ type MetricTagConfig struct {
 	Tag string `yaml:"tag"`
 
 	// Table config
-	Index  uint         `yaml:"index"`
+	Index uint `yaml:"index"`
+
+	// TODO: refactor to rename to `symbol` instead (keep backward compat with `column`)
 	Column SymbolConfig `yaml:"column"`
 
 	// Symbol config

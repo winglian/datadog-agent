@@ -6,46 +6,64 @@ package checkconfig
 // The LegacyMetadataConfig is used as fallback to provide metadata definitions for those resources.
 var LegacyMetadataConfig = MetadataConfig{
 	"device": {
-		Fields: map[string]SymbolConfig{
+		Fields: map[string]MetadataField{
 			"description": {
-				OID:  "1.3.6.1.2.1.1.1.0",
-				Name: "sysDescr",
+				Symbol: SymbolConfig{
+					OID:  "1.3.6.1.2.1.1.1.0",
+					Name: "sysDescr",
+				},
 			},
 			"name": {
-				OID:  "1.3.6.1.2.1.1.5.0",
-				Name: "sysName",
+				Symbol: SymbolConfig{
+					OID:  "1.3.6.1.2.1.1.5.0",
+					Name: "sysName",
+				},
 			},
 			"sys_object_id": {
-				OID:  "1.3.6.1.2.1.1.2.0",
-				Name: "sysObjectID",
+				Symbol: SymbolConfig{
+					OID:  "1.3.6.1.2.1.1.2.0",
+					Name: "sysObjectID",
+				},
 			},
 		},
 	},
 	"interface": {
-		Fields: map[string]SymbolConfig{
+		Fields: map[string]MetadataField{
 			"name": {
-				OID:  "1.3.6.1.2.1.31.1.1.1.1",
-				Name: "ifName",
+				Symbol: SymbolConfig{
+					OID:  "1.3.6.1.2.1.31.1.1.1.1",
+					Name: "ifName",
+				},
 			},
 			"description": {
-				OID:  "1.3.6.1.2.1.2.2.1.2",
-				Name: "ifDescr",
+				Symbol: SymbolConfig{
+					OID:  "1.3.6.1.2.1.2.2.1.2",
+					Name: "ifDescr",
+				},
 			},
 			"admin_status": {
-				OID:  "1.3.6.1.2.1.2.2.1.7",
-				Name: "ifAdminStatus",
+				Symbol: SymbolConfig{
+					OID:  "1.3.6.1.2.1.2.2.1.7",
+					Name: "ifAdminStatus",
+				},
 			},
 			"oper_status": {
-				OID:  "1.3.6.1.2.1.2.2.1.8",
-				Name: "ifOperStatus",
+				Symbol: SymbolConfig{
+					OID:  "1.3.6.1.2.1.2.2.1.8",
+					Name: "ifOperStatus",
+				},
 			},
 			"alias": {
-				OID:  "1.3.6.1.2.1.31.1.1.1.18",
-				Name: "ifAlias",
+				Symbol: SymbolConfig{
+					OID:  "1.3.6.1.2.1.31.1.1.1.18",
+					Name: "ifAlias",
+				},
 			},
 			"mac_address": {
-				OID:  "1.3.6.1.2.1.2.2.1.6",
-				Name: "ifPhysAddress",
+				Symbol: SymbolConfig{
+					OID:  "1.3.6.1.2.1.2.2.1.6",
+					Name: "ifPhysAddress",
+				},
 			},
 		},
 		IDTags: MetricTagConfigList{
@@ -65,8 +83,14 @@ type MetadataConfig map[string]MetadataResourceConfig
 
 // MetadataResourceConfig holds configs for a metadata resource
 type MetadataResourceConfig struct {
-	Fields map[string]SymbolConfig `yaml:"fields"`
-	IDTags MetricTagConfigList     `yaml:"id_tags"`
+	Fields map[string]MetadataField `yaml:"fields"`
+	IDTags MetricTagConfigList      `yaml:"id_tags"`
+}
+
+// MetadataField holds configs for a metadata field
+type MetadataField struct {
+	Symbol SymbolConfig `yaml:"symbol"`
+	Value  string       `yaml:"value"`
 }
 
 // NewMetadataResourceConfig returns a new metadata resource config

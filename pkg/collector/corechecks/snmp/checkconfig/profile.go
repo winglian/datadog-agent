@@ -172,7 +172,7 @@ func recursivelyExpandBaseProfiles(definition *profileDefinition, extends []stri
 				}
 
 				if resource.Fields == nil {
-					resource.Fields = make(map[string]SymbolConfig)
+					resource.Fields = make(map[string]MetadataField)
 				}
 				for field, symbol := range baseResource.Fields {
 					if _, ok := resource.Fields[field]; !ok {

@@ -46,21 +46,27 @@ func buildMetadata(metadataConfigs checkconfig.MetadataConfig, values *valuestor
 	}
 
 	for resourceName, metadataConfig := range metadataConfigs {
-		for fieldName, symbol := range metadataConfig.Fields {
+		for fieldName, field := range metadataConfig.Fields {
+			fieldFullName := resourceName + "." + fieldName
 			if checkconfig.IsMetadataResourceWithScalarOids(resourceName) {
-				value, err := values.GetScalarValue(symbol.OID)
-				if err != nil {
-					log.Debugf("report scalar: error getting scalar value: %v", err)
-					continue
+				if field.Value != "" {
+					metadataStore.AddScalarValue(fieldFullName, valuestore.ResultValue{Value: field.Value})
 				}
-				metadataStore.AddScalarValue(resourceName+"."+fieldName, value)
+				if field.Symbol.OID != "" {
+					value, err := values.GetScalarValue(field.Symbol.OID)
+					if err != nil {
+						log.Debugf("report scalar: error getting scalar value: %v", err)
+						continue
+					}
+					metadataStore.AddScalarValue(fieldFullName, value)
+				}
 			} else {
-				metricValues, err := values.GetColumnValues(symbol.OID)
+				metricValues, err := values.GetColumnValues(field.Symbol.OID)
 				if err != nil {
 					continue
 				}
 				for fullIndex, value := range metricValues {
-					metadataStore.AddColumnValue(resourceName+"."+fieldName, fullIndex, value)
+					metadataStore.AddColumnValue(fieldFullName, fullIndex, value)
 				}
 			}
 		}
@@ -86,9 +92,10 @@ func buildNetworkDeviceMetadata(deviceID string, idTags []string, config *checkc
 		sysDescr = store.GetScalarAsString("device.description")
 		sysObjectID = store.GetScalarAsString("device.sys_object_id")
 		serialNumber = store.GetScalarAsString("device.serial_number")
+		vendor = store.GetScalarAsString("device.vendor")
 	}
 
-	if config.ProfileDef != nil {
+	if config.ProfileDef != nil && vendor == "" {
 		vendor = config.ProfileDef.Device.Vendor
 	}
 
