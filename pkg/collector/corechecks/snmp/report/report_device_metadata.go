@@ -16,9 +16,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/collector/corechecks/snmp/valuestore"
 )
 
-// interfaceNameTagKey matches the `interface` tag used in `_generic-if.yaml` for ifName
-var interfaceNameTagKey = "interface"
-
 // ReportNetworkDeviceMetadata reports device metadata
 func (ms *MetricSender) ReportNetworkDeviceMetadata(config *checkconfig.CheckConfig, store *valuestore.ResultValueStore, origTags []string, collectTime time.Time, deviceStatus metadata.DeviceStatus) {
 	tags := common.CopyStrings(origTags)

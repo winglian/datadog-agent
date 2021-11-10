@@ -26,7 +26,6 @@ type profileDefinition struct {
 	Metrics      []MetricsConfig   `yaml:"metrics"`
 	Metadata     MetadataConfig    `yaml:"metadata"`
 	MetricTags   []MetricTagConfig `yaml:"metric_tags"`
-	Tags         []MetricTagConfig `yaml:"tags"` // TODO: alias for `metrics_tags`
 	Extends      []string          `yaml:"extends"`
 	Device       deviceMeta        `yaml:"device"`
 	SysObjectIds StringArray       `yaml:"sysobjectid"`
