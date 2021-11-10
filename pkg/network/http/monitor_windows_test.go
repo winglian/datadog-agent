@@ -41,7 +41,7 @@ func testHTTPMonitor(t *testing.T, targetAddr, serverAddr string, numReqs int) {
 	}
 
 	// Ensure all captured transactions get sent to user-space
-	time.Sleep(1 * time.Second)
+	time.Sleep(5 * time.Second)
 	monitor.di.flushPendingTransactions()
 	time.Sleep(1 * time.Second)
 
