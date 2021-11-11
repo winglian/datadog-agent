@@ -678,16 +678,7 @@ func InitConfig(config Config) {
 	config.BindEnvAndSetDefault("internal_profiling.mutex_profile_fraction", 0)
 	config.BindEnvAndSetDefault("internal_profiling.enable_goroutine_stacktraces", false)
 
-	// Process agent
-	config.SetDefault("process_config.enabled", "false")
-	// process_config.enabled is only used on Windows by the core agent to start the process agent service.
-	// it can be set from file, but not from env. Override it with value from DD_PROCESS_AGENT_ENABLED.
-	ddProcessAgentEnabled, found := os.LookupEnv("DD_PROCESS_AGENT_ENABLED")
-	if found {
-		AddOverride("process_config.enabled", ddProcessAgentEnabled)
-	}
 
-	config.BindEnv("process_config.process_dd_url", "")
 
 	// Logs Agent
 
@@ -878,6 +869,11 @@ func InitConfig(config Config) {
 	config.BindEnvAndSetDefault("orchestrator_explorer.extra_tags", []string{})
 
 	// Process agent
+	config.BindEnv("process_config.enabled", "DD_PROCESS_AGENT_ENABLED")
+	config.BindEnv("process_config.collectProcesses", "DD_PROCESS_AGENT_COLLECT_PROCESSES")
+	config.BindEnv("process_config.collectContainers", "DD_PROCESS_AGENT_COLLECT_CONTAINERS")
+	config.BindEnv("process_config.process_dd_url", "")
+
 	config.SetKnown("process_config.dd_agent_env")
 	config.SetKnown("process_config.enabled")
 	config.SetKnown("process_config.intervals.process_realtime")

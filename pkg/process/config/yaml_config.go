@@ -29,6 +29,58 @@ func key(pieces ...string) string {
 	return strings.Join(pieces, ".")
 }
 
+func (a *AgentConfig) configureChecks() {
+	shouldUseNewConfig := func() bool {
+		newSettingsSet := config.Datadog.IsSet("process_config.collectProcesses") || config.Datadog.IsSet("process_config.collectContainers")
+		oldSettingSet := config.Datadog.IsSet("process_config.enabled")
+
+		return newSettingsSet && !oldSettingSet
+	}
+
+	if shouldUseNewConfig() {
+		if config.Datadog.GetBool("process_config.processCollection") {
+			a.EnabledChecks = append(a.EnabledChecks, "process", "process_rt")
+		}
+		if config.Datadog.GetBool("process_config.containerCollection") {
+			a.EnabledChecks = append(a.EnabledChecks, "container", "container_rt")
+		}
+	} else {
+		// If the customer has process_config.enabled set through the yaml or the environment variable, we use those values but warn that it is deprecated.
+		if config.Datadog.IsSet("process_config.enabled") {
+			log.Error("process_config.enabled is deprecated. Please use collectProcesses and collectContainers instead")
+		}
+
+		if v, ok := os.LookupEnv("DD_PROCESS_AGENT_ENABLED"); ok {
+			// DD_PROCESS_AGENT_ENABLED: true - Process + Container checks enabled
+			//                           false - No checks enabled
+			//                           (none) - Container check enabled (by default)
+			if enabled, err := isAffirmative(v); enabled {
+				a.Enabled = true
+				a.EnabledChecks = processChecks
+			} else if !enabled && err == nil {
+				a.Enabled = false
+			}
+		} else if k := key(ns, "enabled"); config.Datadog.IsSet(k) {
+			// A string indicate the enabled state of the Agent.
+			//   If "false" (the default) we will only collect containers.
+			//   If "true" we will collect containers and processes.
+			//   If "disabled" the agent will be disabled altogether and won't start.
+			enabled := config.Datadog.GetString(k)
+			ok, err := isAffirmative(enabled)
+			if ok {
+				a.Enabled, a.EnabledChecks = true, processChecks
+			} else if enabled == "disabled" {
+				a.Enabled = false
+			} else if !ok && err == nil {
+				a.Enabled, a.EnabledChecks = true, containerChecks
+			}
+		}
+	}
+	a.initProcessDiscoveryCheck()
+
+	a.Enabled = len(a.EnabledChecks) > 0
+}
+
 // LoadProcessYamlConfig load Process-specific configuration
 func (a *AgentConfig) LoadProcessYamlConfig(path string) error {
 	loadEnvVariables()
@@ -53,31 +105,7 @@ func (a *AgentConfig) LoadProcessYamlConfig(path string) error {
 	}
 
 	// Note: The enabled environment flag operates differently than that of our YAML configuration
-	if v, ok := os.LookupEnv("DD_PROCESS_AGENT_ENABLED"); ok {
-		// DD_PROCESS_AGENT_ENABLED: true - Process + Container checks enabled
-		//                           false - No checks enabled
-		//                           (none) - Container check enabled (by default)
-		if enabled, err := isAffirmative(v); enabled {
-			a.Enabled = true
-			a.EnabledChecks = processChecks
-		} else if !enabled && err == nil {
-			a.Enabled = false
-		}
-	} else if k := key(ns, "enabled"); config.Datadog.IsSet(k) {
-		// A string indicate the enabled state of the Agent.
-		//   If "false" (the default) we will only collect containers.
-		//   If "true" we will collect containers and processes.
-		//   If "disabled" the agent will be disabled altogether and won't start.
-		enabled := config.Datadog.GetString(k)
-		ok, err := isAffirmative(enabled)
-		if ok {
-			a.Enabled, a.EnabledChecks = true, processChecks
-		} else if enabled == "disabled" {
-			a.Enabled = false
-		} else if !ok && err == nil {
-			a.Enabled, a.EnabledChecks = true, containerChecks
-		}
-	}
+	a.configureChecks()
 
 	// Whether or not the process-agent should output logs to console
 	if config.Datadog.GetBool("log_to_console") {
@@ -99,7 +127,6 @@ func (a *AgentConfig) LoadProcessYamlConfig(path string) error {
 
 	// We need another method to read in process discovery check configs because it is in its own object,
 	// and uses a different unit of time
-	a.initProcessDiscoveryCheck()
 
 	if a.CheckIntervals[ProcessCheckName] < a.CheckIntervals[RTProcessCheckName] || a.CheckIntervals[ProcessCheckName]%a.CheckIntervals[RTProcessCheckName] != 0 {
 		// Process check interval must be greater or equal to RTProcess check interval and the intervals must be divisible
