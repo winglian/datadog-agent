@@ -6,7 +6,7 @@
 package traceutil
 
 import (
-	"github.com/DataDog/datadog-agent/pkg/trace/pb"
+	pb "github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace"
 )
 
 // ProcessedTrace represents a trace being processed in the agent.
