@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package datadog.trace;
+
+import "datadog/trace/trace.proto";
+import "datadog/trace/span.proto";
+
+message TracePayload {
+        string hostName = 1;
+        string env = 2;
+        repeated APITrace traces = 3;
+        repeated Span transactions = 4;
+}
