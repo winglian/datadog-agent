@@ -27,6 +27,11 @@ var (
 
 	tlmSeries = telemetry.NewCounter("metrics", "series_split",
 		[]string{"action"}, "Series split")
+
+	deviceCount = telemetry.NewCounter("metrics", "device_count",
+		nil, "Series split")
+	notDeviceCount = telemetry.NewCounter("metrics", "not_device_count",
+		nil, "Series split")
 )
 
 // Point represents a metric value at a specific time
@@ -44,9 +49,10 @@ func (p *Point) MarshalJSON() ([]byte, error) {
 
 // Serie holds a timeseries (w/ json serialization to DD API format)
 type Serie struct {
-	Name           string          `json:"metric"`
-	Points         []Point         `json:"points"`
-	Tags           []string        `json:"tags"`
+	Name           string   `json:"metric"`
+	Points         []Point  `json:"points"`
+	Tags1          []string `json:"tags"`
+	Tags2          []string
 	Host           string          `json:"host"`
 	Device         string          `json:"device,omitempty"` // FIXME(olivier): remove as soon as the v1 API can handle `device` as a regular tag
 	MType          APIMetricType   `json:"type"`
@@ -61,6 +67,7 @@ type Series []*Serie
 
 // MarshalStrings converts the timeseries to a sorted slice of string slices
 func (series Series) MarshalStrings() ([]string, [][]string) {
+	panic("MarshalStrings")
 	var headers = []string{"Metric", "Type", "Timestamp", "Value", "Tags"}
 	var payload = make([][]string, len(series))
 
@@ -70,7 +77,7 @@ func (series Series) MarshalStrings() ([]string, [][]string) {
 			serie.MType.String(),
 			strconv.FormatFloat(serie.Points[0].Ts, 'f', 0, 64),
 			strconv.FormatFloat(serie.Points[0].Value, 'f', -1, 64),
-			strings.Join(serie.Tags, ", "),
+			strings.Join(serie.Tags1, ", "),
 		})
 	}
 
@@ -102,14 +109,16 @@ func (series Series) MarshalStrings() ([]string, [][]string) {
 //FIXME(olivier): remove this as soon as the v1 API can handle `device` as a regular tag
 func populateDeviceField(serie *Serie) {
 	if !hasDeviceTag(serie) {
+		notDeviceCount.Inc()
 		return
 	}
+	deviceCount.Inc()
 	// make a copy of the tags array. Otherwise the underlying array won't have
 	// the device tag for the Nth iteration (N>1), and the deice field will
 	// be lost
-	filteredTags := make([]string, 0, len(serie.Tags))
+	filteredTags := make([]string, 0, len(serie.Tags1))
 
-	for _, tag := range serie.Tags {
+	for _, tag := range serie.Tags1 {
 		if strings.HasPrefix(tag, "device:") {
 			serie.Device = tag[7:]
 		} else {
@@ -117,12 +126,29 @@ func populateDeviceField(serie *Serie) {
 		}
 	}
 
-	serie.Tags = filteredTags
+	serie.Tags1 = filteredTags
+
+	filteredTags = make([]string, 0, len(serie.Tags2))
+
+	for _, tag := range serie.Tags2 {
+		if strings.HasPrefix(tag, "device:") {
+			serie.Device = tag[7:]
+		} else {
+			filteredTags = append(filteredTags, tag)
+		}
+	}
+	serie.Tags2 = filteredTags
 }
 
 // hasDeviceTag checks whether a series contains a device tag
 func hasDeviceTag(serie *Serie) bool {
-	for _, tag := range serie.Tags {
+
+	for _, tag := range serie.Tags1 {
+		if strings.HasPrefix(tag, "device:") {
+			return true
+		}
+	}
+	for _, tag := range serie.Tags2 {
 		if strings.HasPrefix(tag, "device:") {
 			return true
 		}
@@ -283,7 +309,14 @@ func encodeSerie(serie *Serie, stream *jsoniter.Stream) {
 	stream.WriteObjectField("tags")
 	stream.WriteArrayStart()
 	firstTag := true
-	for _, s := range serie.Tags {
+	for _, s := range serie.Tags1 {
+		if !firstTag {
+			stream.WriteMore()
+		}
+		stream.WriteString(s)
+		firstTag = false
+	}
+	for _, s := range serie.Tags2 {
 		if !firstTag {
 			stream.WriteMore()
 		}

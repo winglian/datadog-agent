@@ -33,7 +33,7 @@ func (m *HistogramBucket) GetHost() string {
 }
 
 // GetTags returns the bucket tags.
-func (m *HistogramBucket) GetTags(tb *tagset.HashingTagsAccumulator) {
+func (m *HistogramBucket) GetTags(tb *tagset.HashingTagsAccumulator, tb2 *tagset.HashingTagsAccumulator) {
 	// Other 'GetTags' methods for metrics support origin detections. Since
 	// HistogramBucket only come, for now, from checks we can simply return
 	// tags.

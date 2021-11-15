@@ -705,6 +705,7 @@ func (s *Server) Stop() {
 //
 // It can help troubleshooting clients with bad behaviors.
 func (s *Server) storeMetricStats(sample metrics.MetricSample) {
+	panic("storeMetricStats")
 	now := time.Now()
 	s.Debug.Lock()
 	defer s.Debug.Unlock()
@@ -716,7 +717,7 @@ func (s *Server) storeMetricStats(sample metrics.MetricSample) {
 	// key
 	defer s.debugTagsAccumulator.Reset()
 	s.debugTagsAccumulator.Append(sample.Tags...)
-	key := s.Debug.keyGen.Generate(sample.Name, "", s.debugTagsAccumulator)
+	key := s.Debug.keyGen.Generate(sample.Name, "", s.debugTagsAccumulator, 0)
 
 	// store
 	ms := s.Debug.Stats[key]

@@ -41,11 +41,12 @@ func apiTypeFromTranslatorType(typ translator.MetricDataType) metrics.APIMetricT
 }
 
 func (c *serializerConsumer) ConsumeTimeSeries(ctx context.Context, name string, typ translator.MetricDataType, ts uint64, value float64, tags []string, host string) {
+	panic("ConsumeTimeSeries")
 	c.series = append(c.series,
 		&metrics.Serie{
 			Name:     name,
 			Points:   []metrics.Point{{Ts: float64(ts / 1e9), Value: value}},
-			Tags:     tags,
+			Tags1:    tags,
 			Host:     host,
 			MType:    apiTypeFromTranslatorType(typ),
 			Interval: 1,

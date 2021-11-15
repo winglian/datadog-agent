@@ -516,10 +516,11 @@ func (agg *BufferedAggregator) sendSeries(start time.Time, series metrics.Series
 			extra.SourceTypeName = "System"
 		}
 
-		tags := append(extra.Tags, agg.tags(false)...)
+		tags := append(extra.Tags1, extra.Tags2...)
+		tags = append(tags, agg.tags(false)...)
 		newSerie := &metrics.Serie{
 			Name:           extra.Name,
-			Tags:           tags,
+			Tags1:          tags,
 			Host:           extra.Host,
 			MType:          extra.MType,
 			SourceTypeName: extra.SourceTypeName,
@@ -544,7 +545,7 @@ func (agg *BufferedAggregator) sendSeries(start time.Time, series metrics.Series
 	series = append(series, &metrics.Serie{
 		Name:           fmt.Sprintf("datadog.%s.running", agg.agentName),
 		Points:         []metrics.Point{{Value: 1, Ts: float64(start.Unix())}},
-		Tags:           agg.tags(true),
+		Tags1:           agg.tags(true),
 		Host:           agg.hostname,
 		MType:          metrics.APIGaugeType,
 		SourceTypeName: "System",
@@ -554,7 +555,7 @@ func (agg *BufferedAggregator) sendSeries(start time.Time, series metrics.Series
 	series = append(series, &metrics.Serie{
 		Name:           fmt.Sprintf("n_o_i_n_d_e_x.datadog.%s.payload.dropped", agg.agentName),
 		Points:         []metrics.Point{{Value: float64(split.GetPayloadDrops()), Ts: float64(start.Unix())}},
-		Tags:           agg.tags(false),
+		Tags1:           agg.tags(false),
 		Host:           agg.hostname,
 		MType:          metrics.APIGaugeType,
 		SourceTypeName: "System",
