@@ -3,6 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
+//go:build docker
 // +build docker
 
 package ecs
@@ -145,6 +146,7 @@ func (c *collector) parseTasks(ctx context.Context, tasks []v1.Task) []workloadm
 			}
 
 			if metaURI != "" {
+				log.Infof("calling ECS metav3 API at %q", metaURI)
 				metaV3 := v3.NewClient(metaURI)
 				taskWithTags, err := metaV3.GetTaskWithTags(ctx)
 				if err == nil {
