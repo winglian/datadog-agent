@@ -26,8 +26,8 @@ import (
 	sysconfig "github.com/DataDog/datadog-agent/cmd/system-probe/config"
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/process/procutil"
-	pb "github.com/DataDog/datadog-agent/pkg/proto/pbgo"
-	mocks "github.com/DataDog/datadog-agent/pkg/proto/pbgo/mocks"
+	pb "github.com/DataDog/datadog-agent/pkg/proto/pbgo/core"
+	mocks "github.com/DataDog/datadog-agent/pkg/proto/pbgo/mocks/core"
 	"github.com/DataDog/datadog-agent/pkg/util/containers/providers"
 	providerMocks "github.com/DataDog/datadog-agent/pkg/util/containers/providers/mock"
 

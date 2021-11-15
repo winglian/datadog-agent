@@ -434,6 +434,14 @@ def generate_protobuf(ctx):
         except OSError:
             print("Error while deleting file : ", file_path)
 
+    # also cleanup gateway generated files
+    file_list = glob.glob(os.path.join(proto_root, "pbgo", "*.pb.gw.go"))
+    for file_path in file_list:
+        try:
+            os.remove(file_path)
+        except OSError:
+            print("Error while deleting file : ", file_path)
+
     with ctx.cd(repo_root):
         # protobuf defs
         print(f"generating protobuf code from: {proto_root}")
@@ -478,10 +486,20 @@ def generate_protobuf(ctx):
         except FileExistsError:
             print(f"{mockgen_out} folder already exists")
 
-        ctx.run(f"mockgen -source={pbgo_dir}/api.pb.go -destination={mockgen_out}/api_mockgen.pb.go")
+        # TODO: this should be parametrized
+        ctx.run(
+            "mockgen -source={in_path}/core/api.pb.go -destination={out_path}/core/api_mockgen.pb.go".format(
+                in_path=pbgo_dir, out_path=mockgen_out
+            )
+        )
 
     # generate messagepack marshallers
-    ctx.run("msgp -file pkg/proto/msgpgo/key.go -o=pkg/proto/msgpgo/key_gen.go")
+    ctx.run(
+        "msgp -file {in_path}/core/config.pb.go -o={out_path}/core/config_gen.go".format(
+            in_path=pbgo_dir,
+            out_path=pbgo_dir,
+        )
+    )
 
 
 @task
