@@ -3,6 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
+//go:build docker
 // +build docker
 
 package collectors
@@ -139,6 +140,7 @@ func fetchContainerTaskWithTagsV3(ctx context.Context, containerID string) (*v3.
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize client for metadata v3 API: %s", err)
 	}
+	log.Infof("calling ECS metav3 API for container %q", containerID)
 	task, err := metaV3.GetTaskWithTags(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task with tags from metadata v3 API: %s", err)
