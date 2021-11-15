@@ -30,7 +30,7 @@ func generateData(points int, items int, tags int) metrics.Series {
 			Name:     "test.metrics",
 			Interval: 15,
 			Host:     "localHost",
-			Tags: func() []string {
+			Tags1: func() []string {
 				ts := make([]string, tags)
 				for t := 0; t < tags; t++ {
 					ts[t] = fmt.Sprintf("tag%d:foobar", t)

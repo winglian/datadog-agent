@@ -8,23 +8,23 @@ package metrics
 import "testing"
 
 func benchmarkPopulateDeviceField(numberOfTags int, b *testing.B) {
-	tags := make([]string, 0, numberOfTags+1)
-	for i := 0; i < numberOfTags; i++ {
-		tags = append(tags, "some:tag")
-	}
-	tags = append(tags, "device:test")
+	// tags := make([]string, 0, numberOfTags+1)
+	// for i := 0; i < numberOfTags; i++ {
+	// 	tags = append(tags, "some:tag")
+	// }
+	// tags = append(tags, "device:test")
 
-	serie := &Serie{
-		Tags: tags,
-	}
-	series := []*Serie{serie}
+	// serie := &Serie{
+	// 	Tags: tags,
+	// }
+	// series := []*Serie{serie}
 
-	for n := 0; n < b.N; n++ {
-		serie.Tags = tags
-		for _, serie := range series {
-			populateDeviceField(serie)
-		}
-	}
+	// for n := 0; n < b.N; n++ {
+	// 	serie.Tags = tags
+	// 	for _, serie := range series {
+	// 		populateDeviceField(serie)
+	// 	}
+	// }
 }
 
 func BenchmarkPopulateDeviceField1(b *testing.B)  { benchmarkPopulateDeviceField(1, b) }

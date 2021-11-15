@@ -50,6 +50,7 @@ func (g *KeyGenerator) Generate(name, hostname string, tagsBuf *tagset.HashingTa
 	return ContextKey(hash)
 }
 
+// GenerateHash todo
 func (g *KeyGenerator) GenerateHash(tagsBuf2 *tagset.HashingTagsAccumulator) uint64 {
 	return g.hg.Hash(tagsBuf2)
 }

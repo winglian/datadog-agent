@@ -28,7 +28,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/dogstatsd/replay"
 	"github.com/DataDog/datadog-agent/pkg/metrics"
 	"github.com/DataDog/datadog-agent/pkg/status/health"
-	"github.com/DataDog/datadog-agent/pkg/tagset"
 	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	telemetry_utils "github.com/DataDog/datadog-agent/pkg/telemetry/utils"
 	"github.com/DataDog/datadog-agent/pkg/util"
@@ -126,23 +125,23 @@ type Server struct {
 	// and pushing them to the aggregator
 	workers []*worker
 
-	packetsIn                 chan packets.Packets
-	sharedPacketPool          *packets.Pool
-	sharedPacketPoolManager   *packets.PoolManager
-	sharedFloat64List         *float64ListPool
-	Statistics                *util.Stats
-	Started                   bool
-	stopChan                  chan bool
-	health                    *health.Handle
-	metricPrefix              string
-	metricPrefixBlacklist     []string
-	metricBlocklist           []string
-	defaultHostname           string
-	histToDist                bool
-	histToDistPrefix          string
-	extraTags                 []string
-	Debug                     *dsdServerDebug
-	debugTagsAccumulator      *tagset.HashingTagsAccumulator
+	packetsIn               chan packets.Packets
+	sharedPacketPool        *packets.Pool
+	sharedPacketPoolManager *packets.PoolManager
+	sharedFloat64List       *float64ListPool
+	Statistics              *util.Stats
+	Started                 bool
+	stopChan                chan bool
+	health                  *health.Handle
+	metricPrefix            string
+	metricPrefixBlacklist   []string
+	metricBlocklist         []string
+	defaultHostname         string
+	histToDist              bool
+	histToDistPrefix        string
+	extraTags               []string
+	Debug                   *dsdServerDebug
+	//debugTagsAccumulator      *tagset.HashingTagsAccumulator
 	TCapture                  *replay.TrafficCapture
 	mapper                    *mapper.MetricMapper
 	eolTerminationUDP         bool
@@ -706,28 +705,28 @@ func (s *Server) Stop() {
 // It can help troubleshooting clients with bad behaviors.
 func (s *Server) storeMetricStats(sample metrics.MetricSample) {
 	panic("storeMetricStats")
-	now := time.Now()
-	s.Debug.Lock()
-	defer s.Debug.Unlock()
+	// now := time.Now()
+	// s.Debug.Lock()
+	// defer s.Debug.Unlock()
 
-	if s.debugTagsAccumulator == nil {
-		s.debugTagsAccumulator = tagset.NewHashingTagsAccumulator()
-	}
+	// if s.debugTagsAccumulator == nil {
+	// 	s.debugTagsAccumulator = tagset.NewHashingTagsAccumulator()
+	// }
 
-	// key
-	defer s.debugTagsAccumulator.Reset()
-	s.debugTagsAccumulator.Append(sample.Tags...)
-	key := s.Debug.keyGen.Generate(sample.Name, "", s.debugTagsAccumulator, 0)
+	// // key
+	// defer s.debugTagsAccumulator.Reset()
+	// s.debugTagsAccumulator.Append(sample.Tags...)
+	// key := s.Debug.keyGen.Generate(sample.Name, "", s.debugTagsAccumulator, 0)
 
-	// store
-	ms := s.Debug.Stats[key]
-	ms.Count++
-	ms.LastSeen = now
-	ms.Name = sample.Name
-	ms.Tags = strings.Join(s.debugTagsAccumulator.Get(), " ") // we don't want/need to share the underlying array
-	s.Debug.Stats[key] = ms
+	// // store
+	// ms := s.Debug.Stats[key]
+	// ms.Count++
+	// ms.LastSeen = now
+	// ms.Name = sample.Name
+	// ms.Tags = strings.Join(s.debugTagsAccumulator.Get(), " ") // we don't want/need to share the underlying array
+	// s.Debug.Stats[key] = ms
 
-	s.Debug.metricsCounts.metricChan <- struct{}{}
+	// s.Debug.metricsCounts.metricChan <- struct{}{}
 }
 
 // EnableMetricsStats enables the debug mode of the DogStatsD server and start

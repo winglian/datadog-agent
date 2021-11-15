@@ -2,7 +2,6 @@ package serializerexporter
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/DataDog/datadog-agent/pkg/metrics"
 	"github.com/DataDog/datadog-agent/pkg/otlp/model/translator"
@@ -30,28 +29,28 @@ func (c *serializerConsumer) ConsumeSketch(_ context.Context, name string, ts ui
 	})
 }
 
-func apiTypeFromTranslatorType(typ translator.MetricDataType) metrics.APIMetricType {
-	switch typ {
-	case translator.Count:
-		return metrics.APICountType
-	case translator.Gauge:
-		return metrics.APIGaugeType
-	}
-	panic(fmt.Sprintf("unreachable: received non-count non-gauge type: %d", typ))
-}
+// func apiTypeFromTranslatorType(typ translator.MetricDataType) metrics.APIMetricType {
+// 	switch typ {
+// 	case translator.Count:
+// 		return metrics.APICountType
+// 	case translator.Gauge:
+// 		return metrics.APIGaugeType
+// 	}
+// 	panic(fmt.Sprintf("unreachable: received non-count non-gauge type: %d", typ))
+// }
 
 func (c *serializerConsumer) ConsumeTimeSeries(ctx context.Context, name string, typ translator.MetricDataType, ts uint64, value float64, tags []string, host string) {
 	panic("ConsumeTimeSeries")
-	c.series = append(c.series,
-		&metrics.Serie{
-			Name:     name,
-			Points:   []metrics.Point{{Ts: float64(ts / 1e9), Value: value}},
-			Tags1:    tags,
-			Host:     host,
-			MType:    apiTypeFromTranslatorType(typ),
-			Interval: 1,
-		},
-	)
+	// c.series = append(c.series,
+	// 	&metrics.Serie{
+	// 		Name:     name,
+	// 		Points:   []metrics.Point{{Ts: float64(ts / 1e9), Value: value}},
+	// 		Tags1:    tags,
+	// 		Host:     host,
+	// 		MType:    apiTypeFromTranslatorType(typ),
+	// 		Interval: 1,
+	// 	},
+	// )
 }
 
 // flush all metrics and sketches in consumer.
