@@ -34,8 +34,10 @@ type testProcess struct {
 	createdAt int64
 
 	// overriden values
-	ovName       string
-	ovNameValues func() StringValues
+	orName        string
+	orNameValues  func() StringValues
+	orArray       []*testItem
+	orArrayValues func() StringValues
 }
 
 type testItemListIterator struct {
@@ -320,18 +322,18 @@ func (m *testModel) GetEvaluator(field Field, regID RegisterID) (Evaluator, erro
 			Field: field,
 		}, nil
 
-	case "process.ov_name":
+	case "process.or_name":
 
 		return &StringEvaluator{
 			EvalFnc: func(ctx *Context) string {
-				return (*testEvent)(ctx.Object).process.ovName
+				return (*testEvent)(ctx.Object).process.orName
 			},
 			Field: field,
 			OpOverrides: &OpOverrides{
 				StringValuesContains: func(a *StringEvaluator, b *StringValuesEvaluator, opts *Opts, state *State) (*BoolEvaluator, error) {
 					evaluator := StringValuesEvaluator{
 						EvalFnc: func(ctx *Context) StringValues {
-							return (*testEvent)(ctx.Object).process.ovNameValues()
+							return (*testEvent)(ctx.Object).process.orNameValues()
 						},
 					}
 
@@ -340,11 +342,46 @@ func (m *testModel) GetEvaluator(field Field, regID RegisterID) (Evaluator, erro
 				StringEquals: func(a *StringEvaluator, b *StringEvaluator, opts *Opts, state *State) (*BoolEvaluator, error) {
 					evaluator := StringValuesEvaluator{
 						EvalFnc: func(ctx *Context) StringValues {
-							return (*testEvent)(ctx.Object).process.ovNameValues()
+							return (*testEvent)(ctx.Object).process.orNameValues()
 						},
 					}
 
 					return StringValuesContains(a, &evaluator, opts, state)
+				},
+			},
+		}, nil
+
+	case "process.or_array.value":
+
+		return &StringArrayEvaluator{
+			EvalFnc: func(ctx *Context) []string {
+				var values []string
+
+				for _, el := range (*testEvent)(ctx.Object).process.orArray {
+					values = append(values, el.value)
+				}
+
+				return values
+			},
+			Field: field,
+			OpOverrides: &OpOverrides{
+				StringArrayContains: func(a *StringEvaluator, b *StringArrayEvaluator, opts *Opts, state *State) (*BoolEvaluator, error) {
+					evaluator := StringValuesEvaluator{
+						EvalFnc: func(ctx *Context) StringValues {
+							return (*testEvent)(ctx.Object).process.orArrayValues()
+						},
+					}
+
+					return StringArrayMatches(b, &evaluator, opts, state)
+				},
+				StringArrayMatches: func(a *StringArrayEvaluator, b *StringValuesEvaluator, opts *Opts, state *State) (*BoolEvaluator, error) {
+					evaluator := StringValuesEvaluator{
+						EvalFnc: func(ctx *Context) StringValues {
+							return (*testEvent)(ctx.Object).process.orArrayValues()
+						},
+					}
+
+					return StringArrayMatches(a, &evaluator, opts, state)
 				},
 			},
 		}, nil
@@ -410,10 +447,6 @@ func (e *testEvent) GetFieldValue(field Field) (interface{}, error) {
 	case "process.created_at":
 
 		return e.process.createdAt, nil
-
-	case "process.overriden":
-
-		return e.process.overriden, nil
 
 	case "open.filename":
 
@@ -487,7 +520,11 @@ func (e *testEvent) GetFieldEventType(field Field) (string, error) {
 
 		return "*", nil
 
-	case "process.overriden":
+	case "process.or_name":
+
+		return "*", nil
+
+	case "process.or_array.value":
 
 		return "*", nil
 
@@ -542,11 +579,6 @@ func (e *testEvent) SetFieldValue(field Field, value interface{}) error {
 	case "process.created_at":
 
 		e.process.createdAt = value.(int64)
-		return nil
-
-	case "process.overriden":
-
-		e.process.overriden = value.(string)
 		return nil
 
 	case "open.filename":
@@ -611,7 +643,7 @@ func (e *testEvent) GetFieldType(field Field) (reflect.Kind, error) {
 		return reflect.Int, nil
 
 	case "process.array.value":
-		return reflect.Int, nil
+		return reflect.String, nil
 
 	case "process.array.flag":
 		return reflect.Bool, nil
