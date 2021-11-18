@@ -10,6 +10,7 @@ package probe
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"sync"
@@ -173,6 +174,10 @@ func (p *Probe) Init(client *statsd.Client) error {
 		p.managerOptions.ActivatedProbes = append(p.managerOptions.ActivatedProbes, selectors...)
 	}
 
+	if err := p.generateDynamicProbes(); err != nil {
+		return errors.Wrap(err, "couldn't generate probes")
+	}
+
 	if err := p.manager.InitWithOptions(bytecodeReader, p.managerOptions); err != nil {
 		return errors.Wrap(err, "failed to init manager")
 	}
@@ -219,6 +224,33 @@ func (p *Probe) Start() error {
 	}
 
 	return p.monitor.Start(p.ctx, &p.wg)
+}
+
+// generateDynamicProbes generated probes
+func (p *Probe) generateDynamicProbes() error {
+	netIfs, err := net.Interfaces()
+	if err != nil {
+		return errors.Wrap(err, "couldn't list network interfaces")
+	}
+
+	var selector manager.AllOf
+	for _, netIf := range netIfs {
+		for _, tcProbe := range probes.GetTCProbes() {
+			newProbe := tcProbe.Copy()
+			newProbe.UID = utils.RandString(10)
+			newProbe.Ifname = netIf.Name
+			newProbe.CopyProgram = true
+
+			p.manager.Probes = append(p.manager.Probes, newProbe)
+			selector.Selectors = append(selector.Selectors, &manager.ProbeSelector{
+				ProbeIdentificationPair: newProbe.ProbeIdentificationPair,
+			})
+			fmt.Printf("%d %d %s\n", newProbe.NetworkDirection, netIf.Index, newProbe.Ifname)
+		}
+	}
+	p.managerOptions.ActivatedProbes = append(p.managerOptions.ActivatedProbes, &selector)
+	probes.SelectorsPerEventType["*"] = append(probes.SelectorsPerEventType["*"], &selector)
+	return nil
 }
 
 // SetEventHandler set the probe event handler

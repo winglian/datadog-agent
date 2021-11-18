@@ -17,7 +17,7 @@ var tcProbes = []*manager.Probe{
 			EBPFSection:  "classifier/ingress",
 			EBPFFuncName: "classifier_ingress",
 		},
-		Ifname:           "enp0s3",
+		CopyProgram:      true,
 		NetworkDirection: manager.Ingress,
 	},
 	{
@@ -26,11 +26,12 @@ var tcProbes = []*manager.Probe{
 			EBPFSection:  "classifier/egress",
 			EBPFFuncName: "classifier_egress",
 		},
-		Ifname:           "enp0s3",
+		CopyProgram:      true,
 		NetworkDirection: manager.Egress,
 	},
 }
 
-func getTCProbes() []*manager.Probe {
+// GetTCProbes returns the list of TCProbes
+func GetTCProbes() []*manager.Probe {
 	return tcProbes
 }
