@@ -6,6 +6,7 @@
 #include <linux/version.h>
 #include <linux/bpf.h>
 #include <linux/filter.h>
+#include <net/sock.h>
 
 #include "defs.h"
 #include "buffer_selector.h"
@@ -42,6 +43,8 @@
 #include "selinux.h"
 #include "bpf.h"
 #include "raw_syscalls.h"
+#include "flow.h"
+#include "tc.h"
 
 struct invalidate_dentry_event_t {
     struct kevent_t event;
