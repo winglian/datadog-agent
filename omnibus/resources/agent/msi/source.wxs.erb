@@ -101,7 +101,12 @@
     <SetProperty Id="PROJECTLOCATIONONCMDLINESLASH" Value="[PROJECTLOCATION]\" Before="AppSearch">PROJECTLOCATION </SetProperty>
     <SetProperty Id="CONFDIRONCOMMANDLINE" Value="[APPLICATIONDATADIRECTORY]" Before="AppSearch">APPLICATIONDATADIRECTORY </SetProperty>
     <SetProperty Id="CONFDIRONCOMMANDLINESLASH" Value="[APPLICATIONDATADIRECTORY]\" Before="AppSearch">APPLICATIONDATADIRECTORY </SetProperty>
-
+    
+    <SetProperty Id="FastUnzip"
+      Value="FASTZIPDIR=[INSTALLLOCATION];FASTZIPAPPNAME=DatadogAgent"
+      Sequence="execute"
+      Before="FastUnzip" />
+    
     <!-- This condition allows the install if
         1) the user didn't supply the binary directory on the command line
         2) this is NOT an upgrade
@@ -431,6 +436,8 @@
       <!-- always stop the services, regardless of what's going on -->
       <Custom Action='StopDDServices' Before='StopServices'> </Custom>
 
+      <Custom Action="FastUnzip" After="InstallFiles">NOT Installed or REINSTALL</Custom>
+
       <!-- only run the FinalizeInstall action on INSTALL (for now) Note this
            is from the perspective of the installer being run; on upgrade the
            installer is called twice; the existing (previously installed)
@@ -708,7 +715,15 @@
          the install at the end, to allow for testing of rollback -->
     <CustomActionRef Id="WixFailWhenDeferred" />
 
+    <CustomAction Id="FastUnzip"
+          BinaryKey="CustomActionFastMsiDLL"
+          DllEntry="FastUnzip"
+          Execute="deferred"
+          Return="check"
+          Impersonate="no" />
+
     <Binary Id='wixcadll' SourceFile='$(var.BinFiles)\customaction.dll'/>
+    <Binary Id='CustomActionFastMsiDLL' SourceFile='$(var.BinFiles)\CustomActionFastMsi.CA.dll' />
 
     <Binary Id="BannerBmp" SourceFile="Resources\assets\banner_background.bmp" />
     <Binary Id="BackgroundBmp" SourceFile="Resources\assets\dialog_background.bmp" />
