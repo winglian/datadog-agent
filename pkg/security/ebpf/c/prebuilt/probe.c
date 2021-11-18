@@ -6,7 +6,11 @@
 #include <linux/version.h>
 #include <linux/bpf.h>
 #include <linux/filter.h>
+
 #include <net/sock.h>
+#include <uapi/linux/ip.h>
+#include <uapi/linux/udp.h>
+#include <uapi/linux/tcp.h>
 
 #include "defs.h"
 #include "buffer_selector.h"
@@ -44,6 +48,8 @@
 #include "bpf.h"
 #include "raw_syscalls.h"
 #include "flow.h"
+#include "network_parser.h"
+#include "dns.h"
 #include "tc.h"
 
 struct invalidate_dentry_event_t {
