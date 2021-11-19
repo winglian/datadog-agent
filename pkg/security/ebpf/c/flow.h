@@ -19,6 +19,45 @@ struct bpf_map_def SEC("maps/flow_pid") flow_pid = {
     .namespace = "",
 };
 
+#define EGRESS 1
+#define INGRESS 2
+
+__attribute__((always_inline)) u32 get_flow_pid(struct pkt_ctx_t *pkt, int network_direction) {
+    struct flow_pid_key_t key = {};
+
+    // Resolve pid
+    if (network_direction == EGRESS) {
+        key.addr[0] = pkt->ipv4->saddr;
+        if (pkt->ipv4->protocol == IPPROTO_TCP) {
+            key.port = pkt->tcp->source;
+        } else if (pkt->ipv4->protocol == IPPROTO_UDP) {
+            key.port = pkt->udp->source;
+        }
+    } else if (network_direction == INGRESS) {
+        key.addr[0] = pkt->ipv4->daddr;
+        if (pkt->ipv4->protocol == IPPROTO_TCP) {
+                key.port = pkt->tcp->dest;
+        } else if (pkt->ipv4->protocol == IPPROTO_UDP) {
+            key.port = pkt->udp->dest;
+        }
+    } else {
+        return 0;
+    }
+
+    struct flow_pid_value_t *value = bpf_map_lookup_elem(&flow_pid, &key);
+    if (!value) {
+        // Try with IP set to 0.0.0.0
+        key.addr[0] = 0;
+        key.addr[1] = 0;
+        value = bpf_map_lookup_elem(&flow_pid, &key);
+        if (!value) {
+            return 0;
+        }
+    }
+
+    return value->pid;
+}
+
 SEC("kprobe/security_sk_classify_flow")
 int kprobe_security_sk_classify_flow(struct pt_regs *ctx)
 {
@@ -44,7 +83,6 @@ int kprobe_security_sk_classify_flow(struct pt_regs *ctx)
     } else {
         return 0;
     }
-    key.port = be16_to_cpu(key.port);
 
     // Register service PID
     if (key.port != 0) {
@@ -79,7 +117,6 @@ int kprobe_security_socket_bind(struct pt_regs *ctx)
     } else {
         return 0;
     }
-    key.port = be16_to_cpu(key.port);
 
     // Register service PID
     if (key.port != 0) {

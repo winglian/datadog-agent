@@ -22,8 +22,8 @@ int classifier_ingress(struct __sk_buff *skb) {
             if (!(pkt.tcp = parse_tcphdr(&c)))
                 return TC_ACT_OK;
 
-            bpf_printk("INGRESS - SEQ:%x ACK_NO:%x ACK:%d\n", htons(pkt.tcp->seq >> 16) + (htons(pkt.tcp->seq) << 16), htons(pkt.tcp->ack_seq >> 16) + (htons(pkt.tcp->ack_seq) << 16), pkt.tcp->ack);
-            bpf_printk("      len: %d\n", htons(pkt.ipv4->tot_len) - (pkt.tcp->doff << 2) - (pkt.ipv4->ihl << 2));
+//            bpf_printk("INGRESS - SEQ:%x ACK_NO:%x ACK:%d\n", htons(pkt.tcp->seq >> 16) + (htons(pkt.tcp->seq) << 16), htons(pkt.tcp->ack_seq >> 16) + (htons(pkt.tcp->ack_seq) << 16), pkt.tcp->ack);
+//            bpf_printk("      len: %d\n", htons(pkt.ipv4->tot_len) - (pkt.tcp->doff << 2) - (pkt.ipv4->ihl << 2));
 
             // adjust cursor with variable tcp options
             c.pos += (pkt.tcp->doff << 2) - sizeof(struct tcphdr);
@@ -60,8 +60,8 @@ int classifier_egress(struct __sk_buff *skb) {
             if (!(pkt.tcp = parse_tcphdr(&c)))
                 return TC_ACT_OK;
 
-            bpf_printk("EGRESS - SEQ:%x ACK_NO:%x ACK:%d\n", htons(pkt.tcp->seq >> 16) + (htons(pkt.tcp->seq) << 16), htons(pkt.tcp->ack_seq >> 16) + (htons(pkt.tcp->ack_seq) << 16), pkt.tcp->ack);
-            bpf_printk("       len: %d\n", htons(pkt.ipv4->tot_len) - (pkt.tcp->doff << 2) - (pkt.ipv4->ihl << 2));
+//            bpf_printk("EGRESS - SEQ:%x ACK_NO:%x ACK:%d\n", htons(pkt.tcp->seq >> 16) + (htons(pkt.tcp->seq) << 16), htons(pkt.tcp->ack_seq >> 16) + (htons(pkt.tcp->ack_seq) << 16), pkt.tcp->ack);
+//            bpf_printk("       len: %d\n", htons(pkt.ipv4->tot_len) - (pkt.tcp->doff << 2) - (pkt.ipv4->ihl << 2));
 
             // adjust cursor with variable tcp options
             c.pos += (pkt.tcp->doff << 2) - sizeof(struct tcphdr);

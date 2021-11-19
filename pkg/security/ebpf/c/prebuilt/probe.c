@@ -47,8 +47,8 @@
 #include "selinux.h"
 #include "bpf.h"
 #include "raw_syscalls.h"
-#include "flow.h"
 #include "network_parser.h"
+#include "flow.h"
 #include "dns.h"
 #include "tc.h"
 

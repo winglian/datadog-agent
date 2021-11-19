@@ -245,7 +245,6 @@ func (p *Probe) generateDynamicProbes() error {
 			selector.Selectors = append(selector.Selectors, &manager.ProbeSelector{
 				ProbeIdentificationPair: newProbe.ProbeIdentificationPair,
 			})
-			fmt.Printf("%d %d %s\n", newProbe.NetworkDirection, netIf.Index, newProbe.Ifname)
 		}
 	}
 	p.managerOptions.ActivatedProbes = append(p.managerOptions.ActivatedProbes, &selector)

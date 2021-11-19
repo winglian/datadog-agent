@@ -1,6 +1,20 @@
 #ifndef _DNS_H_
 #define _DNS_H_
 
+struct bpf_map_def SEC("maps/pid_dns_eval_prog_ids") pid_dns_eval_prog_ids = {
+    .type = BPF_MAP_TYPE_HASH,
+    .key_size = sizeof(u32),
+    .value_size = sizeof(u32),
+    .max_entries = 1024,
+};
+
+struct bpf_map_def SEC("maps/dns_eval_progs") dns_eval_progs = {
+    .type = BPF_MAP_TYPE_PROG_ARRAY,
+    .key_size = sizeof(u32),
+    .value_size = sizeof(u32),
+    .max_entries = 100,
+};
+
 struct dnshdr {
     uint16_t id;
     union {
@@ -40,37 +54,29 @@ struct bpf_map_def SEC("maps/dns_name_gen") dns_name_gen = {
     .namespace = "",
 };
 
-struct bpf_map_def SEC("maps/dns_table") dns_table = {
-    .type = BPF_MAP_TYPE_LRU_HASH,
-    .key_size = sizeof(struct dns_name_t),
-    .value_size = sizeof(u32),
-    .max_entries = 512,
-    .pinning = 0,
-    .namespace = "",
-};
-
-struct dns_request_cache_key_t {
+struct dns_request_flow_t {
     u32 saddr;
     u32 daddr;
     u16 source_port;
     u16 dest_port;
-    u16 request_id;
-    u16 padding;
-};
-
-struct dns_request_cache_t {
-    u32 name_length;
-    u32 ip;
 };
 
 struct bpf_map_def SEC("maps/dns_request_cache") dns_request_cache = {
     .type = BPF_MAP_TYPE_LRU_HASH,
-    .key_size = sizeof(struct dns_request_cache_key_t),
-    .value_size = sizeof(struct dns_request_cache_t),
+    .key_size = sizeof(struct dns_request_flow_t),
+    .value_size = sizeof(struct dns_name_t),
     .max_entries = 1024,
     .pinning = 0,
     .namespace = "",
 };
+
+__attribute__((always_inline)) void fill_dns_request_flow(struct pkt_ctx_t *pkt, struct dns_request_flow_t *key) {
+    key->saddr = pkt->ipv4->saddr;
+    key->daddr = pkt->ipv4->daddr;
+    key->source_port = pkt->udp->source;
+    key->dest_port = pkt->udp->dest;
+    return;
+}
 
 __attribute__((always_inline)) int handle_dns_req(struct __sk_buff *skb, struct cursor *c, struct pkt_ctx_t *pkt) {
     struct dnshdr header = {};
@@ -107,40 +113,71 @@ __attribute__((always_inline)) int handle_dns_req(struct __sk_buff *skb, struct 
         }
     }
 
-    // Handle qtype
-    u16 qtype = 0;
-    if (bpf_skb_load_bytes(skb, offset, &qtype, sizeof(u16)) < 0) {
+    // Resolve pid
+    struct flow_pid_key_t flow_key = {};
+    flow_key.addr[0] = pkt->ipv4->saddr;
+    flow_key.port = pkt->udp->source;
+
+    struct flow_pid_value_t *pid = bpf_map_lookup_elem(&flow_pid, &flow_key);
+    if (!pid) {
+        // Try with IP set to 0.0.0.0
+        flow_key.addr[0] = 0;
+        flow_key.addr[1] = 0;
+        pid = bpf_map_lookup_elem(&flow_pid, &flow_key);
+        if (!pid) {
+            // this process isn't tracked, ignore packet
+            return TC_ACT_OK;
+        }
+    }
+
+    // cache DNS name
+    struct dns_request_flow_t dns_key = {};
+    fill_dns_request_flow(pkt, &dns_key);
+    bpf_map_update_elem(&dns_request_cache, &dns_key, name, BPF_ANY);
+
+    // query tail call function
+    u32 *prog_id = bpf_map_lookup_elem(&pid_dns_eval_prog_ids, &pid->pid);
+    if (prog_id == NULL) {
+        // This PID doesn't have any DNS rule
+        return TC_ACT_SHOT;
+    }
+    bpf_tail_call(skb, &dns_eval_progs, *prog_id);
+
+    return TC_ACT_OK;
+}
+
+SEC("classifier/dns_eval")
+int classifier_dns_eval(struct __sk_buff *skb) {
+    struct cursor c;
+    struct pkt_ctx_t pkt;
+
+    tc_cursor_init(&c, skb);
+    if (!(pkt.eth = parse_ethhdr(&c)))
+        return TC_ACT_OK;
+
+    // we only support IPv4 for now
+    if (pkt.eth->h_proto != htons(ETH_P_IP))
+        return TC_ACT_OK;
+
+    if (!(pkt.ipv4 = parse_iphdr(&c)))
+        return TC_ACT_OK;
+
+    if (pkt.ipv4->protocol != IPPROTO_UDP)
+        return TC_ACT_OK;
+
+    if (!(pkt.udp = parse_udphdr(&c)))
+        return TC_ACT_OK;
+
+    // lookup DNS name
+    struct dns_request_flow_t key = {};
+    fill_dns_request_flow(&pkt, &key);
+
+    struct dns_name_t *name = bpf_map_lookup_elem(&dns_request_cache, &key);
+    if (name == NULL) {
         return TC_ACT_OK;
     }
-    qtype = htons(qtype);
-    offset += sizeof(u16);
 
-    // Handle qclass
-    u16 qclass = 0;
-    if (bpf_skb_load_bytes(skb, offset, &qclass, sizeof(u16)) < 0) {
-        return TC_ACT_OK;
-    }
-    qclass = htons(qclass);
-    offset += sizeof(u16);
-
-    // Lookup DNS name and cache DNS request id <-> IP
-    u32 *ip = bpf_map_lookup_elem(&dns_table, name->name);
-    if (ip == NULL)
-        return TC_ACT_OK;
-
-    struct dns_request_cache_key_t key = {
-        .saddr = pkt->ipv4->saddr,
-        .daddr = pkt->ipv4->daddr,
-        .source_port = pkt->udp->source,
-        .dest_port = pkt->udp->dest,
-        .request_id = header.id,
-    };
-    struct dns_request_cache_t entry = {
-        .name_length = qname_length,
-        .ip = *ip,
-    };
-    bpf_map_update_elem(&dns_request_cache, &key, &entry, BPF_ANY);
-
+    // TODO: re2c on "name"
     return TC_ACT_OK;
 }
 
