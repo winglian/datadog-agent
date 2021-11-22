@@ -46,6 +46,11 @@ var (
 	Kernel5_13 = kernel.VersionCode(5, 13, 0) //nolint:deadcode,unused
 )
 
+const (
+	DNSMaxLength      = 256
+	DNSMaxLabelLength = 64
+)
+
 // Version defines a kernel version helper
 type Version struct {
 	osRelease map[string]string

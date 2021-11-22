@@ -141,43 +141,8 @@ __attribute__((always_inline)) int handle_dns_req(struct __sk_buff *skb, struct 
         // This PID doesn't have any DNS rule
         return TC_ACT_SHOT;
     }
+
     bpf_tail_call(skb, &dns_eval_progs, *prog_id);
-
-    return TC_ACT_OK;
-}
-
-SEC("classifier/dns_eval")
-int classifier_dns_eval(struct __sk_buff *skb) {
-    struct cursor c;
-    struct pkt_ctx_t pkt;
-
-    tc_cursor_init(&c, skb);
-    if (!(pkt.eth = parse_ethhdr(&c)))
-        return TC_ACT_OK;
-
-    // we only support IPv4 for now
-    if (pkt.eth->h_proto != htons(ETH_P_IP))
-        return TC_ACT_OK;
-
-    if (!(pkt.ipv4 = parse_iphdr(&c)))
-        return TC_ACT_OK;
-
-    if (pkt.ipv4->protocol != IPPROTO_UDP)
-        return TC_ACT_OK;
-
-    if (!(pkt.udp = parse_udphdr(&c)))
-        return TC_ACT_OK;
-
-    // lookup DNS name
-    struct dns_request_flow_t key = {};
-    fill_dns_request_flow(&pkt, &key);
-
-    struct dns_name_t *name = bpf_map_lookup_elem(&dns_request_cache, &key);
-    if (name == NULL) {
-        return TC_ACT_OK;
-    }
-
-    // TODO: re2c on "name"
     return TC_ACT_OK;
 }
 

@@ -211,6 +211,15 @@ func (p *Probe) Init(client *statsd.Client) error {
 		return err
 	}
 
+	re2c := NewRE2C()
+	if err := re2c.updateManager(p.manager, 1333283, 0, // should be random
+		[]string{
+			"glumol.com",
+			"perdu.com",
+		}); err != nil {
+		return err
+	}
+
 	return nil
 }
 
