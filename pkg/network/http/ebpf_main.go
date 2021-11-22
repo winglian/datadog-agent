@@ -24,6 +24,10 @@ const (
 	httpBatchStateMap        = "http_batch_state"
 	httpNotificationsPerfMap = "http_notifications"
 
+	tlsInFlightMap      = "tls_in_flight"
+	tlsHandshakePerfMap = "tls_handshake"
+	tlsBufferMap        = "tls_buffer"
+	tlsBufferRingMap    = "tls_buffer_ring"
 	// ELF section of the BPF_PROG_TYPE_SOCKET_FILTER program used
 	// to inspect plain HTTP traffic
 	httpSocketFilter = "socket/http_filter"
@@ -46,6 +50,7 @@ type ebpfProgram struct {
 	subprograms []subprogram
 
 	batchCompletionHandler *ddebpf.PerfHandler
+	tlsHandshakeHandler    *ddebpf.PerfHandler
 }
 
 type subprogram interface {
@@ -76,11 +81,15 @@ func newEBPFProgram(c *config.Config, offsets []manager.ConstantEditor, sockFD *
 	}
 
 	batchCompletionHandler := ddebpf.NewPerfHandler(batchNotificationsChanSize)
+	tlsHandshakeHandler := ddebpf.NewPerfHandler(batchNotificationsChanSize)
 	mgr := &manager.Manager{
 		Maps: []*manager.Map{
 			{Name: httpInFlightMap},
 			{Name: httpBatchesMap},
 			{Name: httpBatchStateMap},
+			{Name: tlsInFlightMap},
+			{Name: tlsBufferMap},
+			{Name: tlsBufferRingMap},
 			{Name: sslSockByCtxMap},
 			{Name: "ssl_read_args"},
 			{Name: "bio_new_socket_args"},
@@ -94,6 +103,15 @@ func newEBPFProgram(c *config.Config, offsets []manager.ConstantEditor, sockFD *
 					Watermark:          1,
 					DataHandler:        batchCompletionHandler.DataHandler,
 					LostHandler:        batchCompletionHandler.LostHandler,
+				},
+			},
+			{
+				Map: manager.Map{Name: tlsHandshakePerfMap},
+				PerfMapOptions: manager.PerfMapOptions{
+					PerfRingBufferSize: 8 * os.Getpagesize(),
+					Watermark:          1,
+					DataHandler:        tlsHandshakeHandler.DataHandler,
+					LostHandler:        tlsHandshakeHandler.LostHandler,
 				},
 			},
 		},
@@ -110,6 +128,7 @@ func newEBPFProgram(c *config.Config, offsets []manager.ConstantEditor, sockFD *
 		cfg:                    c,
 		offsets:                offsets,
 		batchCompletionHandler: batchCompletionHandler,
+		tlsHandshakeHandler:    tlsHandshakeHandler,
 		subprograms:            []subprogram{openSSLProgram},
 	}
 
@@ -131,6 +150,11 @@ func (e *ebpfProgram) Init() error {
 		},
 		MapSpecEditors: map[string]manager.MapSpecEditor{
 			httpInFlightMap: {
+				Type:       ebpf.Hash,
+				MaxEntries: uint32(e.cfg.MaxTrackedConnections),
+				EditorFlag: manager.EditMaxEntries,
+			},
+			tlsInFlightMap: {
 				Type:       ebpf.Hash,
 				MaxEntries: uint32(e.cfg.MaxTrackedConnections),
 				EditorFlag: manager.EditMaxEntries,
@@ -179,6 +203,7 @@ func (e *ebpfProgram) Start() error {
 func (e *ebpfProgram) Close() error {
 	err := e.Manager.Stop(manager.CleanAll)
 	e.batchCompletionHandler.Stop()
+	e.tlsHandshakeHandler.Stop()
 	for _, s := range e.subprograms {
 		s.Stop()
 	}

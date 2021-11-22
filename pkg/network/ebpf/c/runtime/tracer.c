@@ -76,8 +76,6 @@ int kprobe__tcp_sendmsg(struct pt_regs* ctx) {
     size_t size = (size_t)PT_REGS_PARM3(ctx);
 #endif
     u64 pid_tgid = bpf_get_current_pid_tgid();
-    log_debug("kprobe/tcp_sendmsg: size: %d\n", size);
-
     conn_tuple_t t = {};
     if (!read_conn_tuple(&t, skp, pid_tgid, CONN_TYPE_TCP)) {
         return 0;

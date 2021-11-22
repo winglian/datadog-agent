@@ -25,9 +25,12 @@ type Monitor struct {
 
 	ebpfProgram            *ebpfProgram
 	batchManager           *batchManager
+	tlsManager             *tlsManager
 	batchCompletionHandler *ddebpf.PerfHandler
+	tlsHandshakeHandler    *ddebpf.PerfHandler
 	telemetry              *telemetry
 	pollRequests           chan chan map[Key]RequestStats
+	tlsPollClose           chan struct{}
 	statkeeper             *httpStatKeeper
 
 	// termination
@@ -68,6 +71,15 @@ func NewMonitor(c *config.Config, offsets []manager.ConstantEditor, sockFD *ebpf
 		return nil, err
 	}
 
+	tlsBufMap, _, err := mgr.GetMap(tlsBufferMap)
+	if err != nil {
+		return nil, err
+	}
+	tlsBufRingMap, _, err := mgr.GetMap(tlsBufferRingMap)
+	if err != nil {
+		return nil, err
+	}
+
 	notificationMap, _, _ := mgr.GetMap(httpNotificationsPerfMap)
 	numCPUs := int(notificationMap.ABI().MaxEntries)
 
@@ -85,8 +97,11 @@ func NewMonitor(c *config.Config, offsets []manager.ConstantEditor, sockFD *ebpf
 		ebpfProgram:            mgr,
 		batchManager:           newBatchManager(batchMap, batchStateMap, numCPUs),
 		batchCompletionHandler: mgr.batchCompletionHandler,
+		tlsHandshakeHandler:    mgr.tlsHandshakeHandler,
+		tlsManager:             newTLSManager(tlsBufMap, tlsBufRingMap),
 		telemetry:              telemetry,
 		pollRequests:           make(chan chan map[Key]RequestStats),
+		tlsPollClose:           make(chan struct{}),
 		closeFilterFn:          closeFilterFn,
 		statkeeper:             statkeeper,
 	}, nil
@@ -101,6 +116,22 @@ func (m *Monitor) Start() error {
 	if err := m.ebpfProgram.Start(); err != nil {
 		return err
 	}
+
+	m.eventLoopWG.Add(1)
+	go func() {
+		defer m.eventLoopWG.Done()
+		report := time.NewTicker(1 * time.Second)
+		defer report.Stop()
+		for {
+			select {
+			case <-m.tlsPollClose:
+				return
+			case <-report.C:
+				m.tlsManager.Poll()
+			}
+
+		}
+	}()
 
 	m.eventLoopWG.Add(1)
 	go func() {
@@ -124,6 +155,17 @@ func (m *Monitor) Start() error {
 				}
 
 				m.process(nil, errLostBatch)
+			case dataEvent, ok := <-m.tlsHandshakeHandler.DataChannel:
+				if !ok {
+					return
+				}
+
+				fmt.Println("recieved TLS perf event", dataEvent.CPU, len(dataEvent.Data))
+				// The notification we read from the perf ring tells us which HTTP batch of transactions is ready to be consumed
+			case _, ok := <-m.tlsHandshakeHandler.LostChannel:
+				if !ok {
+					return
+				}
 			case reply, ok := <-m.pollRequests:
 				if !ok {
 					return
@@ -179,6 +221,7 @@ func (m *Monitor) Stop() {
 
 	m.ebpfProgram.Close()
 	m.closeFilterFn()
+	close(m.tlsPollClose)
 	close(m.pollRequests)
 	m.eventLoopWG.Wait()
 	m.stopped = true

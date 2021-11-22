@@ -6,6 +6,8 @@
 #include "sock.h"
 #include "sockfd.h"
 
+char LICENSE[] SEC("license") = "GPL";
+
 // TODO: Replace those by injected constants based on system configuration
 // once we have port range detection merged into the codebase.
 #define EPHEMERAL_RANGE_BEG 32768

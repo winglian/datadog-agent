@@ -3,8 +3,12 @@
 #include "ip.h"
 #include "ipv6.h"
 #include "http.h"
+#include "tls.h"
 #include "sockfd.h"
 #include "conn-tuple.h"
+
+char LICENSE[] SEC("license") = "GPL";
+
 
 // TODO: Replace those by injected constants based on system configuration
 // once we have port range detection merged into the codebase.
@@ -37,7 +41,11 @@ int socket__http_filter(struct __sk_buff* skb) {
     }
 
     // don't bother to inspect packet contents when there is no chance we're dealing with plain HTTP
-    if (!(skb_info.tup.metadata&CONN_TYPE_TCP) || skb_info.tup.sport == HTTPS_PORT || skb_info.tup.dport == HTTPS_PORT) {
+    if (!(skb_info.tup.metadata&CONN_TYPE_TCP)) {
+        return 0;
+    }
+    if (skb_info.tup.sport == HTTPS_PORT || skb_info.tup.dport == HTTPS_PORT) {
+        tls_process(skb, &skb_info);
         return 0;
     }
 
