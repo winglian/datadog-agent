@@ -103,20 +103,24 @@ func BenchmarkConnectionsGet(b *testing.B) {
 
 func TestRemoveConnections(t *testing.T) {
 	conn := ConnectionStats{
-		Pid:                  123,
-		Type:                 UDP,
-		Family:               AFINET,
-		Source:               util.AddressFromString("127.0.0.1"),
-		Dest:                 util.AddressFromString("127.0.0.1"),
-		SPort:                31890,
-		DPort:                80,
-		MonotonicSentBytes:   12345,
-		LastSentBytes:        12345,
-		MonotonicRecvBytes:   6789,
-		LastRecvBytes:        6789,
-		MonotonicRetransmits: 2,
-		LastRetransmits:      2,
-		IntraHost:            true,
+		Pid:    123,
+		Type:   UDP,
+		Family: AFINET,
+		Source: util.AddressFromString("127.0.0.1"),
+		Dest:   util.AddressFromString("127.0.0.1"),
+		SPort:  31890,
+		DPort:  80,
+		Monotonic: StatCounters{
+			SentBytes:   12345,
+			RecvBytes:   6789,
+			Retransmits: 2,
+		},
+		Last: StatCounters{
+			SentBytes:   12345,
+			RecvBytes:   6789,
+			Retransmits: 2,
+		},
+		IntraHost: true,
 	}
 
 	buf := make([]byte, ConnectionByteKeyMaxLen)
@@ -141,20 +145,24 @@ func TestRemoveConnections(t *testing.T) {
 
 func TestRetrieveClosedConnection(t *testing.T) {
 	conn := ConnectionStats{
-		Pid:                  123,
-		Type:                 TCP,
-		Family:               AFINET,
-		Source:               util.AddressFromString("127.0.0.1"),
-		Dest:                 util.AddressFromString("127.0.0.1"),
-		SPort:                31890,
-		DPort:                80,
-		MonotonicSentBytes:   12345,
-		LastSentBytes:        12345,
-		MonotonicRecvBytes:   6789,
-		LastRecvBytes:        6789,
-		MonotonicRetransmits: 2,
-		LastRetransmits:      2,
-		IntraHost:            true,
+		Pid:    123,
+		Type:   TCP,
+		Family: AFINET,
+		Source: util.AddressFromString("127.0.0.1"),
+		Dest:   util.AddressFromString("127.0.0.1"),
+		SPort:  31890,
+		DPort:  80,
+		Monotonic: StatCounters{
+			SentBytes:   12345,
+			RecvBytes:   6789,
+			Retransmits: 2,
+		},
+		Last: StatCounters{
+			SentBytes:   12345,
+			RecvBytes:   6789,
+			Retransmits: 2,
+		},
+		IntraHost: true,
 	}
 
 	clientID := "1"
@@ -223,27 +231,29 @@ func TestLastStats(t *testing.T) {
 	dRetransmits := uint32(7)
 
 	conn := ConnectionStats{
-		Pid:                  123,
-		Type:                 TCP,
-		Family:               AFINET,
-		Source:               util.AddressFromString("127.0.0.1"),
-		Dest:                 util.AddressFromString("127.0.0.1"),
-		SPort:                31890,
-		DPort:                80,
-		MonotonicSentBytes:   36,
-		MonotonicRecvBytes:   24,
-		MonotonicRetransmits: 2,
+		Pid:    123,
+		Type:   TCP,
+		Family: AFINET,
+		Source: util.AddressFromString("127.0.0.1"),
+		Dest:   util.AddressFromString("127.0.0.1"),
+		SPort:  31890,
+		DPort:  80,
+		Monotonic: StatCounters{
+			SentBytes:   36,
+			RecvBytes:   24,
+			Retransmits: 2,
+		},
 	}
 
 	conn2 := conn
-	conn2.MonotonicSentBytes += dSent
-	conn2.MonotonicRecvBytes += dRecv
-	conn2.MonotonicRetransmits += dRetransmits
+	conn2.Monotonic.SentBytes += dSent
+	conn2.Monotonic.RecvBytes += dRecv
+	conn2.Monotonic.Retransmits += dRetransmits
 
 	conn3 := conn2
-	conn3.MonotonicSentBytes += dSent
-	conn3.MonotonicRecvBytes += dRecv
-	conn3.MonotonicRetransmits += dRetransmits
+	conn3.Monotonic.SentBytes += dSent
+	conn3.Monotonic.RecvBytes += dRecv
+	conn3.Monotonic.Retransmits += dRetransmits
 
 	// First get, we should not have any connections stored
 	conns := state.GetDelta(client1, latestEpochTime(), nil, nil, nil).Conns
@@ -256,42 +266,42 @@ func TestLastStats(t *testing.T) {
 	// We should have only one connection but with last stats equal to monotonic
 	conns = state.GetDelta(client1, latestEpochTime(), []ConnectionStats{conn}, nil, nil).Conns
 	assert.Equal(t, 1, len(conns))
-	assert.Equal(t, conn.MonotonicSentBytes, conns[0].LastSentBytes)
-	assert.Equal(t, conn.MonotonicRecvBytes, conns[0].LastRecvBytes)
-	assert.Equal(t, conn.MonotonicRetransmits, conns[0].LastRetransmits)
-	assert.Equal(t, conn.MonotonicSentBytes, conns[0].MonotonicSentBytes)
-	assert.Equal(t, conn.MonotonicRecvBytes, conns[0].MonotonicRecvBytes)
-	assert.Equal(t, conn.MonotonicRetransmits, conns[0].MonotonicRetransmits)
+	assert.Equal(t, conn.Monotonic.SentBytes, conns[0].Last.SentBytes)
+	assert.Equal(t, conn.Monotonic.RecvBytes, conns[0].Last.RecvBytes)
+	assert.Equal(t, conn.Monotonic.Retransmits, conns[0].Last.Retransmits)
+	assert.Equal(t, conn.Monotonic.SentBytes, conns[0].Monotonic.SentBytes)
+	assert.Equal(t, conn.Monotonic.RecvBytes, conns[0].Monotonic.RecvBytes)
+	assert.Equal(t, conn.Monotonic.Retransmits, conns[0].Monotonic.Retransmits)
 
 	// This client didn't collect the first connection so last stats = monotonic
 	conns = state.GetDelta(client2, latestEpochTime(), []ConnectionStats{conn2}, nil, nil).Conns
 	assert.Equal(t, 1, len(conns))
-	assert.Equal(t, conn2.MonotonicSentBytes, conns[0].LastSentBytes)
-	assert.Equal(t, conn2.MonotonicRecvBytes, conns[0].LastRecvBytes)
-	assert.Equal(t, conn2.MonotonicRetransmits, conns[0].LastRetransmits)
-	assert.Equal(t, conn2.MonotonicSentBytes, conns[0].MonotonicSentBytes)
-	assert.Equal(t, conn2.MonotonicRecvBytes, conns[0].MonotonicRecvBytes)
-	assert.Equal(t, conn2.MonotonicRetransmits, conns[0].MonotonicRetransmits)
+	assert.Equal(t, conn2.Monotonic.SentBytes, conns[0].Last.SentBytes)
+	assert.Equal(t, conn2.Monotonic.RecvBytes, conns[0].Last.RecvBytes)
+	assert.Equal(t, conn2.Monotonic.Retransmits, conns[0].Last.Retransmits)
+	assert.Equal(t, conn2.Monotonic.SentBytes, conns[0].Monotonic.SentBytes)
+	assert.Equal(t, conn2.Monotonic.RecvBytes, conns[0].Monotonic.RecvBytes)
+	assert.Equal(t, conn2.Monotonic.Retransmits, conns[0].Monotonic.Retransmits)
 
 	// client 1 should have conn3 - conn1 since it did not collected conn2
 	conns = state.GetDelta(client1, latestEpochTime(), []ConnectionStats{conn3}, nil, nil).Conns
 	assert.Equal(t, 1, len(conns))
-	assert.Equal(t, 2*dSent, conns[0].LastSentBytes)
-	assert.Equal(t, 2*dRecv, conns[0].LastRecvBytes)
-	assert.Equal(t, 2*dRetransmits, conns[0].LastRetransmits)
-	assert.Equal(t, conn3.MonotonicSentBytes, conns[0].MonotonicSentBytes)
-	assert.Equal(t, conn3.MonotonicRecvBytes, conns[0].MonotonicRecvBytes)
-	assert.Equal(t, conn3.MonotonicRetransmits, conns[0].MonotonicRetransmits)
+	assert.Equal(t, 2*dSent, conns[0].Last.SentBytes)
+	assert.Equal(t, 2*dRecv, conns[0].Last.RecvBytes)
+	assert.Equal(t, 2*dRetransmits, conns[0].Last.Retransmits)
+	assert.Equal(t, conn3.Monotonic.SentBytes, conns[0].Monotonic.SentBytes)
+	assert.Equal(t, conn3.Monotonic.RecvBytes, conns[0].Monotonic.RecvBytes)
+	assert.Equal(t, conn3.Monotonic.Retransmits, conns[0].Monotonic.Retransmits)
 
 	// client 2 should have conn3 - conn2
 	conns = state.GetDelta(client2, latestEpochTime(), []ConnectionStats{conn3}, nil, nil).Conns
 	assert.Equal(t, 1, len(conns))
-	assert.Equal(t, dSent, conns[0].LastSentBytes)
-	assert.Equal(t, dRecv, conns[0].LastRecvBytes)
-	assert.Equal(t, dRetransmits, conns[0].LastRetransmits)
-	assert.Equal(t, conn3.MonotonicSentBytes, conns[0].MonotonicSentBytes)
-	assert.Equal(t, conn3.MonotonicRecvBytes, conns[0].MonotonicRecvBytes)
-	assert.Equal(t, conn3.MonotonicRetransmits, conns[0].MonotonicRetransmits)
+	assert.Equal(t, dSent, conns[0].Last.SentBytes)
+	assert.Equal(t, dRecv, conns[0].Last.RecvBytes)
+	assert.Equal(t, dRetransmits, conns[0].Last.Retransmits)
+	assert.Equal(t, conn3.Monotonic.SentBytes, conns[0].Monotonic.SentBytes)
+	assert.Equal(t, conn3.Monotonic.RecvBytes, conns[0].Monotonic.RecvBytes)
+	assert.Equal(t, conn3.Monotonic.Retransmits, conns[0].Monotonic.Retransmits)
 }
 
 func TestLastStatsForClosedConnection(t *testing.T) {
@@ -303,22 +313,24 @@ func TestLastStatsForClosedConnection(t *testing.T) {
 	dRetransmits := uint32(0)
 
 	conn := ConnectionStats{
-		Pid:                  123,
-		Type:                 TCP,
-		Family:               AFINET,
-		Source:               util.AddressFromString("127.0.0.1"),
-		Dest:                 util.AddressFromString("127.0.0.1"),
-		SPort:                31890,
-		DPort:                80,
-		MonotonicSentBytes:   36,
-		MonotonicRecvBytes:   24,
-		MonotonicRetransmits: 1,
+		Pid:    123,
+		Type:   TCP,
+		Family: AFINET,
+		Source: util.AddressFromString("127.0.0.1"),
+		Dest:   util.AddressFromString("127.0.0.1"),
+		SPort:  31890,
+		DPort:  80,
+		Monotonic: StatCounters{
+			SentBytes:   36,
+			RecvBytes:   24,
+			Retransmits: 1,
+		},
 	}
 
 	conn2 := conn
-	conn2.MonotonicSentBytes += dSent
-	conn2.MonotonicRecvBytes += dRecv
-	conn2.MonotonicRetransmits += dRetransmits
+	conn2.Monotonic.SentBytes += dSent
+	conn2.Monotonic.RecvBytes += dRecv
+	conn2.Monotonic.Retransmits += dRetransmits
 
 	// First get, we should not have any connections stored
 	conns := state.GetDelta(clientID, latestEpochTime(), nil, nil, nil).Conns
@@ -327,12 +339,12 @@ func TestLastStatsForClosedConnection(t *testing.T) {
 	// We should have one connection with last stats equal to monotonic stats
 	conns = state.GetDelta(clientID, latestEpochTime(), []ConnectionStats{conn}, nil, nil).Conns
 	assert.Equal(t, 1, len(conns))
-	assert.Equal(t, conn.MonotonicSentBytes, conns[0].LastSentBytes)
-	assert.Equal(t, conn.MonotonicRecvBytes, conns[0].LastRecvBytes)
-	assert.Equal(t, conn.MonotonicRetransmits, conns[0].LastRetransmits)
-	assert.Equal(t, conn.MonotonicSentBytes, conns[0].MonotonicSentBytes)
-	assert.Equal(t, conn.MonotonicRecvBytes, conns[0].MonotonicRecvBytes)
-	assert.Equal(t, conn.MonotonicRetransmits, conns[0].MonotonicRetransmits)
+	assert.Equal(t, conn.Monotonic.SentBytes, conns[0].Last.SentBytes)
+	assert.Equal(t, conn.Monotonic.RecvBytes, conns[0].Last.RecvBytes)
+	assert.Equal(t, conn.Monotonic.Retransmits, conns[0].Last.Retransmits)
+	assert.Equal(t, conn.Monotonic.SentBytes, conns[0].Monotonic.SentBytes)
+	assert.Equal(t, conn.Monotonic.RecvBytes, conns[0].Monotonic.RecvBytes)
+	assert.Equal(t, conn.Monotonic.Retransmits, conns[0].Monotonic.Retransmits)
 
 	state.StoreClosedConnections([]ConnectionStats{conn2})
 
@@ -340,12 +352,12 @@ func TestLastStatsForClosedConnection(t *testing.T) {
 	conns = state.GetDelta(clientID, latestEpochTime(), nil, nil, nil).Conns
 
 	assert.Equal(t, 1, len(conns))
-	assert.Equal(t, dSent, conns[0].LastSentBytes)
-	assert.Equal(t, dRecv, conns[0].LastRecvBytes)
-	assert.Equal(t, dRetransmits, conns[0].LastRetransmits)
-	assert.Equal(t, conn2.MonotonicSentBytes, conns[0].MonotonicSentBytes)
-	assert.Equal(t, conn2.MonotonicRecvBytes, conns[0].MonotonicRecvBytes)
-	assert.Equal(t, conn2.MonotonicRetransmits, conns[0].MonotonicRetransmits)
+	assert.Equal(t, dSent, conns[0].Last.SentBytes)
+	assert.Equal(t, dRecv, conns[0].Last.RecvBytes)
+	assert.Equal(t, dRetransmits, conns[0].Last.Retransmits)
+	assert.Equal(t, conn2.Monotonic.SentBytes, conns[0].Monotonic.SentBytes)
+	assert.Equal(t, conn2.Monotonic.RecvBytes, conns[0].Monotonic.RecvBytes)
+	assert.Equal(t, conn2.Monotonic.Retransmits, conns[0].Monotonic.Retransmits)
 }
 
 func TestRaceConditions(t *testing.T) {
@@ -356,16 +368,18 @@ func TestRaceConditions(t *testing.T) {
 		conns := make([]ConnectionStats, 0, n)
 		for i := uint32(0); i < n; i++ {
 			conns = append(conns, ConnectionStats{
-				Pid:                  1 + i,
-				Type:                 TCP,
-				Family:               AFINET,
-				Source:               util.AddressFromString("127.0.0.1"),
-				Dest:                 util.AddressFromString("127.0.0.1"),
-				SPort:                uint16(rand.Int()),
-				DPort:                uint16(rand.Int()),
-				MonotonicSentBytes:   uint64(rand.Int()),
-				MonotonicRecvBytes:   uint64(rand.Int()),
-				MonotonicRetransmits: uint32(rand.Int()),
+				Pid:    1 + i,
+				Type:   TCP,
+				Family: AFINET,
+				Source: util.AddressFromString("127.0.0.1"),
+				Dest:   util.AddressFromString("127.0.0.1"),
+				SPort:  uint16(rand.Int()),
+				DPort:  uint16(rand.Int()),
+				Monotonic: StatCounters{
+					SentBytes:   uint64(rand.Int()),
+					RecvBytes:   uint64(rand.Int()),
+					Retransmits: uint32(rand.Int()),
+				},
 			})
 		}
 		return conns
@@ -404,12 +418,14 @@ func TestSameKeyEdgeCases(t *testing.T) {
 
 	client := "c"
 	conn := ConnectionStats{
-		Pid:                123,
-		Type:               TCP,
-		Family:             AFINET,
-		Source:             util.AddressFromString("127.0.0.1"),
-		Dest:               util.AddressFromString("127.0.0.1"),
-		MonotonicSentBytes: 3,
+		Pid:    123,
+		Type:   TCP,
+		Family: AFINET,
+		Source: util.AddressFromString("127.0.0.1"),
+		Dest:   util.AddressFromString("127.0.0.1"),
+		Monotonic: StatCounters{
+			SentBytes: 3,
+		},
 	}
 
 	t.Run("ShortlivedConnection", func(t *testing.T) {
@@ -436,8 +452,8 @@ func TestSameKeyEdgeCases(t *testing.T) {
 		// Second get, we should have monotonic and last stats = 3
 		conns = state.GetDelta(client, latestEpochTime(), nil, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 3, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 3, int(conns[0].LastSentBytes))
+		assert.Equal(t, 3, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 3, int(conns[0].Last.SentBytes))
 	})
 
 	t.Run("TwoShortlivedConnections", func(t *testing.T) {
@@ -463,7 +479,7 @@ func TestSameKeyEdgeCases(t *testing.T) {
 		state.StoreClosedConnections([]ConnectionStats{conn})
 
 		conn2 := conn
-		conn2.MonotonicSentBytes = 5
+		conn2.Monotonic.SentBytes = 5
 		conn2.LastUpdateEpoch++
 		// Store the connection another time
 		state.StoreClosedConnections([]ConnectionStats{conn2})
@@ -471,8 +487,8 @@ func TestSameKeyEdgeCases(t *testing.T) {
 		// Second get, we should have monotonic and last stats = 8
 		conns = state.GetDelta(client, latestEpochTime(), nil, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 8, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 8, int(conns[0].LastSentBytes))
+		assert.Equal(t, 8, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 8, int(conns[0].Last.SentBytes))
 	})
 
 	t.Run("TwoShortlivedConnectionsCrossing-1", func(t *testing.T) {
@@ -497,44 +513,46 @@ func TestSameKeyEdgeCases(t *testing.T) {
 		assert.Len(t, conns, 0)
 
 		conn := ConnectionStats{
-			Pid:                123,
-			Type:               TCP,
-			Family:             AFINET,
-			Source:             util.AddressFromString("127.0.0.1"),
-			Dest:               util.AddressFromString("127.0.0.1"),
-			SPort:              9000,
-			DPort:              1234,
-			MonotonicSentBytes: 1,
+			Pid:    123,
+			Type:   TCP,
+			Family: AFINET,
+			Source: util.AddressFromString("127.0.0.1"),
+			Dest:   util.AddressFromString("127.0.0.1"),
+			SPort:  9000,
+			DPort:  1234,
+			Monotonic: StatCounters{
+				SentBytes: 1,
+			},
 		}
 
 		// Simulate this connection starting
 		conns = state.GetDelta(client, latestEpochTime(), []ConnectionStats{conn}, nil, nil).Conns
 		require.Len(t, conns, 1)
-		assert.EqualValues(t, 1, conns[0].LastSentBytes)
-		assert.EqualValues(t, 1, conns[0].MonotonicSentBytes)
+		assert.EqualValues(t, 1, conns[0].Last.SentBytes)
+		assert.EqualValues(t, 1, conns[0].Monotonic.SentBytes)
 
 		// Store the connection as closed
-		conn.MonotonicSentBytes++
+		conn.Monotonic.SentBytes++
 		conn.LastUpdateEpoch = latestEpochTime()
 		state.StoreClosedConnections([]ConnectionStats{conn})
 
-		conn.MonotonicSentBytes = 1
+		conn.Monotonic.SentBytes = 1
 		conn.LastUpdateEpoch = latestEpochTime()
 		// Retrieve the connections
 		conns = state.GetDelta(client, latestEpochTime(), []ConnectionStats{conn}, nil, nil).Conns
 		require.Len(t, conns, 1)
-		assert.EqualValues(t, 2, conns[0].LastSentBytes)
-		assert.EqualValues(t, 3, conns[0].MonotonicSentBytes)
+		assert.EqualValues(t, 2, conns[0].Last.SentBytes)
+		assert.EqualValues(t, 3, conns[0].Monotonic.SentBytes)
 
-		conn.MonotonicSentBytes++
+		conn.Monotonic.SentBytes++
 		conn.LastUpdateEpoch = latestEpochTime()
 		// Store the connection as closed
 		state.StoreClosedConnections([]ConnectionStats{conn})
 
 		conns = state.GetDelta(client, latestEpochTime(), nil, nil, nil).Conns
 		require.Len(t, conns, 1)
-		assert.EqualValues(t, 1, conns[0].LastSentBytes)
-		assert.EqualValues(t, 2, conns[0].MonotonicSentBytes)
+		assert.EqualValues(t, 1, conns[0].Last.SentBytes)
+		assert.EqualValues(t, 2, conns[0].Monotonic.SentBytes)
 	})
 
 	t.Run("TwoShortlivedConnectionsCrossing-2", func(t *testing.T) {
@@ -562,7 +580,7 @@ func TestSameKeyEdgeCases(t *testing.T) {
 		state.StoreClosedConnections([]ConnectionStats{conn})
 
 		conn2 := conn
-		conn2.MonotonicSentBytes = 2
+		conn2.Monotonic.SentBytes = 2
 		conn2.LastUpdateEpoch++
 		// Store the connection as an opened connection
 		cs := []ConnectionStats{conn2}
@@ -570,35 +588,35 @@ func TestSameKeyEdgeCases(t *testing.T) {
 		// Second get, we should have monotonic and last stats = 5
 		conns = state.GetDelta(client, latestEpochTime(), cs, nil, nil).Conns
 		require.Equal(t, 1, len(conns))
-		assert.Equal(t, 5, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 5, int(conns[0].LastSentBytes))
+		assert.Equal(t, 5, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 5, int(conns[0].Last.SentBytes))
 
 		// Store the connection as closed
-		conn2.MonotonicSentBytes += 3
+		conn2.Monotonic.SentBytes += 3
 		conn2.LastUpdateEpoch++
 		state.StoreClosedConnections([]ConnectionStats{conn2})
 
 		// Store the connection again
 		conn3 := conn2
-		conn3.MonotonicSentBytes = 1
+		conn3.Monotonic.SentBytes = 1
 		conn3.LastUpdateEpoch++
 		cs = []ConnectionStats{conn3}
 
 		// Third get, we should have monotonic = 6 and last stats = 4
 		conns = state.GetDelta(client, latestEpochTime(), cs, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 6, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 4, int(conns[0].LastSentBytes))
+		assert.Equal(t, 6, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 4, int(conns[0].Last.SentBytes))
 
 		// Store the connection as closed
-		conn3.MonotonicSentBytes += 2
+		conn3.Monotonic.SentBytes += 2
 		state.StoreClosedConnections([]ConnectionStats{conn3})
 
 		// 4th get, we should have monotonic = 3 and last stats = 2
 		conns = state.GetDelta(client, latestEpochTime(), nil, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 3, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 2, int(conns[0].LastSentBytes))
+		assert.Equal(t, 3, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 2, int(conns[0].Last.SentBytes))
 	})
 
 	t.Run("ConnectionCrossing", func(t *testing.T) {
@@ -626,19 +644,19 @@ func TestSameKeyEdgeCases(t *testing.T) {
 		// First get, we should have monotonic = 3 and last seen = 3
 		conns = state.GetDelta(client, latestEpochTime(), cs, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 3, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 3, int(conns[0].LastSentBytes))
+		assert.Equal(t, 3, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 3, int(conns[0].Last.SentBytes))
 
 		// Store the connection as closed
 		conn2 := conn
-		conn2.MonotonicSentBytes = 8
+		conn2.Monotonic.SentBytes = 8
 		state.StoreClosedConnections([]ConnectionStats{conn2})
 
 		// Second get, we should have monotonic = 8 and last stats = 5
 		conns = state.GetDelta(client, latestEpochTime(), nil, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 8, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 5, int(conns[0].LastSentBytes))
+		assert.Equal(t, 8, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 5, int(conns[0].Last.SentBytes))
 	})
 
 	t.Run("TwoShortlivedConnectionsCrossingWithTwoClients", func(t *testing.T) {
@@ -688,76 +706,76 @@ func TestSameKeyEdgeCases(t *testing.T) {
 		// Second get for client d we should have monotonic and last stats = 3
 		conns = state.GetDelta(clientD, latestEpochTime(), nil, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 3, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 3, int(conns[0].LastSentBytes))
+		assert.Equal(t, 3, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 3, int(conns[0].Last.SentBytes))
 
 		// Store the connection as an opened connection
 		conn2 := conn
-		conn2.MonotonicSentBytes = 2
+		conn2.Monotonic.SentBytes = 2
 		conn2.LastUpdateEpoch++
 		cs := []ConnectionStats{conn2}
 
 		// Second get, for client c we should have monotonic and last stats = 5
 		conns = state.GetDelta(client, latestEpochTime(), cs, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 5, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 5, int(conns[0].LastSentBytes))
+		assert.Equal(t, 5, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 5, int(conns[0].Last.SentBytes))
 
 		// Store the connection as an opened connection
-		conn2.MonotonicSentBytes++
+		conn2.Monotonic.SentBytes++
 		conn2.LastUpdateEpoch++
 		cs = []ConnectionStats{conn2}
 
 		// Third get, for client d we should have monotonic = 3 and last stats = 3
 		conns = state.GetDelta(clientD, latestEpochTime(), cs, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 3, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 3, int(conns[0].LastSentBytes))
+		assert.Equal(t, 3, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 3, int(conns[0].Last.SentBytes))
 
 		// Store the connection as closed
-		conn2.MonotonicSentBytes += 2
+		conn2.Monotonic.SentBytes += 2
 		conn2.LastUpdateEpoch++
 		state.StoreClosedConnections([]ConnectionStats{conn2})
 
 		// Store the connection again
 		conn3 := conn2
-		conn3.MonotonicSentBytes = 1
+		conn3.Monotonic.SentBytes = 1
 		conn3.LastUpdateEpoch++
 		cs = []ConnectionStats{conn3}
 
 		// Third get, for client c, we should have monotonic = 6 and last stats = 4
 		conns = state.GetDelta(client, latestEpochTime(), cs, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 6, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 4, int(conns[0].LastSentBytes))
+		assert.Equal(t, 6, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 4, int(conns[0].Last.SentBytes))
 
 		// Store the connection again
-		conn3.MonotonicSentBytes++
+		conn3.Monotonic.SentBytes++
 		conn3.LastUpdateEpoch++
 		cs = []ConnectionStats{conn3}
 
 		// 4th get, for client d, we should have monotonic = 7 and last stats = 4
 		conns = state.GetDelta(clientD, latestEpochTime(), cs, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 7, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 4, int(conns[0].LastSentBytes))
+		assert.Equal(t, 7, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 4, int(conns[0].Last.SentBytes))
 
 		// Store the connection as closed
-		conn3.MonotonicSentBytes++
+		conn3.Monotonic.SentBytes++
 		conn3.LastUpdateEpoch++
 		state.StoreClosedConnections([]ConnectionStats{conn3})
 
 		// 4th get, for client c we should have monotonic = 3 and last stats = 2
 		conns = state.GetDelta(client, latestEpochTime(), nil, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 3, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 2, int(conns[0].LastSentBytes))
+		assert.Equal(t, 3, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 2, int(conns[0].Last.SentBytes))
 
 		// 5th get, for client d we should have monotonic = 3 and last stats = 1
 		conns = state.GetDelta(clientD, latestEpochTime(), nil, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 3, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 1, int(conns[0].LastSentBytes))
+		assert.Equal(t, 3, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 1, int(conns[0].Last.SentBytes))
 	})
 
 	t.Run("ShortlivedConnectionCrossingWithThreeClients", func(t *testing.T) {
@@ -814,66 +832,66 @@ func TestSameKeyEdgeCases(t *testing.T) {
 		assert.Equal(t, 0, len(conns))
 
 		// Store the connection
-		conn.MonotonicSentBytes = 2
+		conn.Monotonic.SentBytes = 2
 		conn.LastUpdateEpoch++
 		cs := []ConnectionStats{conn}
 
 		// Second get for client e we should have monotonic and last stats = 2
 		conns = state.GetDelta(clientE, latestEpochTime(), cs, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 2, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 2, int(conns[0].LastSentBytes))
+		assert.Equal(t, 2, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 2, int(conns[0].Last.SentBytes))
 
 		// Store the connection as closed
-		conn.MonotonicSentBytes++
+		conn.Monotonic.SentBytes++
 		conn.LastUpdateEpoch++
 		state.StoreClosedConnections([]ConnectionStats{conn})
 
 		// Second get for client d we should have monotonic and last stats = 3
 		conns = state.GetDelta(clientD, latestEpochTime(), nil, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 3, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 3, int(conns[0].LastSentBytes))
+		assert.Equal(t, 3, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 3, int(conns[0].Last.SentBytes))
 
 		// Third get for client e we should have monotonic = 3and last stats = 1
 		conns = state.GetDelta(clientE, latestEpochTime(), nil, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 3, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 1, int(conns[0].LastSentBytes))
+		assert.Equal(t, 3, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 1, int(conns[0].Last.SentBytes))
 
 		// Store the connection as an opened connection
 		conn2 := conn
-		conn2.MonotonicSentBytes = 2
+		conn2.Monotonic.SentBytes = 2
 		conn2.LastUpdateEpoch++
 		cs = []ConnectionStats{conn2}
 
 		// Second get, for client c we should have monotonic and last stats = 5
 		conns = state.GetDelta(client, latestEpochTime(), cs, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 5, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 5, int(conns[0].LastSentBytes))
+		assert.Equal(t, 5, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 5, int(conns[0].Last.SentBytes))
 
 		// Store the connection as an opened connection
-		conn2.MonotonicSentBytes++
+		conn2.Monotonic.SentBytes++
 		conn2.LastUpdateEpoch++
 		cs = []ConnectionStats{conn2}
 
 		// Third get, for client d we should have monotonic = 3 and last stats = 3
 		conns = state.GetDelta(clientD, latestEpochTime(), cs, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 3, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 3, int(conns[0].LastSentBytes))
+		assert.Equal(t, 3, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 3, int(conns[0].Last.SentBytes))
 
 		// Store the connection as closed
-		conn2.MonotonicSentBytes += 2
+		conn2.Monotonic.SentBytes += 2
 		conn2.LastUpdateEpoch++
 		state.StoreClosedConnections([]ConnectionStats{conn2})
 
 		// 4th get, for client e we should have monotonic = 5 and last stats = 5
 		conns = state.GetDelta(clientE, latestEpochTime(), nil, nil, nil).Conns
 		assert.Equal(t, 1, len(conns))
-		assert.Equal(t, 5, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 5, int(conns[0].LastSentBytes))
+		assert.Equal(t, 5, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 5, int(conns[0].Last.SentBytes))
 	})
 
 	t.Run("LonglivedConnectionWithTwoClientsJoiningAtDifferentTimes", func(t *testing.T) {
@@ -912,50 +930,52 @@ func TestSameKeyEdgeCases(t *testing.T) {
 		// Second get for client c we should have monotonic and last stats = 3
 		conns = state.GetDelta(client, latestEpochTime(), []ConnectionStats{conn}, nil, nil).Conns
 		assert.Len(t, conns, 1)
-		assert.Equal(t, 3, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 3, int(conns[0].LastSentBytes))
+		assert.Equal(t, 3, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 3, int(conns[0].Last.SentBytes))
 
 		conn2 := conn
-		conn2.MonotonicSentBytes++
+		conn2.Monotonic.SentBytes++
 		conn2.LastUpdateEpoch++
 
 		// First get for client d we should have monotonic = 4 and last bytes = 4
 		conns = state.GetDelta(clientD, latestEpochTime(), []ConnectionStats{conn2}, nil, nil).Conns
 		assert.Len(t, conns, 1)
-		assert.Equal(t, 4, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 0, int(conns[0].LastSentBytes))
+		assert.Equal(t, 4, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 0, int(conns[0].Last.SentBytes))
 
 		conn3 := conn2
-		conn3.MonotonicSentBytes += 3
+		conn3.Monotonic.SentBytes += 3
 		conn3.LastUpdateEpoch++
 
 		// Third get for client c we should have monotonic = 7 and last bytes = 4
 		conns = state.GetDelta(client, latestEpochTime(), []ConnectionStats{conn3}, nil, nil).Conns
 		assert.Len(t, conns, 1)
-		assert.Equal(t, 7, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 4, int(conns[0].LastSentBytes))
+		assert.Equal(t, 7, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 4, int(conns[0].Last.SentBytes))
 
 		conn4 := conn3
-		conn4.MonotonicSentBytes += 2
+		conn4.Monotonic.SentBytes += 2
 		conn4.LastUpdateEpoch++
 
 		// Second get for client d we should have monotonic = 9 and last bytes = 5
 		conns = state.GetDelta(clientD, latestEpochTime(), []ConnectionStats{conn4}, nil, nil).Conns
 		assert.Len(t, conns, 1)
-		assert.Equal(t, 9, int(conns[0].MonotonicSentBytes))
-		assert.Equal(t, 5, int(conns[0].LastSentBytes))
+		assert.Equal(t, 9, int(conns[0].Monotonic.SentBytes))
+		assert.Equal(t, 5, int(conns[0].Last.SentBytes))
 	})
 }
 
 func TestStatsResetOnUnderflow(t *testing.T) {
 	conn := ConnectionStats{
-		Pid:                123,
-		Type:               TCP,
-		Family:             AFINET,
-		Source:             util.AddressFromString("127.0.0.1"),
-		Dest:               util.AddressFromString("127.0.0.1"),
-		MonotonicSentBytes: 3,
-		IntraHost:          true,
+		Pid:    123,
+		Type:   TCP,
+		Family: AFINET,
+		Source: util.AddressFromString("127.0.0.1"),
+		Dest:   util.AddressFromString("127.0.0.1"),
+		Monotonic: StatCounters{
+			SentBytes: 3,
+		},
+		IntraHost: true,
 	}
 
 	client := "client"
@@ -970,35 +990,39 @@ func TestStatsResetOnUnderflow(t *testing.T) {
 	require.Len(t, conns, 1)
 
 	// Expect LastStats to be 3
-	conn.LastSentBytes = 3
+	conn.Last.SentBytes = 3
 	assert.Equal(t, conn, conns[0])
 
 	// Get the connections again but by simulating an underflow
-	conn.MonotonicSentBytes--
+	conn.Monotonic.SentBytes--
 
 	conns = state.GetDelta(client, latestEpochTime(), []ConnectionStats{conn}, nil, nil).Conns
 	require.Len(t, conns, 1)
 	expected := conn
-	expected.LastSentBytes = 2
+	expected.Last.SentBytes = 2
 	// We expect the LastStats to be 2
 	assert.Equal(t, expected, conns[0])
 }
 
 func TestDoubleCloseOnTwoClients(t *testing.T) {
 	conn := ConnectionStats{
-		Pid:                123,
-		Type:               TCP,
-		Family:             AFINET,
-		Source:             util.AddressFromString("127.0.0.1"),
-		Dest:               util.AddressFromString("127.0.0.1"),
-		MonotonicSentBytes: 3,
-		LastSentBytes:      3,
-		IntraHost:          true,
+		Pid:    123,
+		Type:   TCP,
+		Family: AFINET,
+		Source: util.AddressFromString("127.0.0.1"),
+		Dest:   util.AddressFromString("127.0.0.1"),
+		Monotonic: StatCounters{
+			SentBytes: 3,
+		},
+		Last: StatCounters{
+			SentBytes: 3,
+		},
+		IntraHost: true,
 	}
 
 	expectedConn := conn
-	expectedConn.MonotonicSentBytes *= 2
-	expectedConn.LastSentBytes *= 2
+	expectedConn.Monotonic.SentBytes *= 2
+	expectedConn.Last.SentBytes *= 2
 
 	client1 := "1"
 	client2 := "2"
@@ -1028,12 +1052,14 @@ func TestDoubleCloseOnTwoClients(t *testing.T) {
 
 func TestUnorderedCloseEvent(t *testing.T) {
 	conn := ConnectionStats{
-		Pid:                123,
-		Type:               TCP,
-		Family:             AFINET,
-		Source:             util.AddressFromString("127.0.0.1"),
-		Dest:               util.AddressFromString("127.0.0.1"),
-		MonotonicSentBytes: 3,
+		Pid:    123,
+		Type:   TCP,
+		Family: AFINET,
+		Source: util.AddressFromString("127.0.0.1"),
+		Dest:   util.AddressFromString("127.0.0.1"),
+		Monotonic: StatCounters{
+			SentBytes: 3,
+		},
 	}
 
 	client := "client"
@@ -1045,17 +1071,17 @@ func TestUnorderedCloseEvent(t *testing.T) {
 	// Simulate storing a closed connection while we were reading from the eBPF map
 	// in this case the closed conn will have an earlier epoch
 	conn.LastUpdateEpoch = latestEpochTime() + 1
-	conn.MonotonicSentBytes++
-	conn.MonotonicRecvBytes = 1
+	conn.Monotonic.SentBytes++
+	conn.Monotonic.RecvBytes = 1
 	state.StoreClosedConnections([]ConnectionStats{conn})
 
 	conn.LastUpdateEpoch--
-	conn.MonotonicSentBytes--
-	conn.MonotonicRecvBytes = 0
+	conn.Monotonic.SentBytes--
+	conn.Monotonic.RecvBytes = 0
 	conns := state.GetDelta(client, latestEpochTime(), []ConnectionStats{conn}, nil, nil).Conns
 	require.Len(t, conns, 1)
-	assert.EqualValues(t, 4, conns[0].LastSentBytes)
-	assert.EqualValues(t, 1, conns[0].LastRecvBytes)
+	assert.EqualValues(t, 4, conns[0].Last.SentBytes)
+	assert.EqualValues(t, 1, conns[0].Last.RecvBytes)
 
 	// Simulate some other gets
 	assert.Len(t, state.GetDelta(client, latestEpochTime(), nil, nil, nil).Conns, 0)
@@ -1064,13 +1090,13 @@ func TestUnorderedCloseEvent(t *testing.T) {
 
 	// Simulate having the connection getting active again
 	conn.LastUpdateEpoch = latestEpochTime()
-	conn.MonotonicSentBytes--
+	conn.Monotonic.SentBytes--
 	state.StoreClosedConnections([]ConnectionStats{conn})
 
 	conns = state.GetDelta(client, latestEpochTime(), nil, nil, nil).Conns
 	require.Len(t, conns, 1)
-	assert.EqualValues(t, 2, conns[0].LastSentBytes)
-	assert.EqualValues(t, 0, conns[0].LastRecvBytes)
+	assert.EqualValues(t, 2, conns[0].Last.SentBytes)
+	assert.EqualValues(t, 0, conns[0].Last.RecvBytes)
 
 	// Ensure we don't have underflows / unordered conns
 	assert.Zero(t, state.(*networkState).telemetry.statsResets)
@@ -1080,12 +1106,14 @@ func TestUnorderedCloseEvent(t *testing.T) {
 
 func TestAggregateClosedConnectionsTimestamp(t *testing.T) {
 	conn := ConnectionStats{
-		Pid:                123,
-		Type:               TCP,
-		Family:             AFINET,
-		Source:             util.AddressFromString("127.0.0.1"),
-		Dest:               util.AddressFromString("127.0.0.1"),
-		MonotonicSentBytes: 3,
+		Pid:    123,
+		Type:   TCP,
+		Family: AFINET,
+		Source: util.AddressFromString("127.0.0.1"),
+		Dest:   util.AddressFromString("127.0.0.1"),
+		Monotonic: StatCounters{
+			SentBytes: 3,
+		},
 	}
 
 	client := "client"
@@ -1447,16 +1475,18 @@ func generateRandConnections(n int) []ConnectionStats {
 	cs := make([]ConnectionStats, 0, n)
 	for i := 0; i < n; i++ {
 		cs = append(cs, ConnectionStats{
-			Pid:                  123,
-			Type:                 TCP,
-			Family:               AFINET,
-			Source:               util.AddressFromString("127.0.0.1"),
-			Dest:                 util.AddressFromString("127.0.0.1"),
-			SPort:                uint16(rand.Intn(math.MaxUint16)),
-			DPort:                uint16(rand.Intn(math.MaxUint16)),
-			MonotonicRecvBytes:   rand.Uint64(),
-			MonotonicSentBytes:   rand.Uint64(),
-			MonotonicRetransmits: rand.Uint32(),
+			Pid:    123,
+			Type:   TCP,
+			Family: AFINET,
+			Source: util.AddressFromString("127.0.0.1"),
+			Dest:   util.AddressFromString("127.0.0.1"),
+			SPort:  uint16(rand.Intn(math.MaxUint16)),
+			DPort:  uint16(rand.Intn(math.MaxUint16)),
+			Monotonic: StatCounters{
+				RecvBytes:   rand.Uint64(),
+				SentBytes:   rand.Uint64(),
+				Retransmits: rand.Uint32(),
+			},
 		})
 	}
 	return cs
