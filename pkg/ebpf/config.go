@@ -76,6 +76,6 @@ func NewConfig() *Config {
 		AptConfigDir:             cfg.GetString(key(spNS, "apt_config_dir")),
 		YumReposDir:              cfg.GetString(key(spNS, "yum_repos_dir")),
 		ZypperReposDir:           cfg.GetString(key(spNS, "zypper_repos_dir")),
-		AllowPrecompiledFallback: true,
+		AllowPrecompiledFallback: false,
 	}
 }

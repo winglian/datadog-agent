@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -667,6 +668,8 @@ func newHTTPMonitor(supported bool, c *config.Config, tracer connection.Tracer, 
 	monitor, err := http.NewMonitor(c, offsets, sockFDMap)
 	if err != nil {
 		log.Errorf("could not instantiate http monitor: %s", err)
+		time.Sleep(time.Second)
+		os.Exit(1)
 		return nil
 	}
 
