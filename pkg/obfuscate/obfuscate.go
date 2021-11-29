@@ -68,30 +68,30 @@ func (o *Obfuscator) useSQLLiteralEscapes() bool {
 // Config holds the configuration for obfuscating sensitive data for various span types.
 type Config struct {
 	// SQL holds the obfuscation configuration for SQL queries.
-	SQL SQLConfig
+	SQL SQLConfig `json:"sql"`
 
 	// ES holds the obfuscation configuration for ElasticSearch bodies.
-	ES JSONConfig
+	ES JSONConfig `json:"es"`
 
 	// Mongo holds the obfuscation configuration for MongoDB queries.
-	Mongo JSONConfig
+	Mongo JSONConfig `json:"mongo"`
 
 	// SQLExecPlan holds the obfuscation configuration for SQL Exec Plans. This is strictly for safety related obfuscation,
 	// not normalization. Normalization of exec plans is configured in SQLExecPlanNormalize.
-	SQLExecPlan JSONConfig
+	SQLExecPlan JSONConfig `json:"sql_exec_plan"`
 
 	// SQLExecPlanNormalize holds the normalization configuration for SQL Exec Plans.
-	SQLExecPlanNormalize JSONConfig
+	SQLExecPlanNormalize JSONConfig `json:"sql_exec_plan_normalize"`
 
 	// HTTP holds the obfuscation settings for HTTP URLs.
-	HTTP HTTPConfig
+	HTTP HTTPConfig `json:"http"`
 
 	// Statsd specifies the statsd client to use for reporting metrics.
-	Statsd StatsClient
+	Statsd StatsClient `json:"-"`
 
 	// Logger specifies the logger to use when outputting messages.
 	// If unset, no logs will be outputted.
-	Logger Logger
+	Logger Logger `json:"-"`
 }
 
 // StatsClient implementations are able to emit stats.
@@ -105,47 +105,47 @@ type StatsClient interface {
 type SQLConfig struct {
 	// TableNames specifies whether the obfuscator should also extract the table names that a query addresses,
 	// in addition to obfuscating.
-	TableNames bool
+	TableNames bool `json:"table_names"`
 
 	// ReplaceDigits specifies whether digits in table names and identifiers should be obfuscated.
 	ReplaceDigits bool `json:"replace_digits"`
 
 	// KeepSQLAlias reports whether SQL aliases ("AS") should be truncated.
-	KeepSQLAlias bool
+	KeepSQLAlias bool `json:"keep_sql_alias"`
 
 	// DollarQuotedFunc reports whether to treat "$func$" delimited dollar-quoted strings
 	// differently and not obfuscate them as a string. To read more about dollar quoted
 	// strings see:
 	//
 	// https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-DOLLAR-QUOTING
-	DollarQuotedFunc bool
+	DollarQuotedFunc bool `json:"dollar_quoted_func"`
 
 	// Cache reports whether the obfuscator should use a LRU look-up cache for SQL obfuscations.
-	Cache bool
+	Cache bool `json:"cache"`
 }
 
 // HTTPConfig holds the configuration settings for HTTP obfuscation.
 type HTTPConfig struct {
 	// RemoveQueryStrings determines query strings to be removed from HTTP URLs.
-	RemoveQueryString bool
+	RemoveQueryString bool `json:"remove_query_string"`
 
 	// RemovePathDigits determines digits in path segments to be obfuscated.
-	RemovePathDigits bool
+	RemovePathDigits bool `json:"remove_path_digits"`
 }
 
 // JSONConfig holds the obfuscation configuration for sensitive
 // data found in JSON objects.
 type JSONConfig struct {
 	// Enabled will specify whether obfuscation should be enabled.
-	Enabled bool
+	Enabled bool `json:"enabled"`
 
 	// KeepValues will specify a set of keys for which their values will
 	// not be obfuscated.
-	KeepValues []string
+	KeepValues []string `json:"keep_values"`
 
 	// ObfuscateSQLValues will specify a set of keys for which their values
 	// will be passed through SQL obfuscation
-	ObfuscateSQLValues []string
+	ObfuscateSQLValues []string `json:"obfuscate_sql_values"`
 }
 
 // NewObfuscator creates a new obfuscator

@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/DataDog/datadog-agent/pkg/trace/config"
+	"github.com/DataDog/datadog-agent/pkg/obfuscate"
 	"github.com/DataDog/datadog-agent/pkg/trace/config/features"
 	"github.com/DataDog/datadog-agent/pkg/trace/info"
 )
@@ -27,16 +27,6 @@ func (r *HTTPReceiver) makeInfoHandler() (hash string, handler http.HandlerFunc)
 			all = append(all, e.Pattern)
 		}
 	}
-	type reducedObfuscationConfig struct {
-		ElasticSearch        bool                         `json:"elastic_search"`
-		Mongo                bool                         `json:"mongo"`
-		SQLExecPlan          bool                         `json:"sql_exec_plan"`
-		SQLExecPlanNormalize bool                         `json:"sql_exec_plan_normalize"`
-		HTTP                 config.HTTPObfuscationConfig `json:"http"`
-		RemoveStackTraces    bool                         `json:"remove_stack_traces"`
-		Redis                bool                         `json:"redis"`
-		Memcached            bool                         `json:"memcached"`
-	}
 	type reducedConfig struct {
 		DefaultEnv             string                        `json:"default_env"`
 		TargetTPS              float64                       `json:"target_tps"`
@@ -50,18 +40,11 @@ func (r *HTTPReceiver) makeInfoHandler() (hash string, handler http.HandlerFunc)
 		MaxMemory              float64                       `json:"max_memory"`
 		MaxCPU                 float64                       `json:"max_cpu"`
 		AnalyzedSpansByService map[string]map[string]float64 `json:"analyzed_spans_by_service"`
-		Obfuscation            reducedObfuscationConfig      `json:"obfuscation"`
+		Obfuscation            obfuscate.Config              `json:"obfuscation"`
 	}
-	var oconf reducedObfuscationConfig
+	var oconf obfuscate.Config
 	if o := r.conf.Obfuscation; o != nil {
-		oconf.ElasticSearch = o.ES.Enabled
-		oconf.Mongo = o.Mongo.Enabled
-		oconf.SQLExecPlan = o.SQLExecPlan.Enabled
-		oconf.SQLExecPlanNormalize = o.SQLExecPlanNormalize.Enabled
-		oconf.HTTP = o.HTTP
-		oconf.RemoveStackTraces = o.RemoveStackTraces
-		oconf.Redis = o.Redis.Enabled
-		oconf.Memcached = o.Memcached.Enabled
+		oconf = o.Export()
 	}
 	txt, err := json.MarshalIndent(struct {
 		Version       string        `json:"version"`

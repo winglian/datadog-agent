@@ -142,17 +142,65 @@ func TestInfoHandler(t *testing.T) {
 			}
 		},
 		"obfuscation": {
-			"elastic_search": true,
-			"mongo": true,
-			"sql_exec_plan": true,
-			"sql_exec_plan_normalize": true,
+			"sql": {
+				"table_names": false,
+				"replace_digits": false,
+				"keep_sql_alias": false,
+				"dollar_quoted_func": false,
+				"cache": false
+			},
+			"es": {
+				"enabled": true,
+				"keep_values": [
+					"a",
+					"b",
+					"c"
+				],
+				"obfuscate_sql_values": [
+					"x",
+					"y"
+				]
+			},
+			"mongo": {
+				"enabled": true,
+				"keep_values": [
+					"a",
+					"b",
+					"c"
+				],
+				"obfuscate_sql_values": [
+					"x",
+					"y"
+				]
+			},
+			"sql_exec_plan": {
+				"enabled": true,
+				"keep_values": [
+					"a",
+					"b",
+					"c"
+				],
+				"obfuscate_sql_values": [
+					"x",
+					"y"
+				]
+			},
+			"sql_exec_plan_normalize": {
+				"enabled": true,
+				"keep_values": [
+					"a",
+					"b",
+					"c"
+				],
+				"obfuscate_sql_values": [
+					"x",
+					"y"
+				]
+			},
 			"http": {
 				"remove_query_string": true,
 				"remove_path_digits": true
-			},
-			"remove_stack_traces": false,
-			"redis": true,
-			"memcached": false
+			}
 		}
 	}
 }`,
@@ -199,22 +247,71 @@ func TestInfoHandler(t *testing.T) {
 			}
 		},
 		"obfuscation": {
-			"elastic_search": true,
-			"mongo": true,
-			"sql_exec_plan": true,
-			"sql_exec_plan_normalize": true,
+			"sql": {
+				"table_names": false,
+				"replace_digits": false,
+				"keep_sql_alias": false,
+				"dollar_quoted_func": false,
+				"cache": false
+			},
+			"es": {
+				"enabled": true,
+				"keep_values": [
+					"a",
+					"b",
+					"c"
+				],
+				"obfuscate_sql_values": [
+					"x",
+					"y"
+				]
+			},
+			"mongo": {
+				"enabled": true,
+				"keep_values": [
+					"a",
+					"b",
+					"c"
+				],
+				"obfuscate_sql_values": [
+					"x",
+					"y"
+				]
+			},
+			"sql_exec_plan": {
+				"enabled": true,
+				"keep_values": [
+					"a",
+					"b",
+					"c"
+				],
+				"obfuscate_sql_values": [
+					"x",
+					"y"
+				]
+			},
+			"sql_exec_plan_normalize": {
+				"enabled": true,
+				"keep_values": [
+					"a",
+					"b",
+					"c"
+				],
+				"obfuscate_sql_values": [
+					"x",
+					"y"
+				]
+			},
 			"http": {
 				"remove_query_string": true,
 				"remove_path_digits": true
-			},
-			"remove_stack_traces": false,
-			"redis": true,
-			"memcached": false
+			}
 		}
 	}
 }`,
 		},
 	}
+
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			rcv := newTestReceiverFromConfig(conf)
