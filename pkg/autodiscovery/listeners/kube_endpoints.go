@@ -251,25 +251,25 @@ func subsetsDiffer(first, second *v1.Endpoints) bool {
 
 // isEndpointsAnnotated looks for the corresponding service of a kubernetes endpoints object
 // and returns true if the service has endpoints annotations, otherwise returns false.
-func (l *KubeEndpointsListener) isEndpointsAnnotated(kep *v1.Endpoints) bool {
-	ksvc, err := l.serviceLister.Services(kep.Namespace).Get(kep.Name)
-	if err != nil {
-		log.Tracef("Cannot get Kubernetes service: %s", err)
-		return false
-	}
-	return isServiceAnnotated(ksvc, kubeEndpointsAnnotationFormat) || l.promInclAnnot.IsMatchingAnnotations(ksvc.GetAnnotations())
-}
+// func (l *KubeEndpointsListener) isEndpointsAnnotated(kep *v1.Endpoints) bool {
+// 	ksvc, err := l.serviceLister.Services(kep.Namespace).Get(kep.Name)
+// 	if err != nil {
+// 		log.Tracef("Cannot get Kubernetes service: %s", err)
+// 		return false
+// 	}
+// 	return isServiceAnnotated(ksvc, kubeEndpointsAnnotationFormat) || l.promInclAnnot.IsMatchingAnnotations(ksvc.GetAnnotations())
+// }
 
 func (l *KubeEndpointsListener) createService(kep *v1.Endpoints, alreadyExistingService, checkServiceAnnotations bool) {
 	if kep == nil {
 		return
 	}
 
-	if checkServiceAnnotations && !l.isEndpointsAnnotated(kep) {
-		// Ignore endpoints with no AD annotation on their corresponding service if checkServiceAnnotations
-		// Typically we are called with checkServiceAnnotations = false when updates are due to changes on Kube Service object
-		return
-	}
+	// if checkServiceAnnotations && !l.isEndpointsAnnotated(kep) {
+	// 	// Ignore endpoints with no AD annotation on their corresponding service if checkServiceAnnotations
+	// 	// Typically we are called with checkServiceAnnotations = false when updates are due to changes on Kube Service object
+	// 	return
+	// }
 
 	// Look for standard tags
 	tags, err := l.getStandardTagsForEndpoints(kep)

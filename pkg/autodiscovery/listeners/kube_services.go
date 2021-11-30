@@ -181,10 +181,10 @@ func (l *KubeServiceListener) createService(ksvc *v1.Service, firstRun bool) {
 		return
 	}
 
-	if !isServiceAnnotated(ksvc, kubeServiceAnnotationFormat) && !l.promInclAnnot.IsMatchingAnnotations(ksvc.GetAnnotations()) {
-		// Ignore services with no AD or Prometheus AD include annotation
-		return
-	}
+	// if !isServiceAnnotated(ksvc, kubeServiceAnnotationFormat) && !l.promInclAnnot.IsMatchingAnnotations(ksvc.GetAnnotations()) {
+	// 	// Ignore services with no AD or Prometheus AD include annotation
+	// 	return
+	// }
 
 	svc := processService(ksvc, firstRun)
 
