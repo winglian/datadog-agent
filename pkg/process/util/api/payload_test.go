@@ -14,7 +14,7 @@ import (
 	"testing"
 )
 
-func TestEncodePayload(t *testing.T) {
+func TestEncodePayloadNode(t *testing.T) {
 	var mb model.MessageBody
 	mb = &model.CollectorNode{
 		ClusterName: "nams-cluster-name",
@@ -42,6 +42,39 @@ func TestEncodePayload(t *testing.T) {
 	payload, err := EncodePayload(mb)
 	assert.NoError(t, err)
 	file, err := os.Create("node.bin")
+	defer file.Close()
+	_, err = file.Write(payload)
+	assert.NoError(t, err)
+}
+
+func TestEncodePayloadDeployment(t *testing.T) {
+	var mb model.MessageBody
+	mb = &model.CollectorDeployment{
+		ClusterName: "nams-cluster-name",
+		ClusterId:   "nams-cluster-id",
+		GroupId:     0,
+		GroupSize:   0,
+		Deployments: []*model.Deployment{
+			{
+				Metadata: &model.Metadata{
+					Name: "deployment-1",
+				},
+			}, {
+				Metadata: &model.Metadata{
+					Name: "deployment-2",
+				},
+			},
+			{
+				Metadata: &model.Metadata{
+					Name: "deployment-3",
+				},
+			},
+		},
+		Tags: []string{"custom:tag"},
+	}
+	payload, err := EncodePayload(mb)
+	assert.NoError(t, err)
+	file, err := os.Create("deployment.bin")
 	defer file.Close()
 	_, err = file.Write(payload)
 	assert.NoError(t, err)
