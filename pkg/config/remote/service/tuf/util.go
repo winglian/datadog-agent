@@ -8,7 +8,7 @@ import (
 
 type metaPath struct {
 	role       role
-	version    version
+	version    uint64
 	versionSet bool
 }
 
@@ -30,13 +30,13 @@ func parseMetaPath(rawMetaPath string) (metaPath, error) {
 			role: role(rawRole),
 		}, nil
 	}
-	rawVersion, err := strconv.Atoi(splitRawMetaPath[0])
+	rawVersion, err := strconv.ParseUint(splitRawMetaPath[0], 10, 64)
 	if err != nil {
 		return metaPath{}, fmt.Errorf("invalid metadata path (version) '%s': %w", rawMetaPath, err)
 	}
 	return metaPath{
 		role:       role(rawRole),
-		version:    version(rawVersion),
+		version:    rawVersion,
 		versionSet: true,
 	}, nil
 }

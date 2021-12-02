@@ -28,9 +28,9 @@ func NewClient(localStore *store.Store) (*Client, error) {
 	return c, nil
 }
 
-func (c *Client) UpdateConfig(response *pbgo.LatestConfigsResponse) error {
+func (c *Client) Update(response *pbgo.LatestConfigsResponse) error {
 	// c.remote.update(response)
 	// _, err := c.Client.Update()
 	// TODO: update + full verify
-	return err
+	return nil
 }
