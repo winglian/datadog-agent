@@ -67,6 +67,9 @@ func (s *remoteStore) GetMeta(path string) (io.ReadCloser, int64, error) {
 	}
 	version := metaPath.version
 	if !metaPath.versionSet {
+		if metaPath.role != roleTimestamp {
+			return nil, 0, client.ErrNotFound{File: path}
+		}
 		version = s.latestVersion(metaPath.role)
 	}
 	requestedVersion, versionFound := roleVersions[version]
