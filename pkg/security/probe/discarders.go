@@ -227,12 +227,9 @@ func isParentPathDiscarder(rs *rules.RuleSet, regexCache *simplelru.LRU, eventTy
 		return false, nil
 	}
 
-	event := discarderEvent
-	defer func() {
-		*discarderEvent = eventZero
-	}()
+	*discarderEvent = eventZero
 
-	if _, err := event.GetFieldType(filenameField); err != nil {
+	if _, err := discarderEvent.GetFieldType(filenameField); err != nil {
 		return false, err
 	}
 
@@ -241,7 +238,7 @@ func isParentPathDiscarder(rs *rules.RuleSet, regexCache *simplelru.LRU, eventTy
 	}
 
 	basenameField := strings.Replace(filenameField, model.PathSuffix, model.NameSuffix, 1)
-	if _, err := event.GetFieldType(basenameField); err != nil {
+	if _, err := discarderEvent.GetFieldType(basenameField); err != nil {
 		return false, err
 	}
 
@@ -294,21 +291,21 @@ func isParentPathDiscarder(rs *rules.RuleSet, regexCache *simplelru.LRU, eventTy
 
 		// check basename
 		if values := rule.GetFieldValues(basenameField); len(values) > 0 {
-			if err := event.SetFieldValue(basenameField, path.Base(dirname)); err != nil {
+			if err := discarderEvent.SetFieldValue(basenameField, path.Base(dirname)); err != nil {
 				return false, err
 			}
 
-			if isDiscarder, _ := rs.IsDiscarder(event, basenameField); !isDiscarder {
+			if isDiscarder, _ := rs.IsDiscarder(discarderEvent, basenameField); !isDiscarder {
 				return false, nil
 			}
 		}
 	}
 
-	if err := event.SetFieldValue(filenameField, dirname); err != nil {
+	if err := discarderEvent.SetFieldValue(filenameField, dirname); err != nil {
 		return false, err
 	}
 
-	if isDiscarder, _ := rs.IsDiscarder(event, filenameField); !isDiscarder {
+	if isDiscarder, _ := rs.IsDiscarder(discarderEvent, filenameField); !isDiscarder {
 		return false, nil
 	}
 

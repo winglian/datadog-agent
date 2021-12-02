@@ -34,6 +34,7 @@ type Opts struct {
 	LegacyAttributes map[Field]Field
 	Constants        map[string]interface{}
 	Macros           map[MacroID]*Macro
+	UserCtx          interface{}
 }
 
 // BoolEvalFnc describe a eval function return a boolean

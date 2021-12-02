@@ -285,6 +285,7 @@ func (m *Module) Reload() error {
 			m.getEventTypeEnabled(),
 			sprobe.AllCustomRuleIDs(),
 			model.SECLLegacyAttributes,
+			m.probe,
 			&seclog.PatternLogger{})
 	}
 
