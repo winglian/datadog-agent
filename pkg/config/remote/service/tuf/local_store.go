@@ -15,15 +15,13 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/config/remote/store"
 )
 
-type localBoltStore struct {
-	name  string
-	store *store.Store
+type localStore struct {
+	repository string
+	store      *store.Store
 }
 
-// GetMeta returns top-level metadata from local storage. The keys are
-// in the form `ROLE.json`, with ROLE being a valid top-level role.
-func (s *localBoltStore) GetMeta() (map[string]json.RawMessage, error) {
-	meta, err := s.store.GetMeta(s.name)
+func (s *localStore) GetMeta() (map[string]json.RawMessage, error) {
+	meta, err := s.store.GetMeta(s.repository)
 	if err != nil {
 		if !errors.Is(err, bbolt.ErrBucketNotFound) {
 			return nil, err
@@ -34,7 +32,7 @@ func (s *localBoltStore) GetMeta() (map[string]json.RawMessage, error) {
 	if _, found := meta["root.json"]; !found {
 		var rootMetadata []byte
 		var err error
-		switch s.name {
+		switch s.repository {
 		case "director":
 			rootMetadata = getDirectorRoot()
 		case "config":
@@ -51,13 +49,30 @@ func (s *localBoltStore) GetMeta() (map[string]json.RawMessage, error) {
 	return meta, nil
 }
 
-// SetMeta persists the given top-level metadata in local storage, the
-// name taking the same format as the keys returned by GetMeta.
-func (s *localBoltStore) SetMeta(name string, meta json.RawMessage) error {
-	return s.store.SetMeta(s.name, name, meta)
+func (s *localStore) SetMeta(name string, meta json.RawMessage) error {
+	return s.store.SetMeta(s.repository, name, meta)
 }
 
-// DeleteMeta
-func (s *localBoltStore) DeleteMeta(name string) error {
-	return s.store.DeleteMeta(s.name, name)
+func (s *localStore) DeleteMeta(name string) error {
+	return s.store.DeleteMeta(s.repository, name)
+}
+
+type localStoreConfig struct {
+	localStore
+}
+
+func newLocalStoreConfig(store *store.Store) *localStoreConfig {
+	return &localStoreConfig{
+		localStore: localStore{repository: "config", store: store},
+	}
+}
+
+type localStoreDirector struct {
+	localStore
+}
+
+func newLocalStoreDirector(store *store.Store) *localStoreDirector {
+	return &localStoreDirector{
+		localStore: localStore{repository: "director", store: store},
+	}
 }

@@ -5,6 +5,8 @@ import (
 	"io"
 	"io/ioutil"
 
+	"github.com/DataDog/datadog-agent/pkg/config"
+	"github.com/DataDog/datadog-agent/pkg/config/remote/service/meta"
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
 	"github.com/theupdateframework/go-tuf/client"
 )
@@ -20,13 +22,16 @@ const (
 	roleTimestamp role = "timestamp"
 )
 
+// remoteStore implements go-tuf's RemoteStore
+// Its goal is to serve TUF metadata updates comming to the backend in a way go-tuf understands
+// See https://pkg.go.dev/github.com/theupdateframework/go-tuf@v0.0.0-20211130162850-52193a283c30/client#RemoteStore
 type remoteStore struct {
 	metas   map[role]map[version][]byte
 	targets map[path][]byte
 }
 
-func newRemoteStore() *remoteStore {
-	return &remoteStore{
+func newRemoteStore() remoteStore {
+	return remoteStore{
 		metas: make(map[role]map[version][]byte),
 	}
 }
@@ -86,6 +91,12 @@ type remoteStoreDirector struct {
 	remoteStore
 }
 
+func newRemoteStoreDirector() *remoteStoreDirector {
+	s := newRemoteStore()
+	s.metas[roleRoot][1] = getDirectorRoot()
+	return &remoteStoreDirector{remoteStore: s}
+}
+
 func (sd *remoteStoreDirector) update(update *pbgo.LatestConfigsResponse) {
 	if update == nil {
 		return
@@ -117,6 +128,12 @@ func (sd *remoteStoreDirector) update(update *pbgo.LatestConfigsResponse) {
 
 type remoteStoreConfig struct {
 	remoteStore
+}
+
+func newRemoteStoreConfig() *remoteStoreConfig {
+	s := newRemoteStore()
+	s.metas[roleRoot][1] = getConfigRoot()
+	return &remoteStoreConfig{remoteStore: s}
 }
 
 func (sc *remoteStoreConfig) update(update *pbgo.LatestConfigsResponse) {
@@ -151,4 +168,20 @@ func (sc *remoteStoreConfig) update(update *pbgo.LatestConfigsResponse) {
 		sc.resetRole(roleTargets)
 		sc.metas[roleTargets][version(metas.TopTargets.Version)] = metas.TopTargets.Raw
 	}
+}
+
+// TODO: clean
+func getDirectorRoot() []byte {
+	if directorRoot := config.Datadog.GetString("remote_configuration.director_root"); directorRoot != "" {
+		return []byte(directorRoot)
+	}
+	return meta.RootDirector
+}
+
+// TODO: clean
+func getConfigRoot() []byte {
+	if configRoot := config.Datadog.GetString("remote_configuration.config_root"); configRoot != "" {
+		return []byte(configRoot)
+	}
+	return meta.RootConfig
 }
