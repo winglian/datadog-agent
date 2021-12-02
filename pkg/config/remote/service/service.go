@@ -222,13 +222,6 @@ func (s *Service) verifyResponseMetadata(response *pbgo.LatestConfigsResponse) e
 		return err
 	}
 
-	log.Debugf("Response successfully verified")
-
-	if response.DirectorMetas != nil && response.DirectorMetas.Snapshot != nil &&
-		response.ConfigMetas.Snapshot.Version <= s.configSnapshotVersion {
-		return fmt.Errorf("snapshot version %d is older than current version %d", response.ConfigMetas.Snapshot.Version, s.configSnapshotVersion)
-	}
-
 	for _, target := range response.TargetFiles {
 		name := tuf.TrimHash(target.Path)
 
