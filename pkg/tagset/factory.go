@@ -84,7 +84,7 @@ type Factory interface {
 }
 
 // cacheId is an identifier for a cache keying Tags instances by a particular key.
-type cacheID = uint
+type cacheID = int
 
 const (
 	// byTasgsetHashCache indexes a cache by the Tags instances' hash
@@ -98,3 +98,10 @@ const (
 	byJSONCache cacheID = iota
 	numCacheIDs
 )
+
+var cacheIDNames = []string{
+	"byTagsetHashCache",
+	"byDSDHashCache",
+	"byUnionHashCache",
+	"byJSONCache",
+}

@@ -7,6 +7,7 @@ package tagset
 
 import (
 	"strings"
+	"time"
 
 	"github.com/twmb/murmur3"
 )
@@ -16,13 +17,27 @@ import (
 type cachingFactory struct {
 	baseFactory
 
+	// name is the name of this factory, used for telemetry
+	name string
+
 	// Tags instances are cached by 64-bit cache keys that can have a range of
 	// meanings; each CacheID identifies a different such meaning.  Caches with
 	// different CacheIDs are stored independently.
 	caches [numCacheIDs]tagsCache
+
+	// tlmChannel, if set, is the channel to which Telemetry instances should
+	// be sent.
+	tlmChannel chan<- Telemetry
+
+	// nextTlm is the time at which the next telemetry should be sent; this
+	// is only relevant if tlmChannel is not nil.
+	nextTlm time.Time
 }
 
 var _ Factory = (*cachingFactory)(nil)
+
+// telemetryPeriod is the approximate time between telemetry messages.
+var telemetryPeriod = time.Second
 
 // NewCachingFactory creates a new caching factory.  A caching factory caches
 // Tags instances when they are seen, and uses those cached values when possible
@@ -60,6 +75,20 @@ func NewCachingFactory(cacheSize, cacheWidth int) Factory {
 	return &cachingFactory{
 		caches: caches,
 	}
+}
+
+// NewCachingFactoryWithTelemetry creates a new caching factory (see
+// NewCachingFactory) and configures it to send telemetry messages to the given
+// channel.
+func NewCachingFactoryWithTelemetry(cacheSize, cacheWidth int, factoryName string, tlmChannel chan<- Telemetry) Factory {
+	f := NewCachingFactory(cacheSize, cacheWidth)
+	cf := f.(*cachingFactory)
+
+	cf.name = factoryName
+	cf.tlmChannel = tlmChannel
+	cf.nextTlm = time.Now().Add(telemetryPeriod)
+
+	return f
 }
 
 // NewTags implements Factory.NewTags
@@ -170,10 +199,32 @@ func (f *cachingFactory) DisjointUnion(a, b *Tags) *Tags {
 
 // getCachedTags implements Factory.getCachedTags
 func (f *cachingFactory) getCachedTags(cacheID cacheID, key uint64, miss func() *Tags) *Tags {
+	if f.tlmChannel != nil && f.nextTlm.Before(time.Now()) {
+		f.telemetry()
+	}
 	return f.caches[cacheID].getCachedTags(key, miss)
 }
 
 // getCachedTagsErr implements Factory.getCachedTagsErr
 func (f *cachingFactory) getCachedTagsErr(cacheID cacheID, key uint64, miss func() (*Tags, error)) (*Tags, error) {
 	return f.caches[cacheID].getCachedTagsErr(key, miss)
+}
+
+// telemetry sends a telemetry message
+func (f *cachingFactory) telemetry() {
+	tlm := Telemetry{
+		FactoryName: f.name,
+		Caches:      make(map[string]CacheTelemetry, len(f.caches)),
+	}
+
+	for cacheID := range f.caches {
+		tlm.Caches[cacheIDNames[cacheID]] = f.caches[cacheID].telemetry()
+	}
+
+	// use a non-blocking send so that we carry on if the receiver is
+	// ignoring us.
+	select {
+	case f.tlmChannel <- tlm:
+	default:
+	}
 }

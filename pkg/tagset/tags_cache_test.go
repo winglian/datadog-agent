@@ -3,10 +3,20 @@ package tagset
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+func formatTelemetry(tc *tagsCache) string {
+	tlm := tc.telemetry()
+	perMap := []string{}
+	for _, mapTlm := range tlm.Maps {
+		perMap = append(perMap, fmt.Sprintf("%d/%d", mapTlm.Inserts, mapTlm.Searches))
+	}
+	return strings.Join(perMap, ", ")
+}
 
 func TestTagsCacheCaching(t *testing.T) {
 	f := newNullFactory()
@@ -20,18 +30,22 @@ func TestTagsCacheCaching(t *testing.T) {
 	t.Run("fresh cache", func(t *testing.T) {
 		require.Equal(t, "tag1", tc.getCachedTags(0x12345, miss).String())
 		require.Equal(t, 1, missCalls)
+		require.Equal(t, "1/1", formatTelemetry(&tc))
 	})
 	t.Run("cached value", func(t *testing.T) {
 		require.Equal(t, "tag1", tc.getCachedTags(0x12345, miss).String())
 		require.Equal(t, 1, missCalls)
+		require.Equal(t, "1/2", formatTelemetry(&tc))
 	})
 	t.Run("new cache key", func(t *testing.T) {
 		require.Equal(t, "tag2", tc.getCachedTags(0xabcde, miss).String())
 		require.Equal(t, 2, missCalls)
+		require.Equal(t, "2/3", formatTelemetry(&tc))
 	})
 	t.Run("old cached value", func(t *testing.T) {
 		require.Equal(t, "tag1", tc.getCachedTags(0x12345, miss).String())
 		require.Equal(t, 2, missCalls)
+		require.Equal(t, "2/4", formatTelemetry(&tc))
 	})
 }
 
@@ -56,6 +70,7 @@ func TestTagsCacheCachingErr(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, v)
 		require.Equal(t, 1, missErrs)
+		require.Equal(t, "0/1", formatTelemetry(&tc))
 	})
 	t.Run("same key, no error", func(t *testing.T) {
 		v, err := tc.getCachedTagsErr(0x12345, miss)
@@ -63,24 +78,28 @@ func TestTagsCacheCachingErr(t *testing.T) {
 		require.Equal(t, "tag1", v.String())
 		require.Equal(t, 1, missCalls)
 		require.Equal(t, 1, missErrs)
+		require.Equal(t, "1/2", formatTelemetry(&tc))
 	})
 	t.Run("cached value", func(t *testing.T) {
 		v, err := tc.getCachedTagsErr(0x12345, miss)
 		require.NoError(t, err)
 		require.Equal(t, "tag1", v.String())
 		require.Equal(t, 1, missCalls)
+		require.Equal(t, "1/3", formatTelemetry(&tc))
 	})
 	t.Run("new cache key", func(t *testing.T) {
 		v, err := tc.getCachedTagsErr(0xabcde, miss)
 		require.NoError(t, err)
 		require.Equal(t, "tag2", v.String())
 		require.Equal(t, 2, missCalls)
+		require.Equal(t, "2/4", formatTelemetry(&tc))
 	})
 	t.Run("old cached value", func(t *testing.T) {
 		v, err := tc.getCachedTagsErr(0x12345, miss)
 		require.NoError(t, err)
 		require.Equal(t, "tag1", v.String())
 		require.Equal(t, 2, missCalls)
+		require.Equal(t, "2/5", formatTelemetry(&tc))
 	})
 	t.Run("old cached value, error", func(t *testing.T) {
 		v, err := tc.getCachedTagsErr(0x12345, missErr)
@@ -88,6 +107,7 @@ func TestTagsCacheCachingErr(t *testing.T) {
 		require.Equal(t, "tag1", v.String())
 		require.Equal(t, 2, missCalls)
 		require.Equal(t, 1, missErrs)
+		require.Equal(t, "2/6", formatTelemetry(&tc))
 	})
 }
 
@@ -161,6 +181,49 @@ func TestTagsCacheRecaching(t *testing.T) {
 		v := tc.getCachedTags(0x9999, func() *Tags { return f.NewTags([]string{"miss"}) })
 		require.Equal(t, "expected", v.String())
 	}
+}
+
+func TestTagsCacheTelemetry(t *testing.T) {
+	f := newNullFactory()
+
+	t.Run("lots of hits", func(t *testing.T) {
+		tc := newTagsCache(10, 3)
+		missCalls := 0
+		for i := 0; i < 50; i++ {
+			tc.getCachedTags(0x9999, func() *Tags {
+				missCalls++
+				return f.NewTags([]string{"expected"})
+			})
+		}
+		require.Equal(t, 1, missCalls)
+		// with lots of hits, the cache never rotates
+		require.Equal(t, "1/50, 0/0, 0/0", formatTelemetry(&tc))
+	})
+
+	t.Run("misses", func(t *testing.T) {
+		tc := newTagsCache(10, 3)
+		for i := 0; i < 50; i++ {
+			tc.getCachedTags(uint64(i), func() *Tags {
+				return f.NewTags([]string{fmt.Sprintf("t%d", i)})
+			})
+		}
+		// each map gets a 100% miss rate
+		require.Equal(t, "0/0, 10/10, 10/10", formatTelemetry(&tc))
+	})
+
+	t.Run("hits and misses", func(t *testing.T) {
+		tc := newTagsCache(10, 3)
+		for i := 0; i < 50; i++ {
+			tc.getCachedTags(0x9999, func() *Tags {
+				return f.NewTags([]string{"0x9999"})
+			})
+			tc.getCachedTags(uint64(i), func() *Tags {
+				return f.NewTags([]string{fmt.Sprintf("t%d", i)})
+			})
+		}
+		// each map gets about 50% miss rate
+		require.Equal(t, "6/10, 10/18, 10/18", formatTelemetry(&tc))
+	})
 }
 
 func TestTagsCacheMinimal(t *testing.T) {

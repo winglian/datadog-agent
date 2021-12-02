@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -52,4 +53,41 @@ func TestCachingFactory_Union_Fuzz(t *testing.T) {
 		require.Equal(t, both.Hash(), union.Hash())
 		require.Equal(t, both.Sorted(), union.Sorted())
 	})
+}
+
+func TestCachingFactory_Telemetry(t *testing.T) {
+	telemetryPeriod = 10 * time.Millisecond
+	defer func() { telemetryPeriod = time.Second }()
+
+	tlmChan := make(chan Telemetry)
+
+	tc := NewCachingFactoryWithTelemetry(10, 2, "test", tlmChan)
+
+	// use the factory in a tight loop until it spits out some
+	// telemetry
+	stop := make(chan struct{})
+	go func() {
+		i := 0
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+
+			tc.NewTags([]string{fmt.Sprintf("tag:%d", i%20)})
+			i++
+		}
+	}()
+
+	tlm := <-tlmChan
+	stop <- struct{}{}
+
+	require.Equal(t, "test", tlm.FactoryName)
+
+	// the content of the telemetry will depend on timing, but validate
+	// its general form
+	require.Equal(t, numCacheIDs, len(tlm.Caches))
+	require.Equal(t, 2, len(tlm.Caches["byTagsetHashCache"].Maps))
+	require.NotEqual(t, 0, tlm.Caches["byTagsetHashCache"].Maps[1].Searches)
 }
