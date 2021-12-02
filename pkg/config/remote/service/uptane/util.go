@@ -1,4 +1,4 @@
-package tuf
+package uptane
 
 import (
 	"fmt"

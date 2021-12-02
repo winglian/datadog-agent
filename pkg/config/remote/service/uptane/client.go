@@ -1,4 +1,4 @@
-package tuf
+package uptane
 
 import (
 	"github.com/DataDog/datadog-agent/pkg/config/remote/store"
