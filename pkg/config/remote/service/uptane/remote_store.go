@@ -44,7 +44,7 @@ func (s *remoteStore) resetRole(r role) {
 
 func (s *remoteStore) latestVersion(r role) uint64 {
 	latestVersion := uint64(0)
-	for v, _ := range s.metas[r] {
+	for v := range s.metas[r] {
 		if v > latestVersion {
 			latestVersion = v
 		}

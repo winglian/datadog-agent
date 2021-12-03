@@ -1,8 +1,9 @@
 package uptane
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/DataDog/datadog-agent/pkg/config/remote/store"
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
@@ -10,7 +11,7 @@ import (
 )
 
 type Client struct {
-	orgID int
+	orgIDTargetPrefix string
 
 	configLocalStore  *localStoreConfig
 	configRemoteStore *remoteStoreConfig
@@ -23,6 +24,7 @@ type Client struct {
 
 func NewClient(orgID int, localStore *store.Store) (*Client, error) {
 	c := &Client{
+		orgIDTargetPrefix:   fmt.Sprintf("%d/", orgID),
 		configLocalStore:    newLocalStoreConfig(localStore),
 		configRemoteStore:   newRemoteStoreConfig(),
 		directorLocalStore:  newLocalStoreDirector(localStore),
@@ -34,11 +36,11 @@ func NewClient(orgID int, localStore *store.Store) (*Client, error) {
 }
 
 func (c *Client) Update(response *pbgo.LatestConfigsResponse) error {
-	err := c.verifyOrgID(response)
+	err := c.updateRepos(response)
 	if err != nil {
 		return err
 	}
-	err = c.updateRepos(response)
+	err = c.verifyOrgID()
 	if err != nil {
 		return err
 	}
@@ -59,51 +61,41 @@ func (c *Client) updateRepos(response *pbgo.LatestConfigsResponse) error {
 	return nil
 }
 
-func (c *Client) verifyOrgID(response *pbgo.LatestConfigsResponse) error {
-	c.directorTUFClient.Targets()
-
-	if response.DirectorMetas.Targets == nil {
-		return fmt.Errorf("director target %s has no custom field", name)
+func (c *Client) verifyOrgID() error {
+	directorTargets, err := c.directorTUFClient.Targets()
+	if err != nil {
+		return err
 	}
-
-	var custom targetCustomOrgID
-	if err := json.Unmarshal([]byte(*directorTarget.Custom), &custom); err != nil {
-		return fmt.Errorf("failed to decode target custom for %s: %w", name, err)
+	for targetPath := range directorTargets {
+		if !strings.HasPrefix(targetPath, c.orgIDTargetPrefix) {
+			return fmt.Errorf("director target '%s' does not have the correct orgID", targetPath)
+		}
 	}
-
-	if custom.OrgID != s.orgID {
-		return fmt.Errorf("unexpected custom organization id: %s", custom.OrgID)
-	}
+	return nil
 }
 
-// func (c *Client) verifyUptane() error {
-// 	for _, target := range  {
-// 		name := trimTargetPathHash(target.Path)
-
-// 		directorTarget, err := c.directorTUFClient.Target(name)
-// 		if err != nil {
-// 			return fmt.Errorf("failed to find target '%s' in director repository", name)
-// 		}
-
-// 		configTarget, err := c.configTUFClient.Target(name)
-// 		if err != nil {
-// 			return fmt.Errorf("failed to find target '%s' in config repository", name)
-// 		}
-
-// 		if configTarget.Length != directorTarget.Length {
-// 			return fmt.Errorf("target '%s' has size %d in directory repository and %d in config repository", name, configTarget.Length, directorTarget.Length)
-// 		}
-
-// 		for kind, directorHash := range directorTarget.Hashes {
-// 			configHash, found := configTarget.Hashes[kind]
-// 			if !found {
-// 				return fmt.Errorf("hash '%s' found in directory repository and not in config repository", directorHash)
-// 			}
-
-// 			if !bytes.Equal([]byte(directorHash), []byte(configHash)) {
-// 				return fmt.Errorf("directory hash '%s' is not equal to config repository '%s'", string(directorHash), string(configHash))
-// 			}
-// 		}
-// 	}
-// 	return nil
-// }
+func (c *Client) verifyUptane() error {
+	directorTargets, err := c.directorTUFClient.Targets()
+	if err != nil {
+		return err
+	}
+	for targetPath, targetMeta := range directorTargets {
+		configTargetMeta, err := c.configTUFClient.Target(targetPath)
+		if err != nil {
+			return fmt.Errorf("failed to find target '%s' in config repository", targetPath)
+		}
+		if configTargetMeta.Length != targetMeta.Length {
+			return fmt.Errorf("target '%s' has size %d in directory repository and %d in config repository", targetPath, configTargetMeta.Length, targetMeta.Length)
+		}
+		for kind, directorHash := range targetMeta.Hashes {
+			configHash, found := configTargetMeta.Hashes[kind]
+			if !found {
+				return fmt.Errorf("hash '%s' found in directory repository and not in config repository", directorHash)
+			}
+			if !bytes.Equal([]byte(directorHash), []byte(configHash)) {
+				return fmt.Errorf("directory hash '%s' is not equal to config repository '%s'", string(directorHash), string(configHash))
+			}
+		}
+	}
+	return nil
+}
