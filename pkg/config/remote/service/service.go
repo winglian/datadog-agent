@@ -10,7 +10,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/sha512"
-	"encoding/json"
 	"fmt"
 	"path"
 	"strings"
@@ -208,82 +207,6 @@ func getTargetProduct(path string) (string, error) {
 
 type targetCustom struct {
 	OrgID string `json:"org_id"`
-}
-
-// Verify that both director and config metadata from the response and
-// that the target files provided in the response match the ones specified
-// in the director and config repositories
-func (s *Service) verifyResponseMetadata(response *pbgo.LatestConfigsResponse) error {
-	if err := s.director.Update(response); err != nil {
-		return err
-	}
-
-	if err := s.config.Update(response); err != nil {
-		return err
-	}
-
-	for _, target := range response.TargetFiles {
-		name := tuf.TrimHash(target.Path)
-
-		log.Debugf("Considering director target %s", name)
-		directorTarget, err := s.director.Target(name)
-		if err != nil {
-			return fmt.Errorf("failed to find target '%s' in director repository", name)
-		}
-
-		configTarget, err := s.config.Target(name)
-		if err != nil {
-			return fmt.Errorf("failed to find target '%s' in config repository", name)
-		}
-
-		if configTarget.Length != directorTarget.Length {
-			return fmt.Errorf("target '%s' has size %d in directory repository and %d in config repository", name, configTarget.Length, directorTarget.Length)
-		}
-
-		for kind, directorHash := range directorTarget.Hashes {
-			configHash, found := configTarget.Hashes[kind]
-			if !found {
-				return fmt.Errorf("hash '%s' found in directory repository and not in config repository", directorHash)
-			}
-
-			if !bytes.Equal([]byte(directorHash), []byte(configHash)) {
-				return fmt.Errorf("directory hash '%s' is not equal to config repository '%s'", string(directorHash), string(configHash))
-			}
-		}
-
-		/*
-			// TODO(lebauce): remove this when backend is ready
-
-			// Backend does not return customs for config repository.
-			var directorCustom, configCustom []byte
-			if directorTarget.Custom != nil {
-				directorCustom = *directorTarget.Custom
-			}
-
-			if configTarget.Custom != nil {
-				configCustom = *configTarget.Custom
-			}
-
-			if bytes.Compare(directorCustom, configCustom) != 0 {
-				return fmt.Errorf("directory custom '%s' is not equal to config custom '%s'", string(directorCustom), string(configCustom))
-			}
-		*/
-
-		if directorTarget.Custom == nil {
-			return fmt.Errorf("director target %s has no custom field", name)
-		}
-
-		var custom targetCustom
-		if err := json.Unmarshal([]byte(*directorTarget.Custom), &custom); err != nil {
-			return fmt.Errorf("failed to decode target custom for %s: %w", name, err)
-		}
-
-		if custom.OrgID != s.orgID {
-			return fmt.Errorf("unexpected custom organization id: %s", custom.OrgID)
-		}
-	}
-
-	return nil
 }
 
 // Verify the target files checksum provided in the response with

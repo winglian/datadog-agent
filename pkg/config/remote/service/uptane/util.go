@@ -1,9 +1,13 @@
 package uptane
 
 import (
+	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/theupdateframework/go-tuf/data"
 )
 
 type metaPath struct {
@@ -39,4 +43,22 @@ func parseMetaPath(rawMetaPath string) (metaPath, error) {
 		version:    rawVersion,
 		versionSet: true,
 	}, nil
+}
+
+func trimTargetPathHash(path string) string {
+	basename := filepath.Base(path)
+	split := strings.SplitN(basename, ".", 2)
+	if len(split) > 1 {
+		basename = split[1]
+	}
+	return filepath.Join(filepath.Dir(path), basename)
+}
+
+type targetsCustomJSON struct {
+	OrgID string `json:"org_id"`
+}
+
+func targetsCustom(rawTargets []byte) ([]byte, error) {
+	var targets data.Targets
+	json.Unmarshal(targets, rawTargets)
 }
