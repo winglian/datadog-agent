@@ -232,10 +232,18 @@ def integration_freeze
     raise "Failed to get integrations freeze - #{output}" unless $? == 0
   end
 end
+`#{agent_command} status -j 2>&1`
 
 def json_info
   info_output = `#{agent_command} status -j 2>&1`
+
+  puts info_output
+  puts info_output.encoding
+
   info_output = info_output.gsub("Getting the status from the agent.", "")
+
+  puts info_output
+  puts info_output.encoding
 
   # removes any stray log lines
   info_output = info_output.gsub(/[0-9]+[ ]\[[a-zA-Z]+\][a-zA-Z \t%:\\]+$/, "")
