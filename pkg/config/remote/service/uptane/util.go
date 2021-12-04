@@ -1,6 +1,7 @@
 package uptane
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
 	"strings"
@@ -39,4 +40,12 @@ func parseMetaPath(rawMetaPath string) (metaPath, error) {
 		version:    rawVersion,
 		versionSet: true,
 	}, nil
+}
+
+type bufferDestination struct {
+	bytes.Buffer
+}
+
+func (d *bufferDestination) Delete() error {
+	return nil
 }

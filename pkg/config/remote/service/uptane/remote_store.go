@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/DataDog/datadog-agent/pkg/config/remote/service/meta"
+	"github.com/DataDog/datadog-agent/pkg/config/remote/service/uptane/meta"
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
 	"github.com/theupdateframework/go-tuf/client"
 )

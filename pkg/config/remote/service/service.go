@@ -6,10 +6,7 @@
 package service
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
-	"crypto/sha512"
 	"fmt"
 	"path"
 	"strings"
@@ -17,7 +14,6 @@ import (
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/DataDog/datadog-agent/pkg/config/remote/service/tuf"
 	"github.com/DataDog/datadog-agent/pkg/config/remote/store"
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
 	"github.com/DataDog/datadog-agent/pkg/util"
@@ -47,12 +43,10 @@ type Opts struct {
 // and dispatching the configurations
 type Service struct {
 	sync.RWMutex
-	ctx      context.Context
-	opts     Opts
-	store    *store.Store
-	client   Client
-	director *tuf.DirectorClient
-	config   *tuf.ConfigClient
+	ctx    context.Context
+	opts   Opts
+	store  *store.Store
+	client Client
 
 	subscribers           []*Subscriber
 	configSnapshotVersion uint64
@@ -109,21 +103,6 @@ func (s *Service) refresh() {
 	response, err := s.client.Fetch(s.ctx, &request)
 	if err != nil {
 		log.Errorf("Failed to fetch remote configuration: %s", err)
-		return
-	}
-
-	if response.DirectorMetas == nil {
-		log.Debugf("No new configuration")
-		return
-	}
-
-	if err := s.verifyResponseMetadata(response); err != nil {
-		log.Errorf("Failed to verify configuration: %s", err)
-		return
-	}
-
-	if err := s.verifyTargetFiles(response.TargetFiles); err != nil {
-		log.Errorf("Failed to verify target files: %s", err)
 		return
 	}
 
@@ -203,59 +182,6 @@ func getTargetProduct(path string) (string, error) {
 	}
 
 	return splits[1], nil
-}
-
-type targetCustom struct {
-	OrgID string `json:"org_id"`
-}
-
-// Verify the target files checksum provided in the response with
-// the one specified in the config repository
-func (s *Service) verifyTargetFiles(targetFiles []*pbgo.File) error {
-	for _, targetFile := range targetFiles {
-		path := tuf.TrimHash(targetFile.Path)
-		buffer := &bufferDestination{}
-		if err := s.config.Download(path, buffer); err != nil {
-			return fmt.Errorf("failed to download target file %s: %w", targetFile.Path, err)
-		}
-
-		targetMeta, err := s.config.Target(path)
-		if err != nil {
-			return err
-		}
-
-		if len(targetMeta.HashAlgorithms()) == 0 {
-			return fmt.Errorf("target file %s has no hash", path)
-		}
-
-		for _, algorithm := range targetMeta.HashAlgorithms() {
-			var checksum []byte
-			switch algorithm {
-			case "sha256":
-				sha256Checksum := sha256.Sum256(targetFile.Raw)
-				checksum = sha256Checksum[:]
-			case "sha512":
-				sha512Checksum := sha512.Sum512(targetFile.Raw)
-				checksum = sha512Checksum[:]
-			default:
-				return fmt.Errorf("unsupported checksum %s", algorithm)
-			}
-
-			if !bytes.Equal(checksum, targetMeta.Hashes[algorithm]) {
-				return fmt.Errorf("target file %s has invalid checksum", string(checksum))
-			}
-		}
-	}
-
-	return nil
-}
-
-type bufferDestination struct {
-	bytes.Buffer
-}
-
-func (d *bufferDestination) Delete() error {
-	return nil
 }
 
 func (s *Service) notifySubscriber(subscriber *Subscriber, configResponse *pbgo.ConfigResponse) error {
@@ -390,12 +316,11 @@ func NewService(opts Opts) (*Service, error) {
 	}
 
 	return &Service{
-		ctx:      context.Background(),
-		client:   NewHTTPClient(opts.URL, opts.APIKey, appKey, opts.Hostname),
-		store:    store,
-		director: tuf.NewDirectorClient(store),
-		config:   tuf.NewConfigClient(store),
-		opts:     opts,
-		orgID:    org,
+		ctx:    context.Background(),
+		client: NewHTTPClient(opts.URL, opts.APIKey, appKey, opts.Hostname),
+		store:  store,
+
+		opts:  opts,
+		orgID: org,
 	}, nil
 }
