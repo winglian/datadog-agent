@@ -22,7 +22,7 @@ type Client struct {
 	directorTUFClient   *client.Client
 }
 
-func NewClient(cacheDB *bbolt.DB, cacheKey string, orgID int) (*Client, error) {
+func NewClient(cacheDB *bbolt.DB, cacheKey string, orgID int64) (*Client, error) {
 	localStoreConfig, err := newLocalStoreConfig(cacheDB, cacheKey)
 	if err != nil {
 		return nil, err
