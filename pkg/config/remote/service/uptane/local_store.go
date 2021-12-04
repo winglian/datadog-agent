@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	metaRootKey = []byte("root.json")
+	metaRoot = "root.json"
 )
 
 type localStore struct {
@@ -46,22 +46,31 @@ func (s *localStore) init(initialRoots meta.EmbeddedRoots) error {
 			return fmt.Errorf("failed to create roots bucket: %v", err)
 		}
 		rootsBucket := tx.Bucket(s.rootsBucket)
-		for version, root := range initialRoots {
-			rootKey := []byte(fmt.Sprintf("%d.root.json", version))
-			err := rootsBucket.Put(rootKey, root)
+		for _, root := range initialRoots {
+			err := s.writeRoot(tx, json.RawMessage(root))
 			if err != nil {
 				return fmt.Errorf("failed set embeded root in roots bucket: %v", err)
 			}
 		}
 		metasBucket := tx.Bucket(s.rootsBucket)
-		if metasBucket.Get(metaRootKey) == nil {
-			err := rootsBucket.Put(metaRootKey, initialRoots.Last())
+		if metasBucket.Get([]byte(metaRoot)) == nil {
+			err := rootsBucket.Put([]byte(metaRoot), initialRoots.Last())
 			if err != nil {
 				return fmt.Errorf("failed set embeded root in roots bucket: %v", err)
 			}
 		}
 		return nil
 	})
+}
+
+func (s *localStore) writeRoot(tx *bbolt.Tx, root json.RawMessage) error {
+	version, err := rootVersion(root)
+	if err != nil {
+		return err
+	}
+	rootKey := []byte(fmt.Sprintf("%d.root.json", version))
+	rootsBucket := tx.Bucket(s.rootsBucket)
+	return rootsBucket.Put(rootKey, root)
 }
 
 // GetMeta returns a map of all the metadata files
@@ -80,20 +89,60 @@ func (s *localStore) GetMeta() (map[string]json.RawMessage, error) {
 	return meta, err
 }
 
-// SetMeta stores a tuf metadata file
-func (s *localStore) SetMeta(name string, meta json.RawMessage) error {
-	return s.db.Update(func(tx *bbolt.Tx) error {
-		metaBucket := tx.Bucket(s.metasBucket)
-		return metaBucket.Put([]byte(name), meta)
-	})
-}
-
 // DeleteMeta deletes a tuf metadata file
 func (s *localStore) DeleteMeta(name string) error {
 	return s.db.Update(func(tx *bbolt.Tx) error {
 		metaBucket := tx.Bucket(s.metasBucket)
 		return metaBucket.Delete([]byte(name))
 	})
+}
+
+// SetMeta stores a tuf metadata file
+func (s *localStore) SetMeta(name string, meta json.RawMessage) error {
+	return s.db.Update(func(tx *bbolt.Tx) error {
+		if name == metaRoot {
+			err := s.writeRoot(tx, meta)
+			if err != nil {
+				return err
+			}
+		}
+		metaBucket := tx.Bucket(s.metasBucket)
+		return metaBucket.Put([]byte(name), meta)
+	})
+}
+
+func (s *localStore) GetRoot(version uint64) ([]byte, bool, error) {
+	var root []byte
+	err := s.db.View(func(tx *bbolt.Tx) error {
+		rootsBucket := tx.Bucket(s.rootsBucket)
+		r := rootsBucket.Get([]byte(fmt.Sprintf("%d.root.json", version)))
+		root = append(root, r...)
+		return nil
+	})
+	if err != nil {
+		return nil, false, err
+	}
+	if len(root) == 0 {
+		return nil, false, nil
+	}
+	return root, true, nil
+}
+
+func (s *localStore) GetTargets() ([]byte, bool, error) {
+	var targets []byte
+	err := s.db.View(func(tx *bbolt.Tx) error {
+		metasBucket := tx.Bucket(s.metasBucket)
+		t := metasBucket.Get([]byte("targets.json"))
+		targets = append(targets, t...)
+		return nil
+	})
+	if err != nil {
+		return nil, false, err
+	}
+	if len(targets) == 0 {
+		return nil, false, nil
+	}
+	return targets, true, nil
 }
 
 type localStoreDirector struct {
@@ -115,7 +164,7 @@ type localStoreConfig struct {
 }
 
 func newLocalStoreConfig(db *bbolt.DB, cacheKey string) (*localStoreConfig, error) {
-	localStore, err := newLocalStore(db, "config", cacheKey, meta.RootsDirector())
+	localStore, err := newLocalStore(db, "config", cacheKey, meta.RootsConfig())
 	if err != nil {
 		return nil, err
 	}

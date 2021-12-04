@@ -1,9 +1,12 @@
 package uptane
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/theupdateframework/go-tuf/data"
 )
 
 type metaPath struct {
@@ -39,4 +42,18 @@ func parseMetaPath(rawMetaPath string) (metaPath, error) {
 		version:    rawVersion,
 		versionSet: true,
 	}, nil
+}
+
+func rootVersion(rawRoot json.RawMessage) (uint64, error) {
+	var signed data.Signed
+	err := json.Unmarshal(rawRoot, &signed)
+	if err != nil {
+		return 0, err
+	}
+	var root data.Root
+	err = json.Unmarshal(signed.Signed, &root)
+	if err != nil {
+		return 0, err
+	}
+	return uint64(root.Version), nil
 }
