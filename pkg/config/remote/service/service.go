@@ -55,6 +55,19 @@ type Service struct {
 	orgID                 string
 }
 
+// func openDB(path string) (*bbolt.DB, error) {
+// 	db, err := bbolt.Open(path, 0600, &bbolt.Options{})
+// 	if err != nil {
+// 		if err := os.Remove(path); err != nil {
+// 			return nil, fmt.Errorf("failed to remove corrupted database: %w", err)
+// 		}
+// 		if db, err = bbolt.Open(path, 0600, &bbolt.Options{}); err != nil {
+// 			return nil, err
+// 		}
+// 	}
+// 	return db, nil
+// }
+
 // Refresh configurations by:
 // - collecting the new subscribers or the one whose configuration has expired
 // - create a query

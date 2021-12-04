@@ -8,10 +8,8 @@ package uptane
 import (
 	"encoding/json"
 	fmt "fmt"
-	"os"
 
 	"github.com/DataDog/datadog-agent/pkg/config/remote/meta"
-	"github.com/DataDog/datadog-agent/pkg/config/remote/store"
 	"go.etcd.io/bbolt"
 )
 
@@ -19,45 +17,25 @@ var (
 	metaRootKey = []byte("root.json")
 )
 
-type repoLocalStore struct {
-	path        string
+type localStore struct {
 	metasBucket []byte
 	rootsBucket []byte
 	db          *bbolt.DB
 }
 
-func newLocalStore(path string, cacheKey string, initialRoots meta.EmbeddedRoots) (*repoLocalStore, error) {
-	s := &repoLocalStore{
-		path:        path,
-		metasBucket: []byte(fmt.Sprintf("%s_metas", cacheKey)),
-		rootsBucket: []byte(fmt.Sprintf("%s_roots", cacheKey)),
+func newLocalStore(db *bbolt.DB, repository string, cacheKey string, initialRoots meta.EmbeddedRoots) (*localStore, error) {
+	s := &localStore{
+		metasBucket: []byte(fmt.Sprintf("%s_%s_metas", repository, cacheKey)),
+		rootsBucket: []byte(fmt.Sprintf("%s_%s_roots", repository, cacheKey)),
 	}
-	db, err := s.open(initialRoots)
+	err := s.init(initialRoots)
 	if err != nil {
 		return nil, err
 	}
-	s.db = db
 	return s, nil
 }
 
-func (s *repoLocalStore) open(initialRoots meta.EmbeddedRoots) (*bbolt.DB, error) {
-	db, err := bbolt.Open(s.path, 0600, &bbolt.Options{})
-	if err != nil {
-		if err := os.Remove(s.path); err != nil {
-			return nil, fmt.Errorf("failed to remove corrupted database: %w", err)
-		}
-		if db, err = bbolt.Open(s.path, 0600, &bbolt.Options{}); err != nil {
-			return nil, err
-		}
-	}
-	err = s.init(initialRoots)
-	if err != nil {
-		return nil, err
-	}
-	return db, nil
-}
-
-func (s *repoLocalStore) init(initialRoots meta.EmbeddedRoots) error {
+func (s *localStore) init(initialRoots meta.EmbeddedRoots) error {
 	return s.db.Update(func(tx *bbolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(s.metasBucket)
 		if err != nil {
@@ -86,12 +64,8 @@ func (s *repoLocalStore) init(initialRoots meta.EmbeddedRoots) error {
 	})
 }
 
-func (s *repoLocalStore) close() error {
-	return s.db.Close()
-}
-
 // GetMeta returns a map of all the metadata files
-func (s *repoLocalStore) GetMeta() (map[string]json.RawMessage, error) {
+func (s *localStore) GetMeta() (map[string]json.RawMessage, error) {
 	meta := make(map[string]json.RawMessage)
 	err := s.db.View(func(tx *bbolt.Tx) error {
 		metaBucket := tx.Bucket(s.metasBucket)
@@ -107,7 +81,7 @@ func (s *repoLocalStore) GetMeta() (map[string]json.RawMessage, error) {
 }
 
 // SetMeta stores a tuf metadata file
-func (s *repoLocalStore) SetMeta(name string, meta json.RawMessage) error {
+func (s *localStore) SetMeta(name string, meta json.RawMessage) error {
 	return s.db.Update(func(tx *bbolt.Tx) error {
 		metaBucket := tx.Bucket(s.metasBucket)
 		return metaBucket.Put([]byte(name), meta)
@@ -115,20 +89,37 @@ func (s *repoLocalStore) SetMeta(name string, meta json.RawMessage) error {
 }
 
 // DeleteMeta deletes a tuf metadata file
-func (s *repoLocalStore) DeleteMeta(name string) error {
+func (s *localStore) DeleteMeta(name string) error {
 	return s.db.Update(func(tx *bbolt.Tx) error {
 		metaBucket := tx.Bucket(s.metasBucket)
 		return metaBucket.Delete([]byte(name))
 	})
 }
 
-type localStore struct {
-	configLocalStore   *repoLocalStore
-	directorLocalStore *repoLocalStore
+type localStoreDirector struct {
+	*localStore
 }
 
-func newLocalStoreConfig(store *store.Store) *localStoreConfig {
-	return &localStoreConfig{
-		localStore: localStore{repository: "config", store: store},
+func newLocalStoreDirector(db *bbolt.DB, cacheKey string) (*localStoreDirector, error) {
+	localStore, err := newLocalStore(db, "director", cacheKey, meta.RootsDirector())
+	if err != nil {
+		return nil, err
 	}
+	return &localStoreDirector{
+		localStore: localStore,
+	}, nil
+}
+
+type localStoreConfig struct {
+	*localStore
+}
+
+func newLocalStoreConfig(db *bbolt.DB, cacheKey string) (*localStoreConfig, error) {
+	localStore, err := newLocalStore(db, "config", cacheKey, meta.RootsDirector())
+	if err != nil {
+		return nil, err
+	}
+	return &localStoreConfig{
+		localStore: localStore,
+	}, nil
 }

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/DataDog/datadog-agent/pkg/config/remote/store"
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
 	"github.com/theupdateframework/go-tuf/client"
+	"go.etcd.io/bbolt"
 )
 
 type Client struct {
@@ -22,12 +22,20 @@ type Client struct {
 	directorTUFClient   *client.Client
 }
 
-func NewClient(orgID int, localStore *store.Store) (*Client, error) {
+func NewClient(cacheDB *bbolt.DB, cacheKey string, orgID int) (*Client, error) {
+	localStoreConfig, err := newLocalStoreConfig(cacheDB, cacheKey)
+	if err != nil {
+		return nil, err
+	}
+	localStoreDirector, err := newLocalStoreDirector(cacheDB, cacheKey)
+	if err != nil {
+		return nil, err
+	}
 	c := &Client{
 		orgIDTargetPrefix:   fmt.Sprintf("%d/", orgID),
-		configLocalStore:    newLocalStoreConfig(localStore),
+		configLocalStore:    localStoreConfig,
 		configRemoteStore:   newRemoteStoreConfig(),
-		directorLocalStore:  newLocalStoreDirector(localStore),
+		directorLocalStore:  localStoreDirector,
 		directorRemoteStore: newRemoteStoreDirector(),
 	}
 	c.configTUFClient = client.NewClient(c.configLocalStore, c.configRemoteStore)

@@ -5,8 +5,6 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/DataDog/datadog-agent/pkg/config/remote/service/uptane/meta"
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
 	"github.com/theupdateframework/go-tuf/client"
 )
@@ -93,9 +91,7 @@ type remoteStoreDirector struct {
 }
 
 func newRemoteStoreDirector() *remoteStoreDirector {
-	s := newRemoteStore()
-	s.metas[roleRoot][1] = getDirectorRoot()
-	return &remoteStoreDirector{remoteStore: s}
+	return &remoteStoreDirector{remoteStore: newRemoteStore()}
 }
 
 func (sd *remoteStoreDirector) update(update *pbgo.LatestConfigsResponse) {
@@ -132,9 +128,7 @@ type remoteStoreConfig struct {
 }
 
 func newRemoteStoreConfig() *remoteStoreConfig {
-	s := newRemoteStore()
-	s.metas[roleRoot][1] = getConfigRoot()
-	return &remoteStoreConfig{remoteStore: s}
+	return &remoteStoreConfig{remoteStore: newRemoteStore()}
 }
 
 func (sc *remoteStoreConfig) update(update *pbgo.LatestConfigsResponse) {
@@ -169,20 +163,4 @@ func (sc *remoteStoreConfig) update(update *pbgo.LatestConfigsResponse) {
 		sc.resetRole(roleTargets)
 		sc.metas[roleTargets][metas.TopTargets.Version] = metas.TopTargets.Raw
 	}
-}
-
-// TODO: clean
-func getDirectorRoot() []byte {
-	if directorRoot := config.Datadog.GetString("remote_configuration.director_root"); directorRoot != "" {
-		return []byte(directorRoot)
-	}
-	return meta.RootDirector
-}
-
-// TODO: clean
-func getConfigRoot() []byte {
-	if configRoot := config.Datadog.GetString("remote_configuration.config_root"); configRoot != "" {
-		return []byte(configRoot)
-	}
-	return meta.RootConfig
 }
