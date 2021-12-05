@@ -4,13 +4,22 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
 	"github.com/theupdateframework/go-tuf/client"
 	"go.etcd.io/bbolt"
 )
 
+type State struct {
+	ConfigRootVersion     uint64
+	ConfigSnapshotVersion uint64
+	DirectorRootVersion   uint64
+}
+
 type Client struct {
+	sync.Mutex
+
 	orgIDTargetPrefix string
 
 	configLocalStore  *localStoreConfig
@@ -44,6 +53,8 @@ func NewClient(cacheDB *bbolt.DB, cacheKey string, orgID int64) (*Client, error)
 }
 
 func (c *Client) Update(response *pbgo.LatestConfigsResponse) error {
+	c.Lock()
+	defer c.Unlock()
 	err := c.updateRepos(response)
 	if err != nil {
 		return err
@@ -53,6 +64,42 @@ func (c *Client) Update(response *pbgo.LatestConfigsResponse) error {
 		return err
 	}
 	return c.verifyUptane()
+}
+
+func (c *Client) State() (State, error) {
+	c.Lock()
+	defer c.Unlock()
+	configRootVersion, err := c.configLocalStore.GetMetaVersion(metaRoot)
+	if err != nil {
+		return State{}, err
+	}
+	directorRootVersion, err := c.directorLocalStore.GetMetaVersion(metaRoot)
+	if err != nil {
+		return State{}, err
+	}
+	configSnapshotVersion, err := c.configLocalStore.GetMetaVersion(metaSnapshot)
+	if err != nil {
+		return State{}, err
+	}
+	return State{
+		ConfigRootVersion:     configRootVersion,
+		ConfigSnapshotVersion: configSnapshotVersion,
+		DirectorRootVersion:   directorRootVersion,
+	}, nil
+}
+
+func (c *Client) TargetsMeta() ([]byte, error) {
+	c.Lock()
+	defer c.Unlock()
+	metas, err := c.configLocalStore.GetMeta()
+	if err != nil {
+		return nil, err
+	}
+	targets, found := metas[metaTargets]
+	if !found {
+		return nil, fmt.Errorf("empty targets meta in local store")
+	}
+	return targets, nil
 }
 
 func (c *Client) updateRepos(response *pbgo.LatestConfigsResponse) error {

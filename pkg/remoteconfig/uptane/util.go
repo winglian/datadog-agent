@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/theupdateframework/go-tuf/data"
 )
 
 type metaPath struct {
@@ -44,16 +42,17 @@ func parseMetaPath(rawMetaPath string) (metaPath, error) {
 	}, nil
 }
 
-func rootVersion(rawRoot json.RawMessage) (uint64, error) {
-	var signed data.Signed
-	err := json.Unmarshal(rawRoot, &signed)
+type metaVersionData struct {
+	Signed struct {
+		Version int
+	}
+}
+
+func metaVersion(rawMeta json.RawMessage) (uint64, error) {
+	var metaVersion metaVersionData
+	err := json.Unmarshal(rawMeta, &metaVersion)
 	if err != nil {
 		return 0, err
 	}
-	var root data.Root
-	err = json.Unmarshal(signed.Signed, &root)
-	if err != nil {
-		return 0, err
-	}
-	return uint64(root.Version), nil
+	return uint64(metaVersion.Signed.Version), nil
 }

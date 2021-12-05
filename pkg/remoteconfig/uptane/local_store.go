@@ -14,7 +14,9 @@ import (
 )
 
 var (
-	metaRoot = "root.json"
+	metaRoot     = "root.json"
+	metaTargets  = "targets.json"
+	metaSnapshot = "snapshot.json"
 )
 
 type localStore struct {
@@ -64,7 +66,7 @@ func (s *localStore) init(initialRoots meta.EmbeddedRoots) error {
 }
 
 func (s *localStore) writeRoot(tx *bbolt.Tx, root json.RawMessage) error {
-	version, err := rootVersion(root)
+	version, err := metaVersion(root)
 	if err != nil {
 		return err
 	}
@@ -128,21 +130,20 @@ func (s *localStore) GetRoot(version uint64) ([]byte, bool, error) {
 	return root, true, nil
 }
 
-func (s *localStore) GetTargets() ([]byte, bool, error) {
-	var targets []byte
-	err := s.db.View(func(tx *bbolt.Tx) error {
-		metasBucket := tx.Bucket(s.metasBucket)
-		t := metasBucket.Get([]byte("targets.json"))
-		targets = append(targets, t...)
-		return nil
-	})
+func (s *localStore) GetMetaVersion(metaName string) (uint64, error) {
+	metas, err := s.GetMeta()
 	if err != nil {
-		return nil, false, err
+		return 0, err
 	}
-	if len(targets) == 0 {
-		return nil, false, nil
+	meta, found := metas[metaName]
+	if !found {
+		return 0, nil
 	}
-	return targets, true, nil
+	metaVersion, err := metaVersion(meta)
+	if err != nil {
+		return 0, err
+	}
+	return metaVersion, nil
 }
 
 type localStoreDirector struct {

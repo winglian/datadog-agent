@@ -13,8 +13,10 @@ import (
 	"net/http"
 
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
+	"github.com/DataDog/datadog-agent/pkg/remoteconfig/uptane"
 	httputils "github.com/DataDog/datadog-agent/pkg/util/http"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+	"github.com/DataDog/datadog-agent/pkg/version"
 
 	"github.com/tinylib/msgp/msgp"
 )
@@ -53,7 +55,30 @@ func NewHTTPClient(baseURL, apiKey, appKey, hostname string) *HTTPClient {
 }
 
 // Fetch remote configuration
-func (c *HTTPClient) Fetch(ctx context.Context, request *pbgo.ClientLatestConfigsRequest) (*pbgo.LatestConfigsResponse, error) {
+func (c *HTTPClient) Fetch(ctx context.Context, state uptane.State, products map[pbgo.Product]struct{}, newProducts map[pbgo.Product]struct{}) (*pbgo.LatestConfigsResponse, error) {
+	productsList := make([]pbgo.Product, len(products))
+	i := 0
+	for k := range products {
+		productsList[i] = k
+		i++
+	}
+	newProductsList := make([]pbgo.Product, len(newProducts))
+	i = 0
+	for k := range newProducts {
+		productsList[i] = k
+		i++
+	}
+
+	request := &pbgo.ClientLatestConfigsRequest{
+		Hostname:                     c.hostname,
+		AgentVersion:                 version.AgentVersion,
+		Products:                     productsList,
+		NewProducts:                  newProductsList,
+		CurrentConfigSnapshotVersion: state.ConfigSnapshotVersion,
+		CurrentConfigRootVersion:     state.ConfigRootVersion,
+		CurrentDirectorRootVersion:   state.DirectorRootVersion,
+	}
+
 	body, err := request.MarshalMsg([]byte{})
 	if err != nil {
 		return nil, err
