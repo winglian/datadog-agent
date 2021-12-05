@@ -43,9 +43,9 @@ func parseMetaPath(rawMetaPath string) (metaPath, error) {
 }
 
 type metaVersionData struct {
-	Signed struct {
-		Version int
-	}
+	Signed *struct {
+		Version *uint64 `json:"version"`
+	} `json:"signed"`
 }
 
 func metaVersion(rawMeta json.RawMessage) (uint64, error) {
@@ -54,5 +54,8 @@ func metaVersion(rawMeta json.RawMessage) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return uint64(metaVersion.Signed.Version), nil
+	if metaVersion.Signed == nil || metaVersion.Signed.Version == nil {
+		return 0, fmt.Errorf("invalid meta: version field is missing")
+	}
+	return *metaVersion.Signed.Version, nil
 }
