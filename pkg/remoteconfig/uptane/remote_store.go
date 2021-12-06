@@ -28,7 +28,13 @@ type remoteStore struct {
 
 func newRemoteStore() remoteStore {
 	return remoteStore{
-		metas: make(map[role]map[uint64][]byte),
+		metas: map[role]map[uint64][]byte{
+			roleRoot:      make(map[uint64][]byte),
+			roleTargets:   make(map[uint64][]byte),
+			roleSnapshot:  make(map[uint64][]byte),
+			roleTimestamp: make(map[uint64][]byte),
+		},
+		targets: make(map[string][]byte),
 	}
 }
 
@@ -83,7 +89,6 @@ func (s *remoteStore) GetTarget(targetPath string) (stream io.ReadCloser, size i
 		return nil, 0, client.ErrNotFound{File: targetPath}
 	}
 	return ioutil.NopCloser(bytes.NewReader(target)), int64(len(target)), nil
-
 }
 
 type remoteStoreDirector struct {
