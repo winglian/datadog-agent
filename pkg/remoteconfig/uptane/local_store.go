@@ -27,6 +27,7 @@ type localStore struct {
 
 func newLocalStore(db *bbolt.DB, repository string, cacheKey string, initialRoots meta.EmbeddedRoots) (*localStore, error) {
 	s := &localStore{
+		db:          db,
 		metasBucket: []byte(fmt.Sprintf("%s_%s_metas", repository, cacheKey)),
 		rootsBucket: []byte(fmt.Sprintf("%s_%s_roots", repository, cacheKey)),
 	}
@@ -47,18 +48,17 @@ func (s *localStore) init(initialRoots meta.EmbeddedRoots) error {
 		if err != nil {
 			return fmt.Errorf("failed to create roots bucket: %v", err)
 		}
-		rootsBucket := tx.Bucket(s.rootsBucket)
 		for _, root := range initialRoots {
 			err := s.writeRoot(tx, json.RawMessage(root))
 			if err != nil {
 				return fmt.Errorf("failed set embeded root in roots bucket: %v", err)
 			}
 		}
-		metasBucket := tx.Bucket(s.rootsBucket)
+		metasBucket := tx.Bucket(s.metasBucket)
 		if metasBucket.Get([]byte(metaRoot)) == nil {
-			err := rootsBucket.Put([]byte(metaRoot), initialRoots.Last())
+			err := metasBucket.Put([]byte(metaRoot), initialRoots.Last())
 			if err != nil {
-				return fmt.Errorf("failed set embeded root in roots bucket: %v", err)
+				return fmt.Errorf("failed set embeded root in meta bucket: %v", err)
 			}
 		}
 		return nil
