@@ -1,6 +1,10 @@
 package meta
 
-import _ "embed"
+import (
+	_ "embed"
+
+	"github.com/DataDog/datadog-agent/pkg/config"
+)
 
 var (
 	//go:embed 1.director.json
@@ -22,13 +26,27 @@ var rootsConfig = EmbeddedRoots{
 }
 
 func RootsDirector() EmbeddedRoots {
+	if directorRoot := config.Datadog.GetString("remote_configuration.director_root"); directorRoot != "" {
+		return EmbeddedRoots{
+			1: EmbeddedRoot(directorRoot),
+		}
+	}
 	return rootsDirector
 }
 
 func RootsConfig() EmbeddedRoots {
+	if configRoot := config.Datadog.GetString("remote_configuration.config_root"); configRoot != "" {
+		return EmbeddedRoots{
+			1: EmbeddedRoot(configRoot),
+		}
+	}
 	return rootsConfig
 }
 
 func (roots EmbeddedRoots) Last() EmbeddedRoot {
-	return roots[uint64(len(roots))]
+	return roots[roots.LastVersion()]
+}
+
+func (roots EmbeddedRoots) LastVersion() uint64 {
+	return uint64(len(roots))
 }

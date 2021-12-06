@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
+	"github.com/pkg/errors"
 	"github.com/theupdateframework/go-tuf/client"
 	"go.etcd.io/bbolt"
 )
@@ -107,11 +108,11 @@ func (c *Client) updateRepos(response *pbgo.LatestConfigsResponse) error {
 	c.configRemoteStore.update(response)
 	_, err := c.directorTUFClient.Update()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not update director repository")
 	}
 	_, err = c.configTUFClient.Update()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not update config repository")
 	}
 	return nil
 }
