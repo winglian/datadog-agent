@@ -34,7 +34,7 @@ func (s *targetStore) init() error {
 	})
 }
 
-func (s *targetStore) storeTargetFiles(targetFiles []pbgo.File) error {
+func (s *targetStore) storeTargetFiles(targetFiles []*pbgo.File) error {
 	return s.db.Update(func(tx *bbolt.Tx) error {
 		targetBucket := tx.Bucket(s.targetBucket)
 		for _, target := range targetFiles {

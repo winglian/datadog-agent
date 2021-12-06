@@ -30,6 +30,8 @@ type Client struct {
 	directorLocalStore  *localStoreDirector
 	directorRemoteStore *remoteStoreDirector
 	directorTUFClient   *client.Client
+
+	targetStore *targetStore
 }
 
 func NewClient(cacheDB *bbolt.DB, cacheKey string, orgID int64) (*Client, error) {
@@ -41,12 +43,17 @@ func NewClient(cacheDB *bbolt.DB, cacheKey string, orgID int64) (*Client, error)
 	if err != nil {
 		return nil, err
 	}
+	targetStore, err := newTargetStore(cacheDB, cacheKey)
+	if err != nil {
+		return nil, err
+	}
 	c := &Client{
 		orgIDTargetPrefix:   fmt.Sprintf("%d/", orgID),
 		configLocalStore:    localStoreConfig,
 		configRemoteStore:   newRemoteStoreConfig(),
 		directorLocalStore:  localStoreDirector,
 		directorRemoteStore: newRemoteStoreDirector(),
+		targetStore:         targetStore,
 	}
 	c.configTUFClient = client.NewClient(c.configLocalStore, c.configRemoteStore)
 	c.directorTUFClient = client.NewClient(c.directorLocalStore, c.directorRemoteStore)
@@ -56,15 +63,19 @@ func NewClient(cacheDB *bbolt.DB, cacheKey string, orgID int64) (*Client, error)
 func (c *Client) Update(response *pbgo.LatestConfigsResponse) error {
 	c.Lock()
 	defer c.Unlock()
-	err := c.updateRepos(response)
+	err := c.targetStore.storeTargetFiles(response.TargetFiles)
 	if err != nil {
 		return err
 	}
-	err = c.verifyOrgID()
+	err = c.updateRepos(response)
 	if err != nil {
 		return err
 	}
-	return c.verifyUptane()
+	err = c.pruneTargetFiles()
+	if err != nil {
+		return err
+	}
+	return c.verify()
 }
 
 func (c *Client) State() (State, error) {
@@ -115,6 +126,26 @@ func (c *Client) updateRepos(response *pbgo.LatestConfigsResponse) error {
 		return errors.Wrap(err, "could not update config repository")
 	}
 	return nil
+}
+
+func (c *Client) pruneTargetFiles() error {
+	targetFiles, err := c.directorTUFClient.Targets()
+	if err != nil {
+		return err
+	}
+	var keptTargetFiles []string
+	for target := range targetFiles {
+		keptTargetFiles = append(keptTargetFiles, target)
+	}
+	return c.targetStore.pruneTargetFiles(keptTargetFiles)
+}
+
+func (c *Client) verify() error {
+	err := c.verifyOrgID()
+	if err != nil {
+		return err
+	}
+	return c.verifyUptane()
 }
 
 func (c *Client) verifyOrgID() error {

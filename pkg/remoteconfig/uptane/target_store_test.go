@@ -12,15 +12,15 @@ func TestTargetStore(t *testing.T) {
 	store, err := newTargetStore(db, "testcachekey")
 	assert.NoError(t, err)
 
-	target1 := pbgo.File{
+	target1 := &pbgo.File{
 		Path: "2/APM_SAMPLING/target1",
 		Raw:  []byte("target1content"),
 	}
-	target2 := pbgo.File{
+	target2 := &pbgo.File{
 		Path: "2/APM_SAMPLING/target2",
 		Raw:  []byte("target2content"),
 	}
-	target3 := pbgo.File{
+	target3 := &pbgo.File{
 		Path: "2/APM_SAMPLING/target3",
 		Raw:  []byte("target3content"),
 	}
@@ -28,7 +28,7 @@ func TestTargetStore(t *testing.T) {
 	_, err = store.getTargetFile(target1.Path)
 	assert.Error(t, err)
 
-	err = store.storeTargetFiles([]pbgo.File{target1, target2, target3})
+	err = store.storeTargetFiles([]*pbgo.File{target1, target2, target3})
 	assert.NoError(t, err)
 
 	returnedTarget1, err := store.getTargetFile(target1.Path)
