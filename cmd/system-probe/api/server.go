@@ -10,7 +10,6 @@ import (
 	"github.com/DataDog/datadog-agent/cmd/system-probe/config"
 	"github.com/DataDog/datadog-agent/cmd/system-probe/modules"
 	"github.com/DataDog/datadog-agent/cmd/system-probe/utils"
-	"github.com/DataDog/datadog-agent/pkg/process/net"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 	gorilla "github.com/gorilla/mux"
 )
@@ -26,11 +25,6 @@ func factoryByName(name config.ModuleName) (module.Factory, error) {
 
 // StartServer starts the HTTP server for the system-probe, which registers endpoints from all enabled modules.
 func StartServer(cfg *config.Config, moduleName config.ModuleName) error {
-	conn, err := net.NewListener(cfg.SocketAddress)
-	if err != nil {
-		return fmt.Errorf("error creating IPC socket: %s", err)
-	}
-
 	factory, err := factoryByName(moduleName)
 	if err != nil {
 		return fmt.Errorf("failed to start module %s: %s", moduleName, err)
@@ -42,8 +36,18 @@ func StartServer(cfg *config.Config, moduleName config.ModuleName) error {
 		return fmt.Errorf("failed to create system probe: %s", err)
 	}
 
+	// if a debug port is specified, we expose the default handler to that port
+	if cfg.DebugPort > 0 {
+		go func() {
+			err := http.ListenAndServe(fmt.Sprintf("localhost:%d", cfg.DebugPort), http.DefaultServeMux)
+			if err != nil && err != http.ErrServerClosed {
+				log.Errorf("Error creating debug HTTP server: %v", err)
+			}
+		}()
+	}
+
 	// Register stats endpoint
-	mux.HandleFunc("/debug/stats", func(w http.ResponseWriter, req *http.Request) {
+	mux.HandleFunc(fmt.Sprintf("/debug/%s/stats", moduleName), func(w http.ResponseWriter, req *http.Request) {
 		stats := module.GetStats()
 		utils.WriteAsJSON(w, stats)
 	})
@@ -51,9 +55,11 @@ func StartServer(cfg *config.Config, moduleName config.ModuleName) error {
 	setupConfigHandlers(mux)
 
 	// Module-restart handler
-	mux.HandleFunc("/module-restart/{module-name}", restartModuleHandler).Methods("POST")
+	if factory.RestartEnabled {
+		mux.HandleFunc(fmt.Sprintf("/module/%s/restart", moduleName), restartModuleHandler).Methods("POST")
+	}
 
-	mux.Handle("/debug/vars", http.DefaultServeMux)
+	mux.Handle(fmt.Sprintf("/debug/%s/vars", moduleName), http.DefaultServeMux)
 
 	go func() {
 		err = http.Serve(conn.GetListener(), mux)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -198,16 +197,6 @@ func StartSystemProbe() error {
 
 	if err := statsd.Configure(cfg.StatsdHost, cfg.StatsdPort); err != nil {
 		return log.Criticalf("Error configuring statsd: %s", err)
-	}
-
-	// if a debug port is specified, we expose the default handler to that port
-	if cfg.DebugPort > 0 {
-		go func() {
-			err := http.ListenAndServe(fmt.Sprintf("localhost:%d", cfg.DebugPort), http.DefaultServeMux)
-			if err != nil && err != http.ErrServerClosed {
-				log.Errorf("Error creating debug HTTP server: %v", err)
-			}
-		}()
 	}
 
 	if moduleName == "" {

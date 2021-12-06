@@ -34,34 +34,39 @@ type loader struct {
 	closed  bool
 }
 
+// NewModule initialize a new module
+func NewModule(cfg *config.Config, factory Factory) (Module, error) {
+	// TODO should be removed in profit of IsEnabled
+	if !cfg.ModuleIsEnabled(factory.Name) {
+		log.Infof("%s module disabled", factory.Name)
+		return nil, nil
+	}
+
+	module, err := factory.Ctor(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	if !module.IsEnabled() {
+		log.Infof("module `%s` not enabled", factory.Name)
+		return nil, nil
+	}
+
+	return module, nil
+}
+
 // Register a set of modules, which involves:
 // * Initialization using the provided Factory;
 // * Registering the HTTP endpoints of each module;
-func Register(cfg *config.Config, httpMux *mux.Router, factories ...Factory) error {
+func Register(cfg *config.Config, httpMux *mux.Router, module Module) error {
 	router := NewRouter(httpMux)
-	for _, factory := range factories {
-		if !cfg.ModuleIsEnabled(factory.Name) {
-			log.Infof("%s module disabled", factory.Name)
-			continue
-		}
 
-		module, err := factory.Fn(cfg)
-
-		// In case a module failed to be started, do not make the whole `system-probe` abort.
-		// Let `system-probe` run the other modules.
-		if err != nil {
-			l.errors[factory.Name] = err
-			log.Errorf("new module `%s` error: %s", factory.Name, err)
-			continue
-		}
 
 		if err = module.Register(router); err != nil {
 			l.errors[factory.Name] = err
 			log.Errorf("error registering HTTP endpoints for module `%s` error: %s", factory.Name, err)
 			continue
 		}
-
-		l.modules[factory.Name] = module
 
 		log.Infof("module: %s started", factory.Name)
 	}
@@ -88,7 +93,7 @@ func RestartModule(factory Factory) error {
 	l.Lock()
 	defer l.Unlock()
 
-	if l.closed == true {
+	if l.closed {
 		return fmt.Errorf("can't restart module because system-probe is shutting down")
 	}
 
@@ -98,7 +103,7 @@ func RestartModule(factory Factory) error {
 	}
 	currentModule.Close()
 
-	newModule, err := factory.Fn(l.cfg)
+	newModule, err := factory.Ctor(l.cfg)
 	if err != nil {
 		l.errors[factory.Name] = err
 		return err
@@ -120,7 +125,7 @@ func Close() {
 	l.Lock()
 	defer l.Unlock()
 
-	if l.closed == true {
+	if l.closed {
 		return
 	}
 
@@ -130,7 +135,7 @@ func Close() {
 	}
 }
 
-func updateStats() {
+func updateStats(module Module) {
 	start := time.Now()
 	then := time.Now()
 	ticker := time.NewTicker(10 * time.Second)
