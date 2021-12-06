@@ -28,8 +28,8 @@ type localStore struct {
 func newLocalStore(db *bbolt.DB, repository string, cacheKey string, initialRoots meta.EmbeddedRoots) (*localStore, error) {
 	s := &localStore{
 		db:          db,
-		metasBucket: []byte(fmt.Sprintf("%s_%s_metas", repository, cacheKey)),
-		rootsBucket: []byte(fmt.Sprintf("%s_%s_roots", repository, cacheKey)),
+		metasBucket: []byte(fmt.Sprintf("%s_%s_metas", cacheKey, repository)),
+		rootsBucket: []byte(fmt.Sprintf("%s_%s_roots", cacheKey, repository)),
 	}
 	err := s.init(initialRoots)
 	if err != nil {
