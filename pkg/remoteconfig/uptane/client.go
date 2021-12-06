@@ -92,13 +92,13 @@ func (c *Client) State() (State, error) {
 func (c *Client) TargetsMeta() ([]byte, error) {
 	c.Lock()
 	defer c.Unlock()
-	metas, err := c.configLocalStore.GetMeta()
+	metas, err := c.directorLocalStore.GetMeta()
 	if err != nil {
 		return nil, err
 	}
 	targets, found := metas[metaTargets]
 	if !found {
-		return nil, fmt.Errorf("empty targets meta in local store")
+		return nil, fmt.Errorf("empty targets meta in director local store")
 	}
 	return targets, nil
 }
