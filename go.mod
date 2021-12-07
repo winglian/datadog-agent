@@ -15,16 +15,11 @@ retract (
 // See https://github.com/DataDog/datadog-agent/blob/main/docs/dev/gomodreplace.md
 // for more details.
 
-// Internal deps fix version
+// TODO: Document remove these
 replace (
 	github.com/cihub/seelog => github.com/cihub/seelog v0.0.0-20151216151435-d2c6e5aa9fbf // v2.6
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20180202092358-40e2722dffea
-	github.com/docker/distribution => github.com/docker/distribution v2.7.1-0.20190104202606-0ac367fd6bee+incompatible
-	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.1
-	github.com/lxn/walk => github.com/lxn/walk v0.0.0-20180521183810-02935bac0ab8
-	github.com/mholt/archiver => github.com/mholt/archiver v2.0.1-0.20171012052341-26cf5bb32d07+incompatible
 	github.com/spf13/cast => github.com/DataDog/cast v1.3.1-0.20190301154711-1ee8c8bd14a3
-	github.com/ugorji/go => github.com/ugorji/go v1.1.7
 )
 
 // pinned to grpc v1.28.0
@@ -154,7 +149,7 @@ require (
 	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/kubernetes-sigs/custom-metrics-apiserver v0.0.0-20210311094424-0ca2b1909cdc
 	github.com/lib/pq v1.10.0 // indirect
-	github.com/lxn/walk v0.0.0-20191128110447-55ccb3a9f5c1
+	github.com/lxn/walk v0.0.0-20180521183810-02935bac0ab8
 	github.com/lxn/win v0.0.0-20191128105842-2da648fda5b4
 	github.com/mailru/easyjson v0.7.7
 	github.com/mattn/go-runewidth v0.0.13 // indirect
