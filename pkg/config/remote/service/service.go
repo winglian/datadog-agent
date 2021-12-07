@@ -157,33 +157,11 @@ func getTargetProduct(path string) (pbgo.Product, error) {
 }
 
 func (s *Service) refreshSubscriber(subscriber *Subscriber) error {
-	currentTargets, err := s.uptane.Targets()
+	configResponse, err := s.GetConfigs(subscriber.product)
 	if err != nil {
 		return err
 	}
-	var targetFiles []*pbgo.File
-	for targetPath := range currentTargets {
-		product, err := getTargetProduct(targetPath)
-		if err != nil {
-			return err
-		}
-		if subscriber.product == product {
-			targetContent, err := s.uptane.TargetFile(targetPath)
-			if err != nil {
-				return err
-			}
-			targetFiles = append(targetFiles, &pbgo.File{
-				Path: targetPath,
-				Raw:  targetContent,
-			})
-		}
-	}
-
-	configResponse := &pbgo.ConfigResponse{
-		TargetFiles: targetFiles,
-	}
 	log.Debugf("Notifying subscriber %s with version %d", subscriber.product, configResponse.DirectoryTargets.Version)
-
 	if err := subscriber.callback(configResponse); err != nil {
 		return err
 	}
@@ -192,6 +170,33 @@ func (s *Service) refreshSubscriber(subscriber *Subscriber) error {
 	subscriber.lastVersion = configResponse.DirectoryTargets.Version
 
 	return nil
+}
+
+func (s *Service) GetConfigs(product pbgo.Product) (*pbgo.ConfigResponse, error) {
+	currentTargets, err := s.uptane.Targets()
+	if err != nil {
+		return nil, err
+	}
+	var targetFiles []*pbgo.File
+	for targetPath := range currentTargets {
+		p, err := getTargetProduct(targetPath)
+		if err != nil {
+			return nil, err
+		}
+		if product == p {
+			targetContent, err := s.uptane.TargetFile(targetPath)
+			if err != nil {
+				return nil, err
+			}
+			targetFiles = append(targetFiles, &pbgo.File{
+				Path: targetPath,
+				Raw:  targetContent,
+			})
+		}
+	}
+	return &pbgo.ConfigResponse{
+		TargetFiles: targetFiles,
+	}, nil
 }
 
 func (s *Service) RegisterSubscriber(subscriber *Subscriber) {
