@@ -9,6 +9,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
 	"github.com/pkg/errors"
 	"github.com/theupdateframework/go-tuf/client"
+	"github.com/theupdateframework/go-tuf/data"
 	"go.etcd.io/bbolt"
 )
 
@@ -94,6 +95,12 @@ func (c *Client) State() (State, error) {
 		ConfigSnapshotVersion: configSnapshotVersion,
 		DirectorRootVersion:   directorRootVersion,
 	}, nil
+}
+
+func (c *Client) Targets() (data.TargetFiles, error) {
+	c.Lock()
+	defer c.Unlock()
+	return c.directorTUFClient.Targets()
 }
 
 func (c *Client) TargetsMeta() ([]byte, error) {

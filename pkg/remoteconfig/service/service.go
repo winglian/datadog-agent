@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
@@ -41,7 +42,7 @@ type Service struct {
 	products    map[pbgo.Product]struct{}
 	newProducts map[pbgo.Product]struct{}
 
-	subscribers []Subscriber
+	subscribers []*Subscriber
 }
 
 // NewService instantiates a new remote configuration management service
@@ -132,20 +133,8 @@ func (s *Service) refresh() error {
 		s.products[product] = struct{}{}
 	}
 	s.newProducts = make(map[pbgo.Product]struct{})
-	currentState, err := s.uptane.State()
-	if err != nil {
-		return err
-	}
-	currentTargets, err := s.uptane.TargetsMeta()
-	if err != nil {
-		return err
-	}
-	subscriberUpdate := SubscriberUpdate{
-		RootVersion: currentState.DirectorRootVersion,
-		Targets:     currentTargets,
-	}
 	for _, subscriber := range s.subscribers {
-		err := subscriber.Notify(subscriberUpdate)
+		err := s.refreshSubscriber(subscriber)
 		if err != nil {
 			log.Errorf("could not notify a remote-config subscriber: %v", err)
 		}
@@ -153,22 +142,72 @@ func (s *Service) refresh() error {
 	return nil
 }
 
-func (s *Service) Subscribe(subscriber Subscriber, products []pbgo.Product) {
+// TODO(Arthur): finish refactoring subscribers
+
+func getTargetProduct(path string) (pbgo.Product, error) {
+	splits := strings.SplitN(path, "/", 3)
+	if len(splits) < 3 {
+		return pbgo.Product(0), fmt.Errorf("failed to determine product for target file %s", path)
+	}
+	product, found := pbgo.Product_value[splits[1]]
+	if !found {
+		return pbgo.Product(0), fmt.Errorf("failed to determine product for target file %s", path)
+	}
+	return pbgo.Product(product), nil
+}
+
+func (s *Service) refreshSubscriber(subscriber *Subscriber) error {
+	currentTargets, err := s.uptane.Targets()
+	if err != nil {
+		return err
+	}
+	var targetFiles []*pbgo.File
+	for targetPath := range currentTargets {
+		product, err := getTargetProduct(targetPath)
+		if err != nil {
+			return err
+		}
+		if subscriber.product == product {
+			targetContent, err := s.uptane.TargetFile(targetPath)
+			if err != nil {
+				return err
+			}
+			targetFiles = append(targetFiles, &pbgo.File{
+				Path: targetPath,
+				Raw:  targetContent,
+			})
+		}
+	}
+
+	configResponse := &pbgo.ConfigResponse{
+		TargetFiles: targetFiles,
+	}
+	log.Debugf("Notifying subscriber %s with version %d", subscriber.product, configResponse.DirectoryTargets.Version)
+
+	if err := subscriber.callback(configResponse); err != nil {
+		return err
+	}
+
+	subscriber.lastUpdate = time.Now()
+	subscriber.lastVersion = configResponse.DirectoryTargets.Version
+
+	return nil
+}
+
+func (s *Service) RegisterSubscriber(subscriber *Subscriber) {
 	s.Lock()
 	defer s.Unlock()
 	s.subscribers = append(s.subscribers, subscriber)
-	for _, product := range products {
-		if _, ok := s.products[product]; ok {
-			continue
-		}
-		s.newProducts[product] = struct{}{}
+	if _, ok := s.products[subscriber.product]; ok {
+		return
 	}
+	s.newProducts[subscriber.product] = struct{}{}
 }
 
-func (s *Service) Unsubscribe(subscriber Subscriber) {
+func (s *Service) UnregisterSubscriber(subscriber *Subscriber) {
 	s.Lock()
 	defer s.Unlock()
-	var subscribers []Subscriber
+	var subscribers []*Subscriber
 	for _, sub := range s.subscribers {
 		if sub != subscriber {
 			subscribers = append(subscribers, sub)

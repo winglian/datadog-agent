@@ -43,12 +43,3 @@ func parseRemoteConfigKey(rawKey string) (remoteConfigKey, error) {
 		datacenter: split[0],
 	}, nil
 }
-
-func getTargetProduct(path string) (string, error) {
-	splits := strings.SplitN(path, "/", 3)
-	if len(splits) < 3 {
-		return "", fmt.Errorf("Failed to determine product for target file %s", path)
-	}
-
-	return splits[1], nil
-}
