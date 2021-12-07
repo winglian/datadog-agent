@@ -80,7 +80,6 @@ func (s *remoteStore) GetMeta(path string) (io.ReadCloser, int64, error) {
 // GetMeta implements go-tuf's RemoteStore.GetTarget
 // See https://pkg.go.dev/github.com/theupdateframework/go-tuf@v0.0.0-20211130162850-52193a283c30/client#RemoteStore
 func (s *remoteStore) GetTarget(targetPath string) (stream io.ReadCloser, size int64, err error) {
-	targetPath = trimHashTargetPath(targetPath)
 	target, err := s.targetStore.getTargetFile(targetPath)
 	if err != nil {
 		return nil, 0, client.ErrNotFound{File: targetPath}

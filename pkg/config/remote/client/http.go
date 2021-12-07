@@ -65,7 +65,7 @@ func (c *HTTPClient) Fetch(ctx context.Context, state uptane.State, products map
 	newProductsList := make([]pbgo.Product, len(newProducts))
 	i = 0
 	for k := range newProducts {
-		productsList[i] = k
+		newProductsList[i] = k
 		i++
 	}
 

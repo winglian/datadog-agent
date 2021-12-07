@@ -125,6 +125,7 @@ func (s *Service) refresh() error {
 	if err != nil {
 		return err
 	}
+	log.Infof("refresh: %s", len(response.TargetFiles))
 	err = s.uptane.Update(response)
 	if err != nil {
 		return err
@@ -161,13 +162,11 @@ func (s *Service) refreshSubscriber(subscriber *Subscriber) error {
 	if err != nil {
 		return err
 	}
-	log.Debugf("Notifying subscriber %s with version %d", subscriber.product, configResponse.DirectoryTargets.Version)
 	if err := subscriber.callback(configResponse); err != nil {
 		return err
 	}
 
 	subscriber.lastUpdate = time.Now()
-	subscriber.lastVersion = configResponse.DirectoryTargets.Version
 
 	return nil
 }

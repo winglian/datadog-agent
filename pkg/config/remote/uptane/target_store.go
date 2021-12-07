@@ -38,7 +38,7 @@ func (s *targetStore) storeTargetFiles(targetFiles []*pbgo.File) error {
 	return s.db.Update(func(tx *bbolt.Tx) error {
 		targetBucket := tx.Bucket(s.targetBucket)
 		for _, target := range targetFiles {
-			err := targetBucket.Put([]byte(target.Path), target.Raw)
+			err := targetBucket.Put([]byte(trimHashTargetPath(target.Path)), target.Raw)
 			if err != nil {
 				return err
 			}
@@ -51,7 +51,7 @@ func (s *targetStore) getTargetFile(path string) ([]byte, error) {
 	var target []byte
 	err := s.db.View(func(tx *bbolt.Tx) error {
 		targetBucket := tx.Bucket(s.targetBucket)
-		t := targetBucket.Get([]byte(path))
+		t := targetBucket.Get([]byte(trimHashTargetPath(path)))
 		target = append(target, t...)
 		return nil
 	})
