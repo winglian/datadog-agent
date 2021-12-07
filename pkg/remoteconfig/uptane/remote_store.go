@@ -22,11 +22,11 @@ const (
 // Its goal is to serve TUF metadata updates comming to the backend in a way go-tuf understands
 // See https://pkg.go.dev/github.com/theupdateframework/go-tuf@v0.0.0-20211130162850-52193a283c30/client#RemoteStore
 type remoteStore struct {
-	metas   map[role]map[uint64][]byte
-	targets map[string][]byte
+	targetStore *targetStore
+	metas       map[role]map[uint64][]byte
 }
 
-func newRemoteStore() remoteStore {
+func newRemoteStore(targetStore *targetStore) remoteStore {
 	return remoteStore{
 		metas: map[role]map[uint64][]byte{
 			roleRoot:      make(map[uint64][]byte),
@@ -34,12 +34,8 @@ func newRemoteStore() remoteStore {
 			roleSnapshot:  make(map[uint64][]byte),
 			roleTimestamp: make(map[uint64][]byte),
 		},
-		targets: make(map[string][]byte),
+		targetStore: targetStore,
 	}
-}
-
-func (s *remoteStore) resetTargets() {
-	s.targets = make(map[string][]byte)
 }
 
 func (s *remoteStore) resetRole(r role) {
@@ -84,8 +80,9 @@ func (s *remoteStore) GetMeta(path string) (io.ReadCloser, int64, error) {
 // GetMeta implements go-tuf's RemoteStore.GetTarget
 // See https://pkg.go.dev/github.com/theupdateframework/go-tuf@v0.0.0-20211130162850-52193a283c30/client#RemoteStore
 func (s *remoteStore) GetTarget(targetPath string) (stream io.ReadCloser, size int64, err error) {
-	target, found := s.targets[targetPath]
-	if !found {
+	targetPath = trimHashTargetPath(targetPath)
+	target, err := s.targetStore.getTargetFile(targetPath)
+	if err != nil {
 		return nil, 0, client.ErrNotFound{File: targetPath}
 	}
 	return ioutil.NopCloser(bytes.NewReader(target)), int64(len(target)), nil
@@ -95,17 +92,13 @@ type remoteStoreDirector struct {
 	remoteStore
 }
 
-func newRemoteStoreDirector() *remoteStoreDirector {
-	return &remoteStoreDirector{remoteStore: newRemoteStore()}
+func newRemoteStoreDirector(targetStore *targetStore) *remoteStoreDirector {
+	return &remoteStoreDirector{remoteStore: newRemoteStore(targetStore)}
 }
 
 func (sd *remoteStoreDirector) update(update *pbgo.LatestConfigsResponse) {
 	if update == nil {
 		return
-	}
-	sd.resetTargets()
-	for _, target := range update.TargetFiles {
-		sd.targets[target.Path] = target.Raw
 	}
 	if update.DirectorMetas == nil {
 		return
@@ -132,17 +125,15 @@ type remoteStoreConfig struct {
 	remoteStore
 }
 
-func newRemoteStoreConfig() *remoteStoreConfig {
-	return &remoteStoreConfig{remoteStore: newRemoteStore()}
+func newRemoteStoreConfig(targetStore *targetStore) *remoteStoreConfig {
+	return &remoteStoreConfig{
+		remoteStore: newRemoteStore(targetStore),
+	}
 }
 
 func (sc *remoteStoreConfig) update(update *pbgo.LatestConfigsResponse) {
 	if update == nil {
 		return
-	}
-	sc.resetTargets()
-	for _, target := range update.TargetFiles {
-		sc.targets[target.Path] = target.Raw
 	}
 	if update.ConfigMetas == nil {
 		return

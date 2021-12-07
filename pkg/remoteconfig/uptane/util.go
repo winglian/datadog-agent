@@ -3,6 +3,7 @@ package uptane
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -58,4 +59,13 @@ func metaVersion(rawMeta json.RawMessage) (uint64, error) {
 		return 0, fmt.Errorf("invalid meta: version field is missing")
 	}
 	return *metaVersion.Signed.Version, nil
+}
+
+func trimHashTargetPath(path string) string {
+	basename := filepath.Base(path)
+	split := strings.SplitN(basename, ".", 2)
+	if len(split) > 1 {
+		basename = split[1]
+	}
+	return filepath.Join(filepath.Dir(path), basename)
 }

@@ -50,9 +50,9 @@ func NewClient(cacheDB *bbolt.DB, cacheKey string, orgID int64) (*Client, error)
 	c := &Client{
 		orgIDTargetPrefix:   fmt.Sprintf("%d/", orgID),
 		configLocalStore:    localStoreConfig,
-		configRemoteStore:   newRemoteStoreConfig(),
+		configRemoteStore:   newRemoteStoreConfig(targetStore),
 		directorLocalStore:  localStoreDirector,
-		directorRemoteStore: newRemoteStoreDirector(),
+		directorRemoteStore: newRemoteStoreDirector(targetStore),
 		targetStore:         targetStore,
 	}
 	c.configTUFClient = client.NewClient(c.configLocalStore, c.configRemoteStore)
@@ -63,11 +63,7 @@ func NewClient(cacheDB *bbolt.DB, cacheKey string, orgID int64) (*Client, error)
 func (c *Client) Update(response *pbgo.LatestConfigsResponse) error {
 	c.Lock()
 	defer c.Unlock()
-	err := c.targetStore.storeTargetFiles(response.TargetFiles)
-	if err != nil {
-		return err
-	}
-	err = c.updateRepos(response)
+	err := c.updateRepos(response)
 	if err != nil {
 		return err
 	}
@@ -114,10 +110,35 @@ func (c *Client) TargetsMeta() ([]byte, error) {
 	return targets, nil
 }
 
+type bufferDestination struct {
+	bytes.Buffer
+}
+
+func (b *bufferDestination) Delete() error {
+	return nil
+}
+
+func (c *Client) TargetFile(path string) ([]byte, error) {
+	err := c.verify()
+	if err != nil {
+		return nil, err
+	}
+	buffer := &bufferDestination{}
+	err = c.configTUFClient.Download(path, buffer)
+	if err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
+}
+
 func (c *Client) updateRepos(response *pbgo.LatestConfigsResponse) error {
+	err := c.targetStore.storeTargetFiles(response.TargetFiles)
+	if err != nil {
+		return err
+	}
 	c.directorRemoteStore.update(response)
 	c.configRemoteStore.update(response)
-	_, err := c.directorTUFClient.Update()
+	_, err = c.directorTUFClient.Update()
 	if err != nil {
 		return errors.Wrap(err, "could not update director repository")
 	}

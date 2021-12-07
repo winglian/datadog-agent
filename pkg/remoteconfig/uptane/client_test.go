@@ -16,7 +16,7 @@ import (
 )
 
 func TestClientState(t *testing.T) {
-	testRepository1 := newTestRepository(1, nil, nil)
+	testRepository1 := newTestRepository(1, nil, nil, nil)
 	config.Datadog.Set("remote_configuration.director_root", testRepository1.directorRoot)
 	config.Datadog.Set("remote_configuration.config_root", testRepository1.configRoot)
 
@@ -72,7 +72,7 @@ func TestClientState(t *testing.T) {
 }
 
 func TestClientVerifyTUF(t *testing.T) {
-	testRepository1 := newTestRepository(1, nil, nil)
+	testRepository1 := newTestRepository(1, nil, nil, nil)
 	config.Datadog.Set("remote_configuration.director_root", testRepository1.directorRoot)
 	config.Datadog.Set("remote_configuration.config_root", testRepository1.configRoot)
 
@@ -96,8 +96,8 @@ func TestClientVerifyTUF(t *testing.T) {
 func TestClientVerifyUptane(t *testing.T) {
 	db := getTestDB()
 
-	target1 := generateTarget()
-	target2 := generateTarget()
+	target1content, target1 := generateTarget()
+	target2content, target2 := generateTarget()
 	configTargets1 := data.TargetFiles{
 		"2/APM_SAMPLING/1": target1,
 		"2/APM_SAMPLING/2": target2,
@@ -112,16 +112,17 @@ func TestClientVerifyUptane(t *testing.T) {
 		"2/APM_SAMPLING/1": target1,
 		"2/APM_SAMPLING/2": target2,
 	}
+	target3content, target3 := generateTarget()
 	configTargets3 := data.TargetFiles{
 		"2/APM_SAMPLING/1": target1,
 		"2/APM_SAMPLING/2": target2,
 	}
 	directorTargets3 := data.TargetFiles{
-		"2/APM_SAMPLING/1": generateTarget(),
+		"2/APM_SAMPLING/1": target3,
 	}
-	testRepositoryValid := newTestRepository(1, configTargets1, directorTargets1)
-	testRepositoryInvalid1 := newTestRepository(1, configTargets2, directorTargets2)
-	testRepositoryInvalid2 := newTestRepository(1, configTargets3, directorTargets3)
+	testRepositoryValid := newTestRepository(1, configTargets1, directorTargets1, []*pbgo.File{{Path: "2/APM_SAMPLING/1", Raw: target1content}})
+	testRepositoryInvalid1 := newTestRepository(1, configTargets2, directorTargets2, []*pbgo.File{{Path: "2/APM_SAMPLING/1", Raw: target1content}, {Path: "2/APM_SAMPLING/2", Raw: target2content}})
+	testRepositoryInvalid2 := newTestRepository(1, configTargets3, directorTargets3, []*pbgo.File{{Path: "2/APM_SAMPLING/1", Raw: target3content}})
 
 	config.Datadog.Set("remote_configuration.director_root", testRepositoryValid.directorRoot)
 	config.Datadog.Set("remote_configuration.config_root", testRepositoryValid.configRoot)
@@ -129,12 +130,17 @@ func TestClientVerifyUptane(t *testing.T) {
 	assert.NoError(t, err)
 	err = client1.Update(testRepositoryValid.toUpdate())
 	assert.NoError(t, err)
+	targetFile, err := client1.TargetFile("2/APM_SAMPLING/1")
+	assert.NoError(t, err)
+	assert.Equal(t, target1content, targetFile)
 
 	config.Datadog.Set("remote_configuration.director_root", testRepositoryInvalid1.directorRoot)
 	config.Datadog.Set("remote_configuration.config_root", testRepositoryInvalid1.configRoot)
 	client2, err := NewClient(db, "testcachekey2", 2)
 	assert.NoError(t, err)
 	err = client2.Update(testRepositoryInvalid1.toUpdate())
+	assert.Error(t, err)
+	_, err = client1.TargetFile("2/APM_SAMPLING/2")
 	assert.Error(t, err)
 
 	config.Datadog.Set("remote_configuration.director_root", testRepositoryInvalid2.directorRoot)
@@ -143,13 +149,15 @@ func TestClientVerifyUptane(t *testing.T) {
 	assert.NoError(t, err)
 	err = client3.Update(testRepositoryInvalid2.toUpdate())
 	assert.Error(t, err)
+	_, err = client3.TargetFile("2/APM_SAMPLING/1")
+	assert.Error(t, err)
 }
 
 func TestClientVerifyOrgID(t *testing.T) {
 	db := getTestDB()
 
-	target1 := generateTarget()
-	target2 := generateTarget()
+	_, target1 := generateTarget()
+	_, target2 := generateTarget()
 	configTargets1 := data.TargetFiles{
 		"2/APM_SAMPLING/1": target1,
 		"2/APM_SAMPLING/2": target2,
@@ -164,8 +172,8 @@ func TestClientVerifyOrgID(t *testing.T) {
 	directorTargets2 := data.TargetFiles{
 		"3/APM_SAMPLING/1": target1,
 	}
-	testRepositoryValid := newTestRepository(1, configTargets1, directorTargets1)
-	testRepositoryInvalid := newTestRepository(1, configTargets2, directorTargets2)
+	testRepositoryValid := newTestRepository(1, configTargets1, directorTargets1, nil)
+	testRepositoryInvalid := newTestRepository(1, configTargets2, directorTargets2, nil)
 
 	config.Datadog.Set("remote_configuration.director_root", testRepositoryValid.directorRoot)
 	config.Datadog.Set("remote_configuration.config_root", testRepositoryValid.configRoot)
@@ -214,9 +222,11 @@ type testRepositories struct {
 	directorTargets   []byte
 	directorSnapshot  []byte
 	directorRoot      []byte
+
+	targetFiles []*pbgo.File
 }
 
-func newTestRepository(version int, configTargets data.TargetFiles, directorTargets data.TargetFiles) testRepositories {
+func newTestRepository(version int, configTargets data.TargetFiles, directorTargets data.TargetFiles, targetFiles []*pbgo.File) testRepositories {
 	repos := testRepositories{
 		configTimestampKey:   generateKey(),
 		configTargetsKey:     generateKey(),
@@ -226,6 +236,7 @@ func newTestRepository(version int, configTargets data.TargetFiles, directorTarg
 		directorTargetsKey:   generateKey(),
 		directorSnapshotKey:  generateKey(),
 		directorRootKey:      generateKey(),
+		targetFiles:          targetFiles,
 	}
 	repos.configRootVersion = version
 	repos.configTimestampVersion = 10 + version
@@ -260,6 +271,7 @@ func (r testRepositories) toUpdate() *pbgo.LatestConfigsResponse {
 			Snapshot:  &pbgo.TopMeta{Version: uint64(r.directorSnapshotVersion), Raw: r.directorSnapshot},
 			Targets:   &pbgo.TopMeta{Version: uint64(r.directorTargetsVersion), Raw: r.directorTargets},
 		},
+		TargetFiles: r.targetFiles,
 	}
 }
 
@@ -330,10 +342,10 @@ func hashSha256(data []byte) []byte {
 	return hash[:]
 }
 
-func generateTarget() data.TargetFileMeta {
+func generateTarget() ([]byte, data.TargetFileMeta) {
 	file := make([]byte, 128)
 	rand.Read(file)
-	return data.TargetFileMeta{
+	return file, data.TargetFileMeta{
 		FileMeta: data.FileMeta{
 			Length: int64(len(file)),
 			Hashes: data.Hashes{

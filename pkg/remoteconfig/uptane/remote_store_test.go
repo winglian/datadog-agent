@@ -87,9 +87,13 @@ func generateUpdate(baseVersion uint64) *pbgo.LatestConfigsResponse {
 }
 
 func TestRemoteStoreConfig(t *testing.T) {
-	store := newRemoteStoreConfig()
+	db := getTestDB()
+	targetStore, err := newTargetStore(db, "testcachekey")
+	assert.NoError(t, err)
+	store := newRemoteStoreConfig(targetStore)
 
 	testUpdate1 := generateUpdate(1)
+	targetStore.storeTargetFiles(testUpdate1.TargetFiles)
 	store.update(testUpdate1)
 
 	// Checking that timestamp is the only role allowed to perform version-less retrivals
@@ -113,6 +117,7 @@ func TestRemoteStoreConfig(t *testing.T) {
 	}
 
 	testUpdate2 := generateUpdate(2)
+	targetStore.storeTargetFiles(testUpdate2.TargetFiles)
 	store.update(testUpdate2)
 
 	// Checking that update1 metas got properly evicted
@@ -123,7 +128,7 @@ func TestRemoteStoreConfig(t *testing.T) {
 		assertGetMeta(t, &store.remoteStore, fmt.Sprintf("%d.%s.json", delegatedTarget.Version, delegatedTarget.Role), nil, client.ErrNotFound{File: fmt.Sprintf("%d.%s.json", delegatedTarget.Version, delegatedTarget.Role)})
 	}
 	for _, target := range testUpdate1.TargetFiles {
-		assertGetTarget(t, &store.remoteStore, target.Path, nil, client.ErrNotFound{File: target.Path})
+		assertGetTarget(t, &store.remoteStore, target.Path, target.Raw, nil)
 	}
 
 	// Checking that update1 roots got retained
@@ -147,9 +152,13 @@ func TestRemoteStoreConfig(t *testing.T) {
 }
 
 func TestRemoteStoreDirector(t *testing.T) {
-	store := newRemoteStoreDirector()
+	db := getTestDB()
+	targetStore, err := newTargetStore(db, "testcachekey")
+	assert.NoError(t, err)
+	store := newRemoteStoreDirector(targetStore)
 
 	testUpdate1 := generateUpdate(1)
+	targetStore.storeTargetFiles(testUpdate1.TargetFiles)
 	store.update(testUpdate1)
 
 	// Checking that timestamp is the only role allowed to perform version-less retrivals
@@ -170,6 +179,7 @@ func TestRemoteStoreDirector(t *testing.T) {
 	}
 
 	testUpdate2 := generateUpdate(2)
+	targetStore.storeTargetFiles(testUpdate2.TargetFiles)
 	store.update(testUpdate2)
 
 	// Checking that update1 metas got properly evicted
@@ -177,7 +187,7 @@ func TestRemoteStoreDirector(t *testing.T) {
 	assertGetMeta(t, &store.remoteStore, fmt.Sprintf("%d.snapshot.json", testUpdate1.DirectorMetas.Snapshot.Version), nil, client.ErrNotFound{File: fmt.Sprintf("%d.snapshot.json", testUpdate1.DirectorMetas.Snapshot.Version)})
 	assertGetMeta(t, &store.remoteStore, fmt.Sprintf("%d.targets.json", testUpdate1.DirectorMetas.Targets.Version), nil, client.ErrNotFound{File: fmt.Sprintf("%d.targets.json", testUpdate1.DirectorMetas.Targets.Version)})
 	for _, target := range testUpdate1.TargetFiles {
-		assertGetTarget(t, &store.remoteStore, target.Path, nil, client.ErrNotFound{File: target.Path})
+		assertGetTarget(t, &store.remoteStore, target.Path, target.Raw, nil)
 	}
 
 	// Checking that update1 roots got retained
