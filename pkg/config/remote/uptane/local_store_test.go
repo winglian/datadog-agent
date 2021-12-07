@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/DataDog/datadog-agent/pkg/remoteconfig/meta"
+	"github.com/DataDog/datadog-agent/pkg/config/remote/meta"
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/bbolt"
 )
