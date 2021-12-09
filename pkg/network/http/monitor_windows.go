@@ -53,7 +53,7 @@ func NewDriverMonitor(c *config.Config) (Monitor, error) {
 	return &DriverMonitor{
 		di:         di,
 		telemetry:  telemetry,
-		statkeeper: newHTTPStatkeeper(c.MaxHTTPStatsBuffered, telemetry),
+		statkeeper: newHTTPStatkeeper(c, telemetry),
 	}, nil
 }
 

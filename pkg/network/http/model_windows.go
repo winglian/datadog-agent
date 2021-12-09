@@ -42,6 +42,12 @@ func (tx *httpTX) Incomplete() bool {
 	return tx.RequestStarted == 0 || tx.ResponseStatusCode == 0
 }
 
+// partsCanBeJoined verifies if the request, response pair belong to the same transaction and can 
+// therefore be joined together
+func partsCanBeJoined(request, response httpTX) bool {
+	return request.RequestStarted != 0 && response.ResponseStatusCode != 0 && request.RequestStarted <= response.ResponseLastSeen 
+}
+
 func (tx *httpTX) SrcIPLow() uint64 {
 	return binary.BigEndian.Uint64(tx.Tup.Saddr[:8])
 }

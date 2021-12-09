@@ -21,7 +21,10 @@ func TestHTTPMonitorIntegration(t *testing.T) {
 }
 
 func testHTTPMonitor(t *testing.T, targetAddr, serverAddr string, numReqs int) {
-	srvDoneFn := testutil.HTTPServer(t, serverAddr, false)
+	srvDoneFn := testutil.HTTPServer(t, serverAddr, testutil.Options{
+		EnableTLS:        false,
+		EnableKeepAlives: false,
+	})
 	defer srvDoneFn()
 
 	di, err := newDriverInterface()
@@ -31,7 +34,7 @@ func testHTTPMonitor(t *testing.T, targetAddr, serverAddr string, numReqs int) {
 	monitor := &DriverMonitor{
 		di:         di,
 		telemetry:  telemetry,
-		statkeeper: newHTTPStatkeeper(config.New().MaxHTTPStatsBuffered, telemetry),
+		statkeeper: newHTTPStatkeeper(config.New(), telemetry),
 	}
 
 	monitor.Start()
