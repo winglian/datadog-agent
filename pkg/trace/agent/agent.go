@@ -7,6 +7,7 @@ package agent
 
 import (
 	"context"
+	"github.com/DataDog/datadog-agent/pkg/trace/pipeline"
 	"runtime"
 	"sync/atomic"
 	"time"
@@ -50,6 +51,7 @@ type Agent struct {
 	EventProcessor        *event.Processor
 	TraceWriter           *writer.TraceWriter
 	StatsWriter           *writer.StatsWriter
+	PipelineStatsWriter           *writer.PipelineStatsWriter
 
 	// obfuscator is used to obfuscate sensitive data from various span
 	// tags based on their type.
@@ -91,11 +93,12 @@ func NewAgent(ctx context.Context, conf *config.AgentConfig) *Agent {
 		StatsWriter:           writer.NewStatsWriter(conf, statsChan),
 		obfuscator:            obfuscate.NewObfuscator(oconf),
 		cardObfuscator:        newCreditCardsObfuscator(conf.Obfuscation.CreditCards),
+		PipelineStatsWriter:           writer.NewPipelineStatsWriter(conf),
 		In:                    in,
 		conf:                  conf,
 		ctx:                   ctx,
 	}
-	agnt.Receiver = api.NewHTTPReceiver(conf, dynConf, in, agnt)
+	agnt.Receiver = api.NewHTTPReceiver(conf, dynConf, in, agnt, agnt)
 	agnt.OTLPReceiver = api.NewOTLPReceiver(in, conf.OTLPReceiver)
 	return agnt
 }
@@ -117,6 +120,7 @@ func (a *Agent) Run() {
 
 	go a.TraceWriter.Run()
 	go a.StatsWriter.Run()
+	go a.PipelineStatsWriter.Run()
 
 	for i := 0; i < runtime.NumCPU(); i++ {
 		go a.work()
@@ -169,6 +173,7 @@ func (a *Agent) loop() {
 				a.ClientStatsAggregator,
 				a.TraceWriter,
 				a.StatsWriter,
+				a.PipelineStatsWriter,
 				a.PrioritySampler,
 				a.ErrorsSampler,
 				a.NoPrioritySampler,
@@ -390,6 +395,11 @@ func mergeDuplicates(s pb.ClientStatsBucket) {
 // ProcessStats processes incoming client stats in from the given tracer.
 func (a *Agent) ProcessStats(in pb.ClientStatsPayload, lang, tracerVersion string) {
 	a.ClientStatsAggregator.In <- a.processStats(in, lang, tracerVersion)
+}
+
+// ProcessPipelineStats processes incoming client pipeline stats in from the given tracer.
+func (a *Agent) ProcessPipelineStats(in pipeline.ClientStatsPayload) {
+	a.PipelineStatsWriter.In <- in
 }
 
 // sample reports the number of events found in pt and whether the chunk should be kept as a trace.

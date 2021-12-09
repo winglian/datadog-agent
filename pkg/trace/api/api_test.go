@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/DataDog/datadog-agent/pkg/trace/pipeline"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -49,11 +50,15 @@ type noopStatsProcessor struct{}
 
 func (noopStatsProcessor) ProcessStats(_ pb.ClientStatsPayload, _, _ string) {}
 
+type noopPipelineStatsProcessor struct{}
+
+func (noopPipelineStatsProcessor) ProcessPipelineStats(_ pipeline.ClientStatsPayload) {}
+
 func newTestReceiverFromConfig(conf *config.AgentConfig) *HTTPReceiver {
 	dynConf := sampler.NewDynamicConfig("none")
 
 	rawTraceChan := make(chan *Payload, 5000)
-	receiver := NewHTTPReceiver(conf, dynConf, rawTraceChan, noopStatsProcessor{})
+	receiver := NewHTTPReceiver(conf, dynConf, rawTraceChan, noopStatsProcessor{}, noopPipelineStatsProcessor{})
 
 	return receiver
 }
@@ -584,6 +589,17 @@ func TestDecodeV05(t *testing.T) {
 	})
 }
 
+type mockPipelineStatsProcessor struct {
+	mu                sync.RWMutex
+	lastP             pipeline.ClientStatsPayload
+}
+
+func (m *mockPipelineStatsProcessor) ProcessPipelineStats(p pipeline.ClientStatsPayload) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.lastP = p
+}
+
 type mockStatsProcessor struct {
 	mu                sync.RWMutex
 	lastP             pb.ClientStatsPayload
@@ -662,6 +678,58 @@ func TestHandleStats(t *testing.T) {
 			t.Fatalf("Did not match payload: %v: %v", gotlang, gotp)
 		}
 	})
+}
+
+func TestHandlePipelineStats(t *testing.T) {
+	cfg := newTestReceiverConfig()
+	rcv := newTestReceiverFromConfig(cfg)
+	mockProcessor := new(mockPipelineStatsProcessor)
+	rcv.pipelineStatsProcessor = mockProcessor
+	mux := rcv.buildMux()
+	server := httptest.NewServer(mux)
+
+	bucket := func(start, duration uint64) pipeline.ClientStatsBucket {
+		return pipeline.ClientStatsBucket{
+			Start:    start,
+			Duration: duration,
+			Stats: []pipeline.ClientStatsPoint{
+				{
+					Service:  "service",
+					ReceivingName:     "name",
+					Hash: 1,
+					ParentHash: 3,
+					Sketch: []byte{2, 4, 5},
+				},
+			},
+		}
+	}
+	p := pipeline.ClientStatsPayload{
+		Env:      "env",
+		Version:  "1.2",
+		TracerLanguage: "go",
+		TracerVersion: "1.1",
+		Stats: []pipeline.ClientStatsBucket{
+			bucket(1, 10),
+			bucket(500, 100342),
+		},
+	}
+	var buf bytes.Buffer
+	if err := msgp.Encode(&buf, &p); err != nil {
+		t.Fatal(err)
+	}
+	req, _ := http.NewRequest("POST", server.URL+"/v0.1/pipeline_stats", &buf)
+	req.Header.Set("Content-Type", "application/msgpack")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 200 {
+		slurp, _ := ioutil.ReadAll(resp.Body)
+		t.Fatal(string(slurp), resp.StatusCode)
+	}
+	if !reflect.DeepEqual(mockProcessor.lastP, p) {
+		t.Fail()
+	}
 }
 
 func TestClientComputedStatsHeader(t *testing.T) {
@@ -1081,7 +1149,7 @@ func BenchmarkWatchdog(b *testing.B) {
 	now := time.Now()
 	conf := config.New()
 	conf.Endpoints[0].APIKey = "apikey_2"
-	r := NewHTTPReceiver(conf, nil, nil, nil)
+	r := NewHTTPReceiver(conf, nil, nil, nil, nil)
 
 	b.ResetTimer()
 	b.ReportAllocs()

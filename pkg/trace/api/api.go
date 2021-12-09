@@ -44,6 +44,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/trace/metrics/timing"
 	"github.com/DataDog/datadog-agent/pkg/trace/osutil"
 	"github.com/DataDog/datadog-agent/pkg/trace/pb"
+	"github.com/DataDog/datadog-agent/pkg/trace/pipeline"
 	"github.com/DataDog/datadog-agent/pkg/trace/sampler"
 	"github.com/DataDog/datadog-agent/pkg/trace/watchdog"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
@@ -76,6 +77,7 @@ type HTTPReceiver struct {
 	dynConf          *sampler.DynamicConfig
 	server           *http.Server
 	statsProcessor   StatsProcessor
+	pipelineStatsProcessor   PipelineStatsProcessor
 	appsecHandler    http.Handler
 	configSubscriber *config.Subscriber
 
@@ -87,7 +89,7 @@ type HTTPReceiver struct {
 }
 
 // NewHTTPReceiver returns a pointer to a new HTTPReceiver
-func NewHTTPReceiver(conf *config.AgentConfig, dynConf *sampler.DynamicConfig, out chan *Payload, statsProcessor StatsProcessor) *HTTPReceiver {
+func NewHTTPReceiver(conf *config.AgentConfig, dynConf *sampler.DynamicConfig, out chan *Payload, statsProcessor StatsProcessor, pipelineStatsProcessor PipelineStatsProcessor) *HTTPReceiver {
 	rateLimiterResponse := http.StatusOK
 	if features.Has("429") {
 		rateLimiterResponse = http.StatusTooManyRequests
@@ -102,6 +104,7 @@ func NewHTTPReceiver(conf *config.AgentConfig, dynConf *sampler.DynamicConfig, o
 
 		out:              out,
 		statsProcessor:   statsProcessor,
+		pipelineStatsProcessor:   pipelineStatsProcessor,
 		configSubscriber: config.NewSubscriber(),
 		conf:             conf,
 		dynConf:          dynConf,
@@ -475,6 +478,12 @@ type StatsProcessor interface {
 	ProcessStats(p pb.ClientStatsPayload, lang, tracerVersion string)
 }
 
+// PipelineStatsProcessor implementations are able to process incoming pipeline client stats.
+type PipelineStatsProcessor interface {
+	// ProcessPipelineStats takes a pipeline stats payload and consumes it.
+	ProcessPipelineStats(p pipeline.ClientStatsPayload)
+}
+
 // handleStats handles incoming stats payloads.
 func (r *HTTPReceiver) handleStats(w http.ResponseWriter, req *http.Request) {
 	defer timing.Since("datadog.trace_agent.receiver.stats_process_ms", time.Now())
@@ -538,6 +547,24 @@ func (r *HTTPReceiver) handleConfig(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.Write(content)
+}
+
+// handlePipelineStats handles incoming pipeline stats payloads.
+func (r *HTTPReceiver) handlePipelineStats(w http.ResponseWriter, req *http.Request) {
+	defer timing.Since("datadog.trace_agent.receiver.pipeline_stats_process_ms", time.Now())
+
+	rd := apiutil.NewLimitedReader(req.Body, r.conf.MaxRequestBytes)
+	req.Header.Set("Accept", "application/msgpack")
+	var in pipeline.ClientStatsPayload
+	if err := msgp.Decode(rd, &in); err != nil {
+		httpDecodingError(err, []string{"handler:pipeline_stats", "codec:msgpack", "v:v0.1"}, w)
+		return
+	}
+	tags := []string{fmt.Sprintf("tracer_version:%s", in.TracerVersion), fmt.Sprintf("tracer_lang:%s", in.TracerLanguage)}
+	metrics.Count("datadog.trace_agent.receiver.pipeline_stats_payload", 1, tags, 1)
+	metrics.Count("datadog.trace_agent.receiver.pipeline_stats_bytes", rd.Count, tags, 1)
+	metrics.Count("datadog.trace_agent.receiver.pipeline_stats_buckets", int64(len(in.Stats)), tags, 1)
+	r.pipelineStatsProcessor.ProcessPipelineStats(in)
 }
 
 // handleTraces knows how to handle a bunch of traces
