@@ -1,11 +1,13 @@
+// +build linux_bpf windows,npm
+
 package http
 
 import (
 	"regexp"
+	"runtime"
 	"strconv"
 	"testing"
 	"time"
-	"runtime"
 
 	"github.com/DataDog/datadog-agent/pkg/network/config"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
