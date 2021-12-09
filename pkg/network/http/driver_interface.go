@@ -177,8 +177,8 @@ func iocpIsClosedError(err error) bool {
 	// during a call to GetQueuedCompletionStatus.
 	// ERROR_INVALID_HANDLE indicates that the handle was closed prior to the call being made.
 	return errors.Is(err, windows.ERROR_OPERATION_ABORTED) ||
-			errors.Is(err, windows.ERROR_ABANDONED_WAIT_0) ||
-			errors.Is(err, windows.ERROR_INVALID_HANDLE)
+		errors.Is(err, windows.ERROR_ABANDONED_WAIT_0) ||
+		errors.Is(err, windows.ERROR_INVALID_HANDLE)
 }
 
 func (di *httpDriverInterface) flushPendingTransactions() error {

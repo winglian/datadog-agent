@@ -3,10 +3,10 @@
 package http
 
 import (
-	"unsafe"
-	"time"
-	"fmt"
 	"encoding/binary"
+	"fmt"
+	"time"
+	"unsafe"
 
 	"github.com/DataDog/datadog-agent/pkg/process/util"
 )
@@ -60,10 +60,10 @@ func (tx *httpTX) Incomplete() bool {
 	return tx.request_started == 0 || tx.response_status_code == 0
 }
 
-// partsCanBeJoined verifies if the request, response pair belong to the same transaction and can 
+// partsCanBeJoined verifies if the request, response pair belong to the same transaction and can
 // therefore be joined together
 func partsCanBeJoined(request, response httpTX) bool {
-	return request.request_started != 0 && response.response_status_code != 0 && request.request_started <= response.response_last_seen 
+	return request.request_started != 0 && response.response_status_code != 0 && request.request_started <= response.response_last_seen
 }
 
 func (tx *httpTX) SrcIPHigh() uint64 {
@@ -142,7 +142,7 @@ func generateIPv4HTTPTransaction(source util.Address, dest util.Address, sourceP
 
 	reqFragment := fmt.Sprintf("GET %s HTTP/1.1\nHost: example.com\nUser-Agent: example-browser/1.0", path)
 	latencyNS := C.ulonglong(uint64(latency))
-	
+
 	tx.request_started = 1
 	tx.response_last_seen = tx.request_started + latencyNS
 	tx.response_status_code = C.ushort(code)

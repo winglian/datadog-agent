@@ -5,8 +5,8 @@ package http
 import (
 	"encoding/binary"
 	"errors"
-	"time"
 	"fmt"
+	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/network/driver"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
@@ -42,10 +42,10 @@ func (tx *httpTX) Incomplete() bool {
 	return tx.RequestStarted == 0 || tx.ResponseStatusCode == 0
 }
 
-// partsCanBeJoined verifies if the request, response pair belong to the same transaction and can 
+// partsCanBeJoined verifies if the request, response pair belong to the same transaction and can
 // therefore be joined together
 func partsCanBeJoined(request, response httpTX) bool {
-	return request.RequestStarted != 0 && response.ResponseStatusCode != 0 && request.RequestStarted <= response.ResponseLastSeen 
+	return request.RequestStarted != 0 && response.ResponseStatusCode != 0 && request.RequestStarted <= response.ResponseLastSeen
 }
 
 func (tx *httpTX) SrcIPLow() uint64 {
@@ -121,10 +121,10 @@ func generateIPv4HTTPTransaction(source util.Address, dest util.Address, sourceP
 	for i := 0; i < len(tx.RequestFragment) && i < len(reqFragment); i++ {
 		tx.RequestFragment[i] = uint8(reqFragment[i])
 	}
-	for i:= 0; i < len(tx.Tup.Saddr) && i < len(src); i++ {
+	for i := 0; i < len(tx.Tup.Saddr) && i < len(src); i++ {
 		tx.Tup.Saddr[i] = src[i]
 	}
-	for i:= 0; i < len(tx.Tup.Daddr) && i < len(dst); i++ {
+	for i := 0; i < len(tx.Tup.Daddr) && i < len(dst); i++ {
 		tx.Tup.Daddr[i] = dst[i]
 	}
 	tx.Tup.Sport = uint16(sourcePort)
