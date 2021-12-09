@@ -39,7 +39,8 @@ func (k *httpBatchKey) Prepare(n httpNotification) {
 
 // ReqFragment returns a byte slice containing the first HTTPBufferSize bytes of the request
 func (tx *httpTX) ReqFragment() []byte {
-	b := *(*[HTTPBufferSize]byte)(unsafe.Pointer(&tx.request_fragment))[:]
+	b := *(*[HTTPBufferSize]byte)(unsafe.Pointer(&tx.request_fragment))
+	return b[:]
 }
 
 // StatusClass returns an integer representing the status code class

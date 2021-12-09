@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+
 func TestHTTPMonitorIntegration(t *testing.T) {
 	currKernelVersion, err := kernel.HostVersion()
 	require.NoError(t, err)
@@ -63,7 +64,7 @@ func TestUnknownMethodRegression(t *testing.T) {
 	})
 	defer srvDoneFn()
 
-	monitor, err := NewMonitor(config.New(), nil, nil)
+	monitor, err := NewEBPFMonitor(config.New(), nil, nil)
 	require.NoError(t, err)
 	err = monitor.Start()
 	require.NoError(t, err)
@@ -91,7 +92,7 @@ func testHTTPMonitor(t *testing.T, targetAddr, serverAddr string, numReqs int) {
 	})
 	defer srvDoneFn()
 
-	monitor, err := NewMonitor(config.New(), nil, nil)
+	monitor, err := NewEBPFMonitor(config.New(), nil, nil)
 	require.NoError(t, err)
 	err = monitor.Start()
 	require.NoError(t, err)
