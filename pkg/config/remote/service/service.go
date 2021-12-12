@@ -37,10 +37,11 @@ type Service struct {
 	refreshInterval time.Duration
 	remoteConfigKey remoteConfigKey
 
-	ctx    context.Context
-	db     *bbolt.DB
-	uptane *uptane.Client
-	http   *api.HTTPClient
+	ctx      context.Context
+	hostname string
+	db       *bbolt.DB
+	uptane   *uptane.Client
+	api      api.API
 
 	products    map[pbgo.Product]struct{}
 	newProducts map[pbgo.Product]struct{}
@@ -71,7 +72,7 @@ func NewService() (*Service, error) {
 		return nil, err
 	}
 	backendURL := config.Datadog.GetString("remote_configuration.endpoint")
-	http := api.NewHTTPClient(backendURL, apiKey, remoteConfigKey.appKey, hostname)
+	http := api.NewHTTPClient(backendURL, apiKey, remoteConfigKey.appKey)
 
 	dbPath := path.Join(config.Datadog.GetString("run_path"), "remote-config.db")
 	db, err := openCacheDB(dbPath)
@@ -97,8 +98,9 @@ func NewService() (*Service, error) {
 		remoteConfigKey: remoteConfigKey,
 		products:        make(map[pbgo.Product]struct{}),
 		newProducts:     make(map[pbgo.Product]struct{}),
+		hostname:        hostname,
 		db:              db,
-		http:            http,
+		api:             http,
 		uptane:          uptaneClient,
 		clients:         newClients(clientsTTL),
 	}, nil
@@ -137,7 +139,7 @@ func (s *Service) refresh() error {
 	if s.forceRefresh() {
 		previousState = uptane.State{}
 	}
-	response, err := s.http.Fetch(s.ctx, previousState, activeClients, s.products, s.newProducts)
+	response, err := s.api.Fetch(s.ctx, buildLatestConfigsRequest(s.hostname, previousState, activeClients, s.products, s.newProducts))
 	if err != nil {
 		return err
 	}
