@@ -3,7 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
-package client
+package api
 
 import (
 	"bytes"
@@ -17,13 +17,12 @@ import (
 	httputils "github.com/DataDog/datadog-agent/pkg/util/http"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/DataDog/datadog-agent/pkg/version"
-
-	"github.com/tinylib/msgp/msgp"
+	"github.com/gogo/protobuf/proto"
 )
 
 // Client is the interface to implement for a configuration fetcher
 type Client interface {
-	Fetch(context.Context, *pbgo.ClientLatestConfigsRequest) (*pbgo.LatestConfigsResponse, error)
+	Fetch(context.Context, *pbgo.LatestConfigsRequest) (*pbgo.LatestConfigsResponse, error)
 }
 
 // HTTPClient fetches configurations using HTTP requests
@@ -39,7 +38,7 @@ func NewHTTPClient(baseURL, apiKey, appKey, hostname string) *HTTPClient {
 	header := http.Header{
 		"DD-Api-Key":         []string{apiKey},
 		"DD-Application-Key": []string{appKey},
-		"Content-Type":       []string{"application/msgpack"},
+		"Content-Type":       []string{"application/x-protobuf"},
 	}
 
 	httpClient := &http.Client{
@@ -55,7 +54,7 @@ func NewHTTPClient(baseURL, apiKey, appKey, hostname string) *HTTPClient {
 }
 
 // Fetch remote configuration
-func (c *HTTPClient) Fetch(ctx context.Context, state uptane.State, connectedTracers []*pbgo.TracerInfo, products map[pbgo.Product]struct{}, newProducts map[pbgo.Product]struct{}) (*pbgo.LatestConfigsResponse, error) {
+func (c *HTTPClient) Fetch(ctx context.Context, state uptane.State, activeClients []*pbgo.Client, products map[pbgo.Product]struct{}, newProducts map[pbgo.Product]struct{}) (*pbgo.LatestConfigsResponse, error) {
 	productsList := make([]pbgo.Product, len(products))
 	i := 0
 	for k := range products {
@@ -69,7 +68,7 @@ func (c *HTTPClient) Fetch(ctx context.Context, state uptane.State, connectedTra
 		i++
 	}
 
-	request := &pbgo.ClientLatestConfigsRequest{
+	request := &pbgo.LatestConfigsRequest{
 		Hostname:                     c.hostname,
 		AgentVersion:                 version.AgentVersion,
 		Products:                     productsList,
@@ -77,10 +76,10 @@ func (c *HTTPClient) Fetch(ctx context.Context, state uptane.State, connectedTra
 		CurrentConfigSnapshotVersion: state.ConfigSnapshotVersion,
 		CurrentConfigRootVersion:     state.ConfigRootVersion,
 		CurrentDirectorRootVersion:   state.DirectorRootVersion,
-		ConnectedTracers:             connectedTracers,
+		ActiveClients:                activeClients,
 	}
 
-	body, err := request.MarshalMsg([]byte{})
+	body, err := proto.Marshal(request)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +113,7 @@ func (c *HTTPClient) Fetch(ctx context.Context, state uptane.State, connectedTra
 	}
 
 	response := &pbgo.LatestConfigsResponse{}
-	err = msgp.Decode(bytes.NewBuffer(body), response)
+	err = proto.Unmarshal(body, response)
 	if err != nil {
 		log.Debugf("Error decoding response, %w, response body: %s", err, string(body))
 		return nil, fmt.Errorf("failed to decode response: %w", err)

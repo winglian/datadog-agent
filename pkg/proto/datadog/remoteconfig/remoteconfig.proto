@@ -95,7 +95,7 @@ message ClientState {
   GlobalVersion version = 1;
   uint64 root_version = 2;
   uint64 targets_version = 3;
-  repeated bytes config_ids = 4;
+  repeated string config_ids = 4;
   bool has_error = 5;
   string error = 6;
 }
