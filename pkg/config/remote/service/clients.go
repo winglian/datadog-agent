@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
+	"github.com/benbjohnson/clock"
 )
 
 type client struct {
@@ -12,12 +13,13 @@ type client struct {
 	pbClient *pbgo.Client
 }
 
-func (c *client) expired() bool {
-	return time.Now().After(c.expireAt)
+func (c *client) expired(clock clock.Clock) bool {
+	return clock.Now().After(c.expireAt)
 }
 
 type clients struct {
 	sync.Mutex
+	clock clock.Clock
 
 	clientsTTL time.Duration
 	clients    map[string]*client
@@ -25,6 +27,7 @@ type clients struct {
 
 func newClients(clientsTTL time.Duration) *clients {
 	return &clients{
+		clock:      clock.New(),
 		clientsTTL: clientsTTL,
 		clients:    make(map[string]*client),
 	}
@@ -35,7 +38,7 @@ func (c *clients) seen(pbClient *pbgo.Client) {
 	c.Lock()
 	defer c.Unlock()
 	c.clients[pbClient.Id] = &client{
-		expireAt: time.Now().Add(c.clientsTTL),
+		expireAt: c.clock.Now().Add(c.clientsTTL),
 		pbClient: pbClient,
 	}
 }
@@ -46,7 +49,7 @@ func (c *clients) activeClients() []*pbgo.Client {
 	defer c.Unlock()
 	var activeClients []*pbgo.Client
 	for id, client := range c.clients {
-		if client.expired() {
+		if client.expired(c.clock) {
 			delete(c.clients, id)
 			continue
 		}
