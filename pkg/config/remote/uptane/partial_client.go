@@ -17,6 +17,6 @@ func NewPartialClient() *PartialClient {
 }
 
 // Verify is not implemented
-func (c *PartialClient) Verify(response *pbgo.ConfigResponse) error {
+func (c *PartialClient) Verify(response *pbgo.ClientGetConfigsResponse) error {
 	return nil
 }
