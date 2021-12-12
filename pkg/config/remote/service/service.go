@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	rconfig "github.com/DataDog/datadog-agent/pkg/config/remote/config"
+
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/config/remote/api"
 	"github.com/DataDog/datadog-agent/pkg/config/remote/uptane"
@@ -123,14 +125,6 @@ func (s *Service) Start(ctx context.Context) error {
 	return nil
 }
 
-func (s *Service) ClientGetConfigs(request *pbgo.ClientGetConfigsRequest) (*pbgo.ClientGetConfigsResponse, error) {
-	s.Lock()
-	defer s.Unlock()
-	s.clients.seen(request.Client)
-
-	return nil, nil
-}
-
 func (s *Service) refresh() error {
 	s.Lock()
 	defer s.Unlock()
@@ -171,4 +165,63 @@ func (s *Service) refreshProducts(activeClients []*pbgo.Client) {
 			}
 		}
 	}
+}
+
+func (s *Service) ClientGetConfigs(request *pbgo.ClientGetConfigsRequest) (*pbgo.ClientGetConfigsResponse, error) {
+	s.Lock()
+	defer s.Unlock()
+	s.clients.seen(request.Client)
+	state, err := s.uptane.State()
+	if err != nil {
+		return nil, err
+	}
+	var roots []*pbgo.TopMeta
+	for i := request.Client.State.RootVersion + 1; i < state.DirectorRootVersion; i++ {
+		root, err := s.uptane.DirectorRoot(i)
+		if err != nil {
+			return nil, err
+		}
+		roots = append(roots, &pbgo.TopMeta{
+			Raw:     root,
+			Version: i,
+		})
+	}
+	targetsRaw, err := s.uptane.TargetsMeta()
+	if err != nil {
+		return nil, err
+	}
+	targetsMeta := &pbgo.TopMeta{
+		Version: state.DirectorTargetsVersion,
+		Raw:     targetsRaw,
+	}
+	clientProducts := make(map[pbgo.Product]struct{})
+	for _, product := range request.Client.Products {
+		clientProducts[product] = struct{}{}
+	}
+	targets, err := s.uptane.Targets()
+	if err != nil {
+		return nil, err
+	}
+	var configFiles []*pbgo.File
+	for targetPath := range targets {
+		configFileMeta, err := rconfig.ParseFilePath(targetPath)
+		if err != nil {
+			return nil, err
+		}
+		if _, inClientProducts := clientProducts[configFileMeta.Product]; inClientProducts {
+			fileContents, err := s.uptane.TargetFile(targetPath)
+			if err != nil {
+				return nil, err
+			}
+			configFiles = append(configFiles, &pbgo.File{
+				Path: targetPath,
+				Raw:  fileContents,
+			})
+		}
+	}
+	return &pbgo.ClientGetConfigsResponse{
+		Roots:       roots,
+		Targets:     targetsMeta,
+		ConfigFiles: configFiles,
+	}, nil
 }

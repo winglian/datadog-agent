@@ -87,6 +87,7 @@ message TracerClient {
 }
 
 // GlobalVersion allows us to understand precisely which configuration this client is applying
+// It is extracted from the custom of the director targets
 message GlobalVersion {
   uint64 config_datadog_snapshot_version = 1;
 }
@@ -107,7 +108,7 @@ message ClientGetConfigsRequest {
 }
 
 message ClientGetConfigsResponse {
-  repeated bytes roots = 1;
-  bytes targets = 2;
+  repeated TopMeta roots = 1;
+  TopMeta targets = 2;
   repeated File config_files = 3;
 }
