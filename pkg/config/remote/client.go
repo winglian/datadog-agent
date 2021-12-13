@@ -16,6 +16,7 @@ import (
 type Client struct {
 	ctx          context.Context
 	facts        Facts
+	products     []pbgo.Product
 	pollInterval time.Duration
 	grpc         pbgo.AgentSecureClient
 	close        func()
@@ -27,7 +28,7 @@ type Facts struct {
 	Version string
 }
 
-func NewClient(ctx context.Context, facts Facts) (*Client, error) {
+func NewClient(ctx context.Context, facts Facts, products []pbgo.Product) (*Client, error) {
 	token, err := security.FetchAuthToken()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not acquire agent auth token")
@@ -43,10 +44,11 @@ func NewClient(ctx context.Context, facts Facts) (*Client, error) {
 		return nil, err
 	}
 	c := &Client{
-		ctx:   ctx,
-		facts: facts,
-		grpc:  grpcClient,
-		close: close,
+		ctx:      ctx,
+		facts:    facts,
+		products: products,
+		grpc:     grpcClient,
+		close:    close,
 	}
 	go c.pollLoop()
 	return c, nil
@@ -73,10 +75,11 @@ func (c *Client) pollLoop() {
 func (c *Client) poll() error {
 	c.grpc.ClientGetConfigs(c.ctx, &pbgo.ClientGetConfigsRequest{
 		Client: &pbgo.Client{
-			Id:      c.facts.ID,
-			Name:    c.facts.Name,
-			Version: c.facts.Version,
-			State:   &pbgo.ClientState{},
+			Id:       c.facts.ID,
+			Name:     c.facts.Name,
+			Version:  c.facts.Version,
+			State:    &pbgo.ClientState{},
+			Products: c.products,
 		},
 	})
 }

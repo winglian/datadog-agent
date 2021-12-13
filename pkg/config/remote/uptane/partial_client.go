@@ -5,7 +5,9 @@
 
 package uptane
 
-import "github.com/DataDog/datadog-agent/pkg/proto/pbgo"
+import (
+	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
+)
 
 // PartialClient is a partial uptane client
 type PartialClient struct {

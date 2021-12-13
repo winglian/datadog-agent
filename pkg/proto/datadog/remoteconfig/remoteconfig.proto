@@ -86,19 +86,17 @@ message TracerClient {
   string version = 3;
 }
 
-// GlobalVersion allows us to understand precisely which configuration this client is applying
-// It is extracted from the custom of the director targets
-message GlobalVersion {
-  uint64 config_datadog_snapshot_version = 1;
+message Config {
+  string id = 1;
+  uint64 version = 2;
 }
 
 message ClientState {
-  GlobalVersion version = 1;
-  uint64 root_version = 2;
-  uint64 targets_version = 3;
-  repeated string config_ids = 4;
-  bool has_error = 5;
-  string error = 6;
+  uint64 root_version = 1;
+  uint64 targets_version = 2;
+  repeated Config configs = 3;
+  bool has_error = 4;
+  string error = 5;
 }
 
 // Client queries
