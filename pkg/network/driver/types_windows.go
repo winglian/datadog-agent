@@ -62,16 +62,19 @@ type HandleStats struct {
 	Ioctl_calls            int64
 }
 type FlowStats struct {
-	Packets_observed              int64
-	Packets_processed             int64
-	Open_flows                    int64
-	Total_flows                   int64
-	Num_flow_searches             int64
-	Num_flow_search_misses        int64
-	Num_flow_collisions           int64
-	Num_flow_structures           int64
-	Peak_num_flow_structures      int64
-	Num_flows_missed_max_exceeded int64
+	Packets_observed                        int64
+	Packets_processed                       int64
+	Open_flows                              int64
+	Total_flows                             int64
+	Num_flow_searches                       int64
+	Num_flow_search_misses                  int64
+	Num_flow_collisions                     int64
+	Num_flow_structures                     int64
+	Peak_num_flow_structures                int64
+	Num_flows_missed_max_exceeded           int64
+	Num_flows_no_handle                     int64
+	Peak_num_flows_no_handle                int64
+	Num_flows_missed_max_no_handle_exceeded int64
 }
 type TransportStats struct {
 	Packets_processed    int64
@@ -97,7 +100,7 @@ type DriverStats struct {
 	Handle        Stats
 }
 
-const DriverStatsSize = 0x198
+const DriverStatsSize = 0x1c8
 
 type PerFlowData struct {
 	FlowHandle         uint64
