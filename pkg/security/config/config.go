@@ -92,6 +92,8 @@ type Config struct {
 	EnableRuntimeCompiledConstants bool
 	// RuntimeCompiledConstantsIsSet is set if the runtime compiled constants option is user-set
 	RuntimeCompiledConstantsIsSet bool
+	// SymlinkResolverEnabled defines whether the symlink resolver is enabled
+	SymlinkResolverEnabled bool
 }
 
 // IsEnabled returns true if any feature is enabled. Has to be applied in config package too
@@ -134,6 +136,7 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 		EnableRemoteConfig:                 aconfig.Datadog.GetBool("runtime_security_config.enable_remote_configuration"),
 		EnableRuntimeCompiledConstants:     aconfig.Datadog.GetBool("runtime_security_config.enable_runtime_compiled_constants"),
 		RuntimeCompiledConstantsIsSet:      aconfig.Datadog.IsSet("runtime_security_config.enable_runtime_compiled_constants"),
+		SymlinkResolverEnabled:             aconfig.Datadog.GetBool("runtime_security_config.symlink_resolver_enabled"),
 	}
 
 	// if runtime is enabled then we force fim
