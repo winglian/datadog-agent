@@ -13,6 +13,8 @@ import (
 	"time"
 
 	rconfig "github.com/DataDog/datadog-agent/pkg/config/remote/config"
+	"github.com/benbjohnson/clock"
+	"github.com/theupdateframework/go-tuf/data"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/config/remote/api"
@@ -38,14 +40,25 @@ type Service struct {
 	remoteConfigKey remoteConfigKey
 
 	ctx      context.Context
+	clock    clock.Clock
 	hostname string
 	db       *bbolt.DB
-	uptane   *uptane.Client
+	uptane   uptaneClient
 	api      api.API
 
 	products    map[pbgo.Product]struct{}
 	newProducts map[pbgo.Product]struct{}
 	clients     *clients
+}
+
+// uptaneClient is used to mock the uptane component for testing
+type uptaneClient interface {
+	Update(response *pbgo.LatestConfigsResponse) error
+	State() (uptane.State, error)
+	DirectorRoot(version uint64) ([]byte, error)
+	Targets() (data.TargetFiles, error)
+	TargetFile(path string) ([]byte, error)
+	TargetsMeta() ([]byte, error)
 }
 
 // NewService instantiates a new remote configuration management service
@@ -90,7 +103,7 @@ func NewService() (*Service, error) {
 		log.Warnf("Configured clients ttl is not within accepted range (%ds - %ds): %s. Defaulting to %s", 5, 10, clientsTTL, defaultClientsTTL)
 		clientsTTL = defaultClientsTTL
 	}
-
+	clock := clock.New()
 	return &Service{
 		ctx:             context.Background(),
 		firstUpdate:     true,
@@ -99,10 +112,11 @@ func NewService() (*Service, error) {
 		products:        make(map[pbgo.Product]struct{}),
 		newProducts:     make(map[pbgo.Product]struct{}),
 		hostname:        hostname,
+		clock:           clock,
 		db:              db,
 		api:             http,
 		uptane:          uptaneClient,
-		clients:         newClients(clientsTTL),
+		clients:         newClients(clock, clientsTTL),
 	}, nil
 }
 
@@ -114,7 +128,7 @@ func (s *Service) Start(ctx context.Context) error {
 
 		for {
 			select {
-			case <-time.After(s.refreshInterval):
+			case <-s.clock.After(s.refreshInterval):
 				err := s.refresh()
 				if err != nil {
 					log.Errorf("could not refresh remote-config: %v", err)
@@ -178,7 +192,7 @@ func (s *Service) ClientGetConfigs(request *pbgo.ClientGetConfigsRequest) (*pbgo
 		return nil, err
 	}
 	var roots []*pbgo.TopMeta
-	for i := request.Client.State.RootVersion + 1; i < state.DirectorRootVersion; i++ {
+	for i := request.Client.State.RootVersion + 1; i <= state.DirectorRootVersion; i++ {
 		root, err := s.uptane.DirectorRoot(i)
 		if err != nil {
 			return nil, err

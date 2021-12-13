@@ -11,9 +11,8 @@ import (
 
 func TestClients(t *testing.T) {
 	testTTL := time.Second * 5
-	clients := newClients(testTTL)
 	clock := clock.NewMock()
-	clients.clock = clock
+	clients := newClients(clock, testTTL)
 	testClient1 := &pbgo.Client{
 		Id: "client1",
 	}

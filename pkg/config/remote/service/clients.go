@@ -25,9 +25,9 @@ type clients struct {
 	clients    map[string]*client
 }
 
-func newClients(clientsTTL time.Duration) *clients {
+func newClients(clock clock.Clock, clientsTTL time.Duration) *clients {
 	return &clients{
-		clock:      clock.New(),
+		clock:      clock,
 		clientsTTL: clientsTTL,
 		clients:    make(map[string]*client),
 	}
