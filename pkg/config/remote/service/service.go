@@ -191,8 +191,31 @@ func (s *Service) ClientGetConfigs(request *pbgo.ClientGetConfigsRequest) (*pbgo
 	if err != nil {
 		return nil, err
 	}
+	roots, err := s.getNewDirectorRoots(request.Client.State.RootVersion, state.DirectorRootVersion)
+	if err != nil {
+		return nil, err
+	}
+	targetsRaw, err := s.uptane.TargetsMeta()
+	if err != nil {
+		return nil, err
+	}
+	targetFiles, err := s.getTargetFiles(request.Client.Products)
+	if err != nil {
+		return nil, err
+	}
+	return &pbgo.ClientGetConfigsResponse{
+		Roots: roots,
+		Targets: &pbgo.TopMeta{
+			Version: state.DirectorTargetsVersion,
+			Raw:     targetsRaw,
+		},
+		ConfigFiles: targetFiles,
+	}, nil
+}
+
+func (s *Service) getNewDirectorRoots(currentVersion uint64, newVersion uint64) ([]*pbgo.TopMeta, error) {
 	var roots []*pbgo.TopMeta
-	for i := request.Client.State.RootVersion + 1; i <= state.DirectorRootVersion; i++ {
+	for i := currentVersion + 1; i <= newVersion; i++ {
 		root, err := s.uptane.DirectorRoot(i)
 		if err != nil {
 			return nil, err
@@ -202,17 +225,13 @@ func (s *Service) ClientGetConfigs(request *pbgo.ClientGetConfigsRequest) (*pbgo
 			Version: i,
 		})
 	}
-	targetsRaw, err := s.uptane.TargetsMeta()
-	if err != nil {
-		return nil, err
-	}
-	targetsMeta := &pbgo.TopMeta{
-		Version: state.DirectorTargetsVersion,
-		Raw:     targetsRaw,
-	}
-	clientProducts := make(map[pbgo.Product]struct{})
-	for _, product := range request.Client.Products {
-		clientProducts[product] = struct{}{}
+	return roots, nil
+}
+
+func (s *Service) getTargetFiles(products []pbgo.Product) ([]*pbgo.File, error) {
+	productSet := make(map[pbgo.Product]struct{})
+	for _, product := range products {
+		productSet[product] = struct{}{}
 	}
 	targets, err := s.uptane.Targets()
 	if err != nil {
@@ -224,7 +243,7 @@ func (s *Service) ClientGetConfigs(request *pbgo.ClientGetConfigsRequest) (*pbgo
 		if err != nil {
 			return nil, err
 		}
-		if _, inClientProducts := clientProducts[configFileMeta.Product]; inClientProducts {
+		if _, inClientProducts := productSet[configFileMeta.Product]; inClientProducts {
 			fileContents, err := s.uptane.TargetFile(targetPath)
 			if err != nil {
 				return nil, err
@@ -235,9 +254,5 @@ func (s *Service) ClientGetConfigs(request *pbgo.ClientGetConfigsRequest) (*pbgo
 			})
 		}
 	}
-	return &pbgo.ClientGetConfigsResponse{
-		Roots:       roots,
-		Targets:     targetsMeta,
-		ConfigFiles: configFiles,
-	}, nil
+	return configFiles, nil
 }

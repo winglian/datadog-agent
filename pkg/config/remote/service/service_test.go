@@ -10,7 +10,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
 	"github.com/DataDog/datadog-agent/pkg/version"
 	"github.com/benbjohnson/clock"
-	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/theupdateframework/go-tuf/data"
@@ -116,12 +115,10 @@ func TestService(t *testing.T) {
 		},
 		Products: []pbgo.Product{
 			pbgo.Product_APM_SAMPLING,
-			pbgo.Product_APPSEC,
 		},
 	}
 	fileAPM1 := []byte(`testapm1`)
 	fileAPM2 := []byte(`testapm2`)
-	fileAppSec1 := []byte(`testappsec1`)
 	uptaneClient.On("TargetsMeta").Return(targets, nil)
 	uptaneClient.On("Targets").Return(data.TargetFiles{"datadog/2/APM_SAMPLING/id/1": {}, "datadog/2/TESTING1/id/1": {}, "datadog/2/APM_SAMPLING/id/2": {}, "datadog/2/APPSEC/id/1": {}}, nil)
 	uptaneClient.On("State").Return(uptane.State{ConfigRootVersion: 1, ConfigSnapshotVersion: 2, DirectorRootVersion: 4, DirectorTargetsVersion: 5}, nil)
@@ -129,7 +126,6 @@ func TestService(t *testing.T) {
 	uptaneClient.On("DirectorRoot", uint64(4)).Return(root4, nil)
 	uptaneClient.On("TargetFile", "datadog/2/APM_SAMPLING/id/1").Return(fileAPM1, nil)
 	uptaneClient.On("TargetFile", "datadog/2/APM_SAMPLING/id/2").Return(fileAPM2, nil)
-	uptaneClient.On("TargetFile", "datadog/2/APPSEC/id/1").Return(fileAppSec1, nil)
 	uptaneClient.On("Update", lastConfigResponse).Return(nil)
 	api.On("Fetch", mock.Anything, &pbgo.LatestConfigsRequest{
 		Hostname:                     service.hostname,
@@ -140,18 +136,17 @@ func TestService(t *testing.T) {
 		Products:                     []pbgo.Product{},
 		NewProducts: []pbgo.Product{
 			pbgo.Product_APM_SAMPLING,
-			pbgo.Product_APPSEC,
 		},
 		ActiveClients: []*pbgo.Client{client},
 	}).Return(lastConfigResponse, nil)
 
 	configResponse, err := service.ClientGetConfigs(&pbgo.ClientGetConfigsRequest{Client: client})
 	assert.NoError(t, err)
-	assert.True(t, proto.Equal(&pbgo.ClientGetConfigsResponse{
+	assert.Equal(t, &pbgo.ClientGetConfigsResponse{
 		Roots:       []*pbgo.TopMeta{{Version: 3, Raw: root3}, {Version: 4, Raw: root4}},
 		Targets:     &pbgo.TopMeta{Version: 5, Raw: targets},
-		ConfigFiles: []*pbgo.File{{Path: "datadog/2/APM_SAMPLING/id/1", Raw: fileAPM1}, {Path: "datadog/2/APM_SAMPLING/id/2", Raw: fileAPM2}, {Path: "datadog/2/APPSEC/id/1", Raw: fileAppSec1}},
-	}, configResponse))
+		ConfigFiles: []*pbgo.File{{Path: "datadog/2/APM_SAMPLING/id/1", Raw: fileAPM1}, {Path: "datadog/2/APM_SAMPLING/id/2", Raw: fileAPM2}},
+	}, configResponse)
 	err = service.refresh()
 	assert.NoError(t, err)
 
