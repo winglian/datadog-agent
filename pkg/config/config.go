@@ -975,6 +975,7 @@ func InitConfig(config Config) {
 	config.BindEnvAndSetDefault("runtime_security_config.self_test.enabled", true)
 	config.BindEnvAndSetDefault("runtime_security_config.enable_remote_configuration", false)
 	config.BindEnv("runtime_security_config.enable_runtime_compiled_constants")
+	config.BindEnvAndSetDefault("runtime_security_config.symlink_resolver_enabled", true)
 
 	// Serverless Agent
 	config.BindEnvAndSetDefault("serverless.logs_enabled", true)
