@@ -90,7 +90,7 @@ func (t *tagsetTelemetry) updateHugeSketchesTelemetry(sketches *metrics.SketchSe
 func (t *tagsetTelemetry) updateHugeSeriesTelemetry(series *metrics.Series) {
 	tagsetSizes := make([]uint64, len(*series))
 	for i, s := range *series {
-		tagsetSizes[i] = uint64(len(s.Tags))
+		tagsetSizes[i] = uint64(s.Tags.Len())
 	}
 	t.updateTelemetry(tagsetSizes, t.hugeSeriesCount, t.tlmHugeSeries)
 }

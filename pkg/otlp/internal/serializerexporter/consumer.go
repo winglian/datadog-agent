@@ -45,7 +45,7 @@ func (c *serializerConsumer) ConsumeTimeSeries(ctx context.Context, name string,
 		&metrics.Serie{
 			Name:     name,
 			Points:   []metrics.Point{{Ts: float64(ts / 1e9), Value: value}},
-			Tags:     tags,
+			Tags:     metrics.NewCompositeTags(tags, nil),
 			Host:     host,
 			MType:    apiTypeFromTranslatorType(typ),
 			Interval: 1,

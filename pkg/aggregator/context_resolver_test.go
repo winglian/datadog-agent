@@ -59,15 +59,15 @@ func TestTrackContext(t *testing.T) {
 	}
 	expectedContext1 := Context{
 		Name: mSample1.Name,
-		Tags: mSample1.Tags,
+		Tags: metrics.NewCompositeTags(mSample1.Tags, nil),
 	}
 	expectedContext2 := Context{
 		Name: mSample2.Name,
-		Tags: mSample2.Tags,
+		Tags: metrics.NewCompositeTags(mSample2.Tags, nil),
 	}
 	expectedContext3 := Context{
 		Name: mSample3.Name,
-		Tags: mSample3.Tags,
+		Tags: metrics.NewCompositeTags(mSample3.Tags, nil),
 		Host: mSample3.Host,
 	}
 	contextResolver := newContextResolver()
@@ -165,6 +165,6 @@ func TestTagDeduplication(t *testing.T) {
 		Tags: []string{"bar", "bar"},
 	})
 
-	assert.Equal(t, len(resolver.contextsByKey[ckey].Tags), 1)
-	assert.Equal(t, resolver.contextsByKey[ckey].Tags, []string{"bar"})
+	assert.Equal(t, resolver.contextsByKey[ckey].Tags.Len(), 1)
+	assert.Equal(t, resolver.contextsByKey[ckey].Tags.ToSliceString(), []string{"bar"})
 }

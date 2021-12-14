@@ -16,7 +16,7 @@ import (
 // Context holds the elements that form a context, and can be serialized into a context key
 type Context struct {
 	Name string
-	Tags []string
+	Tags *metrics.CompositeTags
 	Host string
 }
 
@@ -53,7 +53,7 @@ func (cr *contextResolver) trackContext(metricSampleContext metrics.MetricSample
 		// per context instead of one per sample.
 		cr.contextsByKey[contextKey] = &Context{
 			Name: metricSampleContext.GetName(),
-			Tags: cr.tagsBuffer.Copy(),
+			Tags: metrics.NewCompositeTags(cr.tagsBuffer.Copy(), nil),
 			Host: metricSampleContext.GetHost(),
 		}
 	}

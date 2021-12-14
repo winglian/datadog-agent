@@ -68,7 +68,7 @@ func TestCheckGaugeSampling(t *testing.T) {
 
 	expectedSerie1 := &metrics.Serie{
 		Name:           "my.metric.name",
-		Tags:           []string{"bar", "foo"},
+		Tags:           metrics.NewCompositeTags([]string{"bar", "foo"}, nil),
 		Points:         []metrics.Point{{Ts: 12349.0, Value: mSample2.Value}},
 		MType:          metrics.APIGaugeType,
 		SourceTypeName: checksSourceTypeName,
@@ -78,7 +78,7 @@ func TestCheckGaugeSampling(t *testing.T) {
 
 	expectedSerie2 := &metrics.Serie{
 		Name:           "my.metric.name",
-		Tags:           []string{"bar", "baz", "foo"},
+		Tags:           metrics.NewCompositeTags([]string{"bar", "baz", "foo"}, nil),
 		Points:         []metrics.Point{{Ts: 12349.0, Value: mSample3.Value}},
 		MType:          metrics.APIGaugeType,
 		SourceTypeName: checksSourceTypeName,
@@ -127,7 +127,7 @@ func TestCheckRateSampling(t *testing.T) {
 
 	expectedSerie := &metrics.Serie{
 		Name:           "my.metric.name",
-		Tags:           []string{"foo", "bar"},
+		Tags:           metrics.NewCompositeTags([]string{"foo", "bar"}, nil),
 		Points:         []metrics.Point{{Ts: 12347.5, Value: 3.6}},
 		MType:          metrics.APIGaugeType,
 		SourceTypeName: checksSourceTypeName,
@@ -178,7 +178,7 @@ func TestHistogramCountSampling(t *testing.T) {
 	// Check that the `.count` metric returns a raw count of the samples, with no interval normalization
 	expectedCountSerie := &metrics.Serie{
 		Name:           "my.metric.name.count",
-		Tags:           []string{"foo", "bar"},
+		Tags:           metrics.NewCompositeTags([]string{"foo", "bar"}, nil),
 		Points:         []metrics.Point{{Ts: 12349.0, Value: 3.}},
 		MType:          metrics.APIRateType,
 		SourceTypeName: checksSourceTypeName,

@@ -23,7 +23,7 @@ import (
 
 func generateSerieContextKey(serie *metrics.Serie) ckey.ContextKey {
 	l := ckey.NewKeyGenerator()
-	return l.Generate(serie.Name, serie.Host, tagset.NewHashingTagsAccumulatorWithTags(serie.Tags))
+	return l.Generate(serie.Name, serie.Host, tagset.NewHashingTagsAccumulatorWithTags(serie.Tags.ToSliceString()))
 }
 
 // TimeSampler
@@ -52,7 +52,7 @@ func TestBucketSampling(t *testing.T) {
 
 	expectedSerie := &metrics.Serie{
 		Name:       "my.metric.name",
-		Tags:       []string{"foo", "bar"},
+		Tags:       metrics.NewCompositeTags([]string{"foo", "bar"}, nil),
 		Points:     []metrics.Point{{Ts: 12340.0, Value: mSample.Value}, {Ts: 12350.0, Value: mSample.Value}},
 		MType:      metrics.APIGaugeType,
 		Interval:   10,
@@ -100,7 +100,7 @@ func TestContextSampling(t *testing.T) {
 	expectedSerie1 := &metrics.Serie{
 		Name:     "my.metric.name1",
 		Points:   []metrics.Point{{Ts: 12340.0, Value: float64(1)}},
-		Tags:     []string{"bar", "foo"},
+		Tags:     metrics.NewCompositeTags([]string{"bar", "foo"}, nil),
 		Host:     "",
 		MType:    metrics.APIGaugeType,
 		Interval: 10,
@@ -109,7 +109,7 @@ func TestContextSampling(t *testing.T) {
 	expectedSerie2 := &metrics.Serie{
 		Name:     "my.metric.name3",
 		Points:   []metrics.Point{{Ts: 12340.0, Value: float64(1)}},
-		Tags:     []string{"bar", "foo"},
+		Tags:     metrics.NewCompositeTags([]string{"bar", "foo"}, nil),
 		Host:     "metric-hostname",
 		MType:    metrics.APIGaugeType,
 		Interval: 10,
@@ -118,7 +118,7 @@ func TestContextSampling(t *testing.T) {
 	expectedSerie3 := &metrics.Serie{
 		Name:     "my.metric.name2",
 		Points:   []metrics.Point{{Ts: 12340.0, Value: float64(1)}},
-		Tags:     []string{"bar", "foo"},
+		Tags:     metrics.NewCompositeTags([]string{"bar", "foo"}, nil),
 		Host:     "",
 		MType:    metrics.APIGaugeType,
 		Interval: 10,
@@ -169,7 +169,7 @@ func TestCounterExpirySeconds(t *testing.T) {
 	expectedSerie1 := &metrics.Serie{
 		Name:       "my.counter1",
 		Points:     []metrics.Point{{Ts: 1000.0, Value: .1}},
-		Tags:       []string{"bar", "foo"},
+		Tags:       metrics.NewCompositeTags([]string{"bar", "foo"}, nil),
 		Host:       "",
 		MType:      metrics.APIRateType,
 		ContextKey: generateContextKey(sampleCounter1),
@@ -179,7 +179,7 @@ func TestCounterExpirySeconds(t *testing.T) {
 	expectedSerie2 := &metrics.Serie{
 		Name:       "my.counter2",
 		Points:     []metrics.Point{{Ts: 1000.0, Value: .2}},
-		Tags:       []string{"bar", "foo"},
+		Tags:       metrics.NewCompositeTags([]string{"bar", "foo"}, nil),
 		Host:       "",
 		MType:      metrics.APIRateType,
 		ContextKey: generateContextKey(sampleCounter2),
@@ -189,7 +189,7 @@ func TestCounterExpirySeconds(t *testing.T) {
 	expectedSerie3 := &metrics.Serie{
 		Name:       "my.gauge",
 		Points:     []metrics.Point{{Ts: 1000.0, Value: 2}},
-		Tags:       []string{"bar", "foo"},
+		Tags:       metrics.NewCompositeTags([]string{"bar", "foo"}, nil),
 		Host:       "",
 		MType:      metrics.APIGaugeType,
 		ContextKey: generateContextKey(sampleGauge3),
@@ -219,7 +219,7 @@ func TestCounterExpirySeconds(t *testing.T) {
 	expectedSerie1 = &metrics.Serie{
 		Name:       "my.counter1",
 		Points:     []metrics.Point{{Ts: 1010.0, Value: .1}, {Ts: 1020.0, Value: 0.0}, {Ts: 1030.0, Value: 0.0}},
-		Tags:       []string{"bar", "foo"},
+		Tags:       metrics.NewCompositeTags([]string{"bar", "foo"}, nil),
 		Host:       "",
 		MType:      metrics.APIRateType,
 		ContextKey: generateContextKey(sampleCounter1),
@@ -229,7 +229,7 @@ func TestCounterExpirySeconds(t *testing.T) {
 	expectedSerie2 = &metrics.Serie{
 		Name:       "my.counter2",
 		Points:     []metrics.Point{{Ts: 1010, Value: 0}, {Ts: 1020.0, Value: .2}, {Ts: 1030.0, Value: .2}},
-		Tags:       []string{"bar", "foo"},
+		Tags:       metrics.NewCompositeTags([]string{"bar", "foo"}, nil),
 		Host:       "",
 		MType:      metrics.APIRateType,
 		ContextKey: generateContextKey(sampleCounter2),
@@ -274,7 +274,7 @@ func TestSketch(t *testing.T) {
 			for _, v := range values {
 				sampler.addSample(&metrics.MetricSample{
 					Name:       ctx.Name,
-					Tags:       ctx.Tags,
+					Tags:       ctx.Tags.ToSliceString(),
 					Host:       ctx.Host,
 					Value:      v,
 					Mtype:      metrics.DistributionType,
@@ -295,7 +295,7 @@ func TestSketch(t *testing.T) {
 	t.Run("single bucket", func(t *testing.T) {
 		var (
 			now    float64
-			ctx    = Context{Name: "m.0", Tags: []string{"a"}, Host: "host"}
+			ctx    = Context{Name: "m.0", Tags: metrics.NewCompositeTags([]string{"a"}, nil), Host: "host"}
 			exp    = &quantile.Sketch{}
 			keyGen = ckey.NewKeyGenerator()
 		)
@@ -311,7 +311,7 @@ func TestSketch(t *testing.T) {
 		_, flushed := sampler.flush(now)
 		metrics.AssertSketchSeriesEqual(t, metrics.SketchSeries{
 			Name:     ctx.Name,
-			Tags:     ctx.Tags,
+			Tags:     ctx.Tags.ToSliceString(),
 			Host:     ctx.Host,
 			Interval: 10,
 			Points: []metrics.SketchPoint{
@@ -320,7 +320,7 @@ func TestSketch(t *testing.T) {
 					Ts:     0,
 				},
 			},
-			ContextKey: keyGen.Generate(ctx.Name, ctx.Host, tagset.NewHashingTagsAccumulatorWithTags(ctx.Tags)),
+			ContextKey: keyGen.Generate(ctx.Name, ctx.Host, tagset.NewHashingTagsAccumulatorWithTags(ctx.Tags.ToSliceString())),
 		}, flushed[0])
 
 		_, flushed = sampler.flush(now)
@@ -452,7 +452,7 @@ func TestBucketSamplingWithSketchAndSeries(t *testing.T) {
 
 	expectedSerie := &metrics.Serie{
 		Name:       "my.metric.name",
-		Tags:       []string{"foo", "bar"},
+		Tags:       metrics.NewCompositeTags([]string{"foo", "bar"}, nil),
 		Points:     []metrics.Point{{Ts: 12340.0, Value: mSample.Value}, {Ts: 12350.0, Value: mSample.Value}},
 		MType:      metrics.APIGaugeType,
 		Interval:   10,

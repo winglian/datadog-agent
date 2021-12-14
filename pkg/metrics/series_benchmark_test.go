@@ -12,15 +12,15 @@ func benchmarkPopulateDeviceField(numberOfTags int, b *testing.B) {
 	for i := 0; i < numberOfTags; i++ {
 		tags = append(tags, "some:tag")
 	}
-	tags = append(tags, "device:test")
+	t := NewCompositeTags(append(tags, "device:test"), nil)
 
 	serie := &Serie{
-		Tags: tags,
+		Tags: t,
 	}
 	series := []*Serie{serie}
 
 	for n := 0; n < b.N; n++ {
-		serie.Tags = tags
+		serie.Tags = t
 		for _, serie := range series {
 			populateDeviceField(serie)
 		}

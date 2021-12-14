@@ -173,7 +173,7 @@ func TestDefaultData(t *testing.T) {
 	series := metrics.Series{&metrics.Serie{
 		Name:           fmt.Sprintf("datadog.%s.running", flavor.GetFlavor()),
 		Points:         []metrics.Point{{Value: 1, Ts: float64(start.Unix())}},
-		Tags:           []string{fmt.Sprintf("version:%s", version.AgentVersion)},
+		Tags:           metrics.NewCompositeTags([]string{fmt.Sprintf("version:%s", version.AgentVersion)}, nil),
 		Host:           agg.hostname,
 		MType:          metrics.APIGaugeType,
 		SourceTypeName: "System",
@@ -181,7 +181,7 @@ func TestDefaultData(t *testing.T) {
 		Name:           fmt.Sprintf("n_o_i_n_d_e_x.datadog.%s.payload.dropped", flavor.GetFlavor()),
 		Points:         []metrics.Point{{Value: 0, Ts: float64(start.Unix())}},
 		Host:           agg.hostname,
-		Tags:           []string{},
+		Tags:           metrics.NewCompositeTags([]string{}, nil),
 		MType:          metrics.APIGaugeType,
 		SourceTypeName: "System",
 	}}
@@ -220,7 +220,7 @@ func TestSeriesTooManyTags(t *testing.T) {
 			ser := &metrics.Serie{
 				Name:           "test.series",
 				Points:         []metrics.Point{{Value: 1, Ts: float64(start.Unix())}},
-				Tags:           tags,
+				Tags:           metrics.NewCompositeTags(tags, nil),
 				Host:           agg.hostname,
 				MType:          metrics.APIGaugeType,
 				SourceTypeName: "System",
@@ -308,13 +308,13 @@ func TestRecurentSeries(t *testing.T) {
 	AddRecurrentSeries(&metrics.Serie{
 		Name:   "some.metric.1",
 		Points: []metrics.Point{{Value: 21}},
-		Tags:   []string{"tag:1", "tag:2"},
+		Tags:   metrics.NewCompositeTags([]string{"tag:1", "tag:2"}, nil),
 		MType:  metrics.APIGaugeType,
 	})
 	AddRecurrentSeries(&metrics.Serie{
 		Name:           "some.metric.2",
 		Points:         []metrics.Point{{Value: 22}},
-		Tags:           nil,
+		Tags:           metrics.NewCompositeTags([]string{}, nil),
 		Host:           "non default host",
 		MType:          metrics.APIGaugeType,
 		SourceTypeName: "non default SourceTypeName",
@@ -325,21 +325,21 @@ func TestRecurentSeries(t *testing.T) {
 	series := metrics.Series{&metrics.Serie{
 		Name:           "some.metric.1",
 		Points:         []metrics.Point{{Value: 21, Ts: float64(start.Unix())}},
-		Tags:           []string{"tag:1", "tag:2"},
+		Tags:           metrics.NewCompositeTags([]string{"tag:1", "tag:2"}, nil),
 		Host:           agg.hostname,
 		MType:          metrics.APIGaugeType,
 		SourceTypeName: "System",
 	}, &metrics.Serie{
 		Name:           "some.metric.2",
 		Points:         []metrics.Point{{Value: 22, Ts: float64(start.Unix())}},
-		Tags:           nil,
+		Tags:           metrics.NewCompositeTags([]string{}, nil),
 		Host:           "non default host",
 		MType:          metrics.APIGaugeType,
 		SourceTypeName: "non default SourceTypeName",
 	}, &metrics.Serie{
 		Name:           fmt.Sprintf("datadog.%s.running", flavor.GetFlavor()),
 		Points:         []metrics.Point{{Value: 1, Ts: float64(start.Unix())}},
-		Tags:           []string{fmt.Sprintf("version:%s", version.AgentVersion)},
+		Tags:           metrics.NewCompositeTags([]string{fmt.Sprintf("version:%s", version.AgentVersion)}, nil),
 		Host:           agg.hostname,
 		MType:          metrics.APIGaugeType,
 		SourceTypeName: "System",
@@ -347,7 +347,7 @@ func TestRecurentSeries(t *testing.T) {
 		Name:           fmt.Sprintf("n_o_i_n_d_e_x.datadog.%s.payload.dropped", flavor.GetFlavor()),
 		Points:         []metrics.Point{{Value: 0, Ts: float64(start.Unix())}},
 		Host:           agg.hostname,
-		Tags:           []string{},
+		Tags:           metrics.NewCompositeTags([]string{}, nil),
 		MType:          metrics.APIGaugeType,
 		SourceTypeName: "System",
 	}}
