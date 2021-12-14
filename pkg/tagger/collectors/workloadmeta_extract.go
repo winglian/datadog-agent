@@ -236,7 +236,6 @@ func (c *WorkloadMetaCollector) handleContainer(ev workloadmeta.Event) []*TagInf
 	low, orch, high, standard := tags.Compute()
 	return []*TagInfo{
 		{
-			Source:               containerSource,
 			Entity:               buildTaggerEntityID(container.EntityID),
 			HighCardTags:         high,
 			OrchestratorCardTags: orch,
@@ -255,7 +254,6 @@ func (c *WorkloadMetaCollector) handleKubePod(ev workloadmeta.Event) []*TagInfo 
 	low, orch, high, standard := tags.Compute()
 	tagInfos := []*TagInfo{
 		{
-			Source:               podSource,
 			Entity:               buildTaggerEntityID(pod.EntityID),
 			HighCardTags:         high,
 			OrchestratorCardTags: orch,
@@ -279,7 +277,6 @@ func (c *WorkloadMetaCollector) handleECSTask(ev workloadmeta.Event) []*TagInfo 
 
 		low, orch, high, standard := tags.Compute()
 		tagInfos = append(tagInfos, &TagInfo{
-			Source:               taskSource,
 			Entity:               OrchestratorScopeEntityID,
 			HighCardTags:         high,
 			OrchestratorCardTags: orch,
@@ -296,7 +293,6 @@ func (c *WorkloadMetaCollector) handleGardenContainer(ev workloadmeta.Event) []*
 
 	return []*TagInfo{
 		{
-			Source:       gardenSource,
 			Entity:       buildTaggerEntityID(container.EntityID),
 			HighCardTags: container.Tags,
 		},
@@ -508,7 +504,6 @@ func (c *WorkloadMetaCollector) handleDelete(ev workloadmeta.Event) []*TagInfo {
 
 	return []*TagInfo{
 		{
-			Source:       buildTaggerSource(entityID),
 			Entity:       buildTaggerEntityID(entityID),
 			DeleteEntity: true,
 		},
@@ -555,10 +550,6 @@ func buildTaggerEntityID(entityID workloadmeta.EntityID) string {
 		log.Errorf("can't recognize entity %q with kind %q, but building a a tagger ID anyway", entityID.ID, entityID.Kind)
 		return containers.BuildEntityName(string(entityID.Kind), entityID.ID)
 	}
-}
-
-func buildTaggerSource(entityID workloadmeta.EntityID) string {
-	return fmt.Sprintf("%s-%s", workloadmetaCollectorName, string(entityID.Kind))
 }
 
 func parseJSONValue(value string, tags *utils.TagList) error {

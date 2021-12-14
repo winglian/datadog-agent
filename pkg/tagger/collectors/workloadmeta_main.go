@@ -19,18 +19,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/workloadmeta"
 )
 
-const (
-	workloadmetaCollectorName = "workloadmeta"
-
-	podSource       = workloadmetaCollectorName + "-" + string(workloadmeta.KindKubernetesPod)
-	taskSource      = workloadmetaCollectorName + "-" + string(workloadmeta.KindECSTask)
-	containerSource = workloadmetaCollectorName + "-" + string(workloadmeta.KindContainer)
-	gardenSource    = workloadmetaCollectorName + "-" + string(workloadmeta.KindGardenContainer)
-)
-
-// CollectorPriorities holds collector priorities
-var CollectorPriorities = make(map[string]CollectorPriority)
-
 // WorkloadMetaCollector collects tags from the metadata in the workloadmeta
 // store.
 type WorkloadMetaCollector struct {
@@ -177,10 +165,4 @@ func mergeMaps(first, second map[string]string) map[string]string {
 	}
 
 	return first
-}
-
-func init() {
-	CollectorPriorities[podSource] = NodeOrchestrator
-	CollectorPriorities[taskSource] = NodeOrchestrator
-	CollectorPriorities[containerSource] = NodeRuntime
 }
