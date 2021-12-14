@@ -1,4 +1,4 @@
-package config
+package remote
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/api/security"
-	"github.com/DataDog/datadog-agent/pkg/config/remote/config"
 	"github.com/DataDog/datadog-agent/pkg/config/remote/uptane"
+	"github.com/DataDog/datadog-agent/pkg/config/remote/util"
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
 	"github.com/DataDog/datadog-agent/pkg/util/grpc"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
@@ -143,7 +143,7 @@ func (c *Client) buildConfigFiles() (configFiles, error) {
 	}
 	var configFiles configFiles
 	for targetPath, target := range targets {
-		targetPathMeta, err := ParseFilePathMeta(targetPath)
+		targetPathMeta, err := util.ParseFilePathMeta(targetPath)
 		if err != nil {
 			return nil, err
 		}
@@ -176,6 +176,6 @@ func (c *Client) publishUpdates(update update) {
 	}
 }
 
-func (c *Client) APMSamplingUpdates() <-chan config.APMSamplingUpdate {
+func (c *Client) APMSamplingUpdates() <-chan APMSamplingUpdate {
 	return c.apmSamplingUpdates
 }

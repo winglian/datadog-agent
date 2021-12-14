@@ -12,13 +12,13 @@ import (
 	"sync"
 	"time"
 
-	rconfig "github.com/DataDog/datadog-agent/pkg/config/remote/config"
 	"github.com/benbjohnson/clock"
 	"github.com/theupdateframework/go-tuf/data"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/config/remote/api"
 	"github.com/DataDog/datadog-agent/pkg/config/remote/uptane"
+	rutil "github.com/DataDog/datadog-agent/pkg/config/remote/util"
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
 	"github.com/DataDog/datadog-agent/pkg/util"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
@@ -239,7 +239,7 @@ func (s *Service) getTargetFiles(products []pbgo.Product) ([]*pbgo.File, error) 
 	}
 	var configFiles []*pbgo.File
 	for targetPath := range targets {
-		configFileMeta, err := rconfig.ParseFilePath(targetPath)
+		configFileMeta, err := rutil.ParseFilePathMeta(targetPath)
 		if err != nil {
 			return nil, err
 		}

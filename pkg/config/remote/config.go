@@ -1,6 +1,7 @@
-package config
+package remote
 
 import (
+	"github.com/DataDog/datadog-agent/pkg/config/remote/util"
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
@@ -23,7 +24,7 @@ func (c configFiles) version() uint64 {
 }
 
 type configFile struct {
-	pathMeta PathMeta
+	pathMeta util.PathMeta
 	version  uint64
 	raw      []byte
 }
