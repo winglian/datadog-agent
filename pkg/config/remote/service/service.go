@@ -148,9 +148,9 @@ func (s *Service) refresh() error {
 	s.refreshProducts(activeClients)
 	previousState, err := s.uptane.State()
 	if err != nil {
-		return err
+		log.Warnf("could not get previous state: %v", err)
 	}
-	if s.forceRefresh() {
+	if s.forceRefresh() || err != nil {
 		previousState = uptane.State{}
 	}
 	response, err := s.api.Fetch(s.ctx, buildLatestConfigsRequest(s.hostname, previousState, activeClients, s.products, s.newProducts))
@@ -209,7 +209,7 @@ func (s *Service) ClientGetConfigs(request *pbgo.ClientGetConfigsRequest) (*pbgo
 			Version: state.DirectorTargetsVersion,
 			Raw:     targetsRaw,
 		},
-		ConfigFiles: targetFiles,
+		TargetFiles: targetFiles,
 	}, nil
 }
 

@@ -145,7 +145,7 @@ func TestService(t *testing.T) {
 	assert.Equal(t, &pbgo.ClientGetConfigsResponse{
 		Roots:       []*pbgo.TopMeta{{Version: 3, Raw: root3}, {Version: 4, Raw: root4}},
 		Targets:     &pbgo.TopMeta{Version: 5, Raw: targets},
-		ConfigFiles: []*pbgo.File{{Path: "datadog/2/APM_SAMPLING/id/1", Raw: fileAPM1}, {Path: "datadog/2/APM_SAMPLING/id/2", Raw: fileAPM2}},
+		TargetFiles: []*pbgo.File{{Path: "datadog/2/APM_SAMPLING/id/1", Raw: fileAPM1}, {Path: "datadog/2/APM_SAMPLING/id/2", Raw: fileAPM2}},
 	}, configResponse)
 	err = service.refresh()
 	assert.NoError(t, err)

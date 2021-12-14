@@ -66,7 +66,7 @@ type PartialClient struct {
 	rootVersion    uint64
 	targetsVersion uint64
 	targetMetas    data.TargetFiles
-	targetFiles    []*pbgo.File
+	targetFiles    []*pbgo.VersionedFile
 }
 
 // NewPartialClient creates a new partial uptane client
@@ -190,7 +190,7 @@ func (c *PartialClient) TargetFile(path string) ([]byte, error) {
 }
 
 func (c *PartialClient) targetFile(path string) ([]byte, error) {
-	var targetFile *pbgo.File
+	var targetFile *pbgo.VersionedFile
 	for _, target := range c.targetFiles {
 		if target.Path == path {
 			targetFile = target
