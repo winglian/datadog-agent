@@ -84,6 +84,7 @@ type AgentConfig struct {
 
 	// Writers
 	SynchronousFlushing     bool // Mode where traces are only submitted when FlushAsync is called, used for Serverless Extension
+	PipelineStatsWriter             *WriterConfig
 	StatsWriter             *WriterConfig
 	TraceWriter             *WriterConfig
 	ConnectionResetInterval time.Duration // frequency at which outgoing connections are reset. 0 means no reset is performed
@@ -169,6 +170,7 @@ func New() *AgentConfig {
 		ReceiverPort:    8126,
 		MaxRequestBytes: 50 * 1024 * 1024, // 50MB
 
+		PipelineStatsWriter:             new(WriterConfig),
 		StatsWriter:             new(WriterConfig),
 		TraceWriter:             new(WriterConfig),
 		ConnectionResetInterval: 0, // disabled

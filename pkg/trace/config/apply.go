@@ -406,6 +406,7 @@ func (c *AgentConfig) applyDatadogConfig() error {
 	for key, cfg := range map[string]*WriterConfig{
 		"apm_config.trace_writer": c.TraceWriter,
 		"apm_config.stats_writer": c.StatsWriter,
+		"apm_config.pipeline_stats_writer": c.PipelineStatsWriter,
 	} {
 		if err := config.Datadog.UnmarshalKey(key, cfg); err != nil {
 			log.Errorf("Error reading writer config %q: %v", key, err)

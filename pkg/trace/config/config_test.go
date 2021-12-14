@@ -337,11 +337,13 @@ func TestUndocumentedYamlConfig(t *testing.T) {
 	assert.Equal(0.07, c.MaxCPU)
 	assert.Equal(30e6, c.MaxMemory)
 
-	// Assert Trace Writer
+	// Assert Writers
 	assert.Equal(1, c.TraceWriter.ConnectionLimit)
 	assert.Equal(2, c.TraceWriter.QueueSize)
 	assert.Equal(5, c.StatsWriter.ConnectionLimit)
 	assert.Equal(6, c.StatsWriter.QueueSize)
+	assert.Equal(7, c.PipelineStatsWriter.ConnectionLimit)
+	assert.Equal(8, c.PipelineStatsWriter.QueueSize)
 	// analysis legacy
 	assert.Equal(1.0, c.AnalyzedRateByServiceLegacy["db"])
 	assert.Equal(0.9, c.AnalyzedRateByServiceLegacy["web"])

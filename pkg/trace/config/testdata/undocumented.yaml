@@ -18,6 +18,9 @@ apm_config:
   stats_writer:
     connection_limit: 5
     queue_size: 6
+  pipeline_stats_writer:
+    connection_limit: 7
+    queue_size: 8
   analyzed_rate_by_service:
     db: 1
     web: 0.9

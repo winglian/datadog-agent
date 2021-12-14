@@ -74,6 +74,11 @@ func TestInfoHandler(t *testing.T) {
 			QueueSize:          12,
 			FlushPeriodSeconds: 14.4,
 		},
+		PipelineStatsWriter: &config.WriterConfig{
+			ConnectionLimit:    22,
+			QueueSize:          14,
+			FlushPeriodSeconds: 17.4,
+		},
 		TraceWriter: &config.WriterConfig{
 			ConnectionLimit:    21,
 			QueueSize:          13,

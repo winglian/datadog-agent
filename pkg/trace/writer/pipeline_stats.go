@@ -24,8 +24,20 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-// pathStats is the target host API path for delivering stats.
-const pathPipelineStats = "/api/v0.1/pipeline_stats"
+const (
+	// pathPipelineStats is the target host API path for delivering pipeline stats.
+	pathPipelineStats = "/api/v0.1/pipeline_stats"
+	defaultPipelineConnectionLimit = 20
+	// approximation of number of bytes per pipeline stats entry
+	bytesPerPipelineStatsEntry = 100
+	// maxPipelineStatsPayloadSize is the maximum size of pipeline stats payloads.
+	// Datadog intake API limits a compressed payload to ~3MB, but
+	// let's have the default ensure we don't have paylods > 1.5 MB to have some spare room. Since
+	// some entries could be larger than 100 bytes
+	maxPipelineStatsPayloadSize = 1500000
+	maxEntriesPerPipelineStatsPayload = maxPipelineStatsPayloadSize / bytesPerPipelineStatsEntry
+	defaultMaxMemory = 250*1024*1024
+)
 
 // PipelineStatsWriter ingests stats buckets and flushes them to the API.
 type PipelineStatsWriter struct {
@@ -44,27 +56,32 @@ func NewPipelineStatsWriter(cfg *config.AgentConfig) *PipelineStatsWriter {
 		stop:      make(chan struct{}),
 		easylog:   logutil.NewThrottled(5, 10*time.Second), // no more than 5 messages every 10 seconds
 	}
-	climit := cfg.StatsWriter.ConnectionLimit
+	climit := cfg.PipelineStatsWriter.ConnectionLimit
 	if climit == 0 {
-		// Allow 1% of the connection limit to outgoing sends. The original
-		// connection limit was removed and used to be 2000 (1% = 20)
-		climit = 20
+		climit = defaultPipelineConnectionLimit
 	}
-	qsize := cfg.StatsWriter.QueueSize
-	// todo[piochelepiotr] Configure payload size limit.
+	qsize := cfg.PipelineStatsWriter.QueueSize
 	if qsize == 0 {
-		payloadSize := float64(maxEntriesPerPayload * bytesPerEntry)
 		// default to 25% of maximum memory.
 		maxmem := cfg.MaxMemory / 4
 		if maxmem == 0 {
-			// or 250MB if unbound
-			maxmem = 250 * 1024 * 1024
+			maxmem = defaultMaxMemory
 		}
-		qsize = int(math.Max(1, maxmem/payloadSize))
+		qsize = int(math.Max(1, maxmem/maxPipelineStatsPayloadSize))
 	}
-	log.Debugf("Stats writer initialized (climit=%d qsize=%d)", climit, qsize)
+	log.Debugf("Pipeline stats writer initialized (climit=%d qsize=%d)", climit, qsize)
 	sw.senders = newSenders(cfg, sw, pathPipelineStats, climit, qsize)
 	return sw
+}
+
+func (w *PipelineStatsWriter) handlePayload(statsPayload pipeline.ClientStatsPayload) {
+	entries := 0
+	for _, bucket := range statsPayload.Stats {
+		entries += len(bucket.Stats)
+	}
+	if entries < maxEntriesPerPayload {
+		return
+	}
 }
 
 // Run starts the StatsWriter, making it ready to receive stats and report metrics.
