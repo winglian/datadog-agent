@@ -174,7 +174,7 @@ func Makeseries(i int) SketchSeries {
 	}
 
 	gen := ckey.NewKeyGenerator()
-	ss.ContextKey = gen.Generate(ss.Name, ss.Host, tagset.NewHashingTagsAccumulatorWithTags(ss.Tags))
+	ss.ContextKey = gen.Generate(ss.Name, ss.Host, tagset.NewHashingTagsAccumulatorWithTags(ss.Tags), 0)
 
 	return ss
 }

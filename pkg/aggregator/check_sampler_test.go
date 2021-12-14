@@ -27,8 +27,9 @@ import (
 func generateContextKey(sample metrics.MetricSampleContext) ckey.ContextKey {
 	k := ckey.NewKeyGenerator()
 	tb := tagset.NewHashingTagsAccumulator()
-	sample.GetTags(tb)
-	return k.Generate(sample.GetName(), sample.GetHost(), tb)
+	tb2 := tagset.NewHashingTagsAccumulator() // $$ TODO
+	sample.GetTags(tb, tb2)
+	return k.Generate(sample.GetName(), sample.GetHost(), tb, 0)
 }
 
 func TestCheckGaugeSampling(t *testing.T) {

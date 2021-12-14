@@ -29,6 +29,11 @@ var (
 
 	tlmSeries = telemetry.NewCounter("metrics", "series_split",
 		[]string{"action"}, "Series split")
+
+	deviceCount = telemetry.NewCounter("metrics", "device_count",
+		nil, "Series split")
+	notDeviceCount = telemetry.NewCounter("metrics", "not_device_count",
+		nil, "Series split")
 )
 
 // Point represents a metric value at a specific time
@@ -104,8 +109,10 @@ func (series Series) MarshalStrings() ([]string, [][]string) {
 //FIXME(olivier): remove this as soon as the v1 API can handle `device` as a regular tag
 func populateDeviceField(serie *Serie) {
 	if !hasDeviceTag(serie) {
+		notDeviceCount.Inc()
 		return
 	}
+	deviceCount.Inc()
 	// make a copy of the tags array. Otherwise the underlying array won't have
 	// the device tag for the Nth iteration (N>1), and the deice field will
 	// be lost
