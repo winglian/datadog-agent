@@ -6,6 +6,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"strconv"
@@ -95,11 +96,13 @@ func IsAutoconfigEnabled() bool {
 // We guarantee that Datadog configuration is entirely loaded (env + YAML)
 // before this function is called
 func DetectFeatures() {
+	fmt.Println("DETECTING FEATURES")
 	featureLock.Lock()
 	defer featureLock.Unlock()
 
 	newFeatures := make(FeatureMap)
 	if IsAutoconfigEnabled() {
+		fmt.Println("AUTOCONFIG ENABLED: ", newFeatures)
 		detectContainerFeatures(newFeatures)
 		excludedFeatures := Datadog.GetStringSlice("autoconfig_exclude_features")
 		excludeFeatures(newFeatures, excludedFeatures)
@@ -114,8 +117,10 @@ func DetectFeatures() {
 			}
 		}
 
+		fmt.Println("FEATURE DETECTED FROM ENVIRONMENT: ", newFeatures)
 		log.Infof("Features detected from environment: %v", newFeatures)
 	} else {
+		fmt.Println("AUTOCONFIG DISABLED ", newFeatures)
 		log.Warnf("Deactivating Autoconfig will disable most components. It's recommended to use autoconfig_exclude_features and autoconfig_include_features to activate/deactivate features selectively")
 	}
 	detectedFeatures = newFeatures
