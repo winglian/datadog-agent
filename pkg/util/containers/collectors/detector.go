@@ -7,6 +7,7 @@ package collectors
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/DataDog/datadog-agent/pkg/util/log"
@@ -66,6 +67,10 @@ func NewDetector(configuredName string) *Detector {
 // constant when all collectors are either ok or PermaFail.
 // Users should keep calling this method instead of caching the first result.
 func (d *Detector) GetPreferred() (Collector, string, error) {
+	fmt.Println("DETECTOR")
+	fmt.Println("candidates: ", d.candidates)
+	fmt.Println("detected: ", d.detected)
+	fmt.Println("preferred name: ", d.preferredName)
 	// Detection rounds finished, exit fast
 	if d.candidates == nil {
 		if d.preferredCollector == nil {
@@ -114,6 +119,7 @@ func retryCandidates(candidates map[string]Collector) (map[string]Collector, map
 	remaining := make(map[string]Collector)
 
 	for name, c := range candidates {
+		fmt.Printf("Can detect %s ? ", name)
 		err := c.Detect()
 		if retry.IsErrWillRetry(err) {
 			log.Debugf("Will retry collector %s later: %s", name, err)
@@ -125,6 +131,7 @@ func retryCandidates(candidates map[string]Collector) (map[string]Collector, map
 			continue
 		}
 		log.Infof("Collector %s successfully detected", name)
+		fmt.Println("YES")
 		detected[name] = c
 	}
 	return detected, remaining
