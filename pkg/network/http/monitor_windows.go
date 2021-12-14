@@ -111,6 +111,11 @@ func (m *DriverMonitor) GetHTTPStats() map[Key]RequestStats {
 	return m.statkeeper.GetAndResetAllStats()
 }
 
+// GetStats gets driver stats related to the HTTP handle
+func (m *DriverMonitor) GetStats() (map[string]int64, error) {
+	return m.di.getStats()
+}
+
 // Stop HTTP monitoring
 func (m *DriverMonitor) Stop() error {
 	err := m.di.close()

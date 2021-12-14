@@ -188,6 +188,10 @@ func (di *httpDriverInterface) flushPendingTransactions() error {
 	return err
 }
 
+func (di *httpDriverInterface) getStats() (map[string]int64, error) {
+	return di.driverHTTPHandle.GetStatsForHandle()
+}
+
 func (di *httpDriverInterface) close() error {
 	err := di.closeDriverHandles()
 	di.eventLoopWG.Wait()
