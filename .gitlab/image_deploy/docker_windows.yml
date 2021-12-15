@@ -11,25 +11,15 @@ dev_branch-a7-windows:
   rules:
     !reference [.on_a7_manual]
   needs:
-    - docker_build_agent7_windows1809
     - docker_build_agent7_windows1809_jmx
-    - docker_build_agent7_windows1809_core
     - docker_build_agent7_windows1809_core_jmx
-    - docker_build_agent7_windows1909
     - docker_build_agent7_windows1909_jmx
-    - docker_build_agent7_windows1909_core
     - docker_build_agent7_windows1909_core_jmx
-    - docker_build_agent7_windows2004
     - docker_build_agent7_windows2004_jmx
-    - docker_build_agent7_windows2004_core
     - docker_build_agent7_windows2004_core_jmx
-    - docker_build_agent7_windows20h2
     - docker_build_agent7_windows20h2_jmx
-    - docker_build_agent7_windows20h2_core
     - docker_build_agent7_windows20h2_core_jmx
-    - docker_build_agent7_windows2022
     - docker_build_agent7_windows2022_jmx
-    - docker_build_agent7_windows2022_core
     - docker_build_agent7_windows2022_core_jmx
   variables:
     IMG_REGISTRIES: dev

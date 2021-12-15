@@ -11,7 +11,6 @@ dev_branch-a6:
   rules:
     !reference [.on_a6_manual]
   needs:
-    - docker_build_agent6
     - docker_build_agent6_jmx
     - docker_build_agent6_py2py3_jmx
   variables:
