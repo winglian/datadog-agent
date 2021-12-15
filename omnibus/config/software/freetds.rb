@@ -10,7 +10,7 @@ source url: "ftp://ftp.freetds.org/pub/freetds/stable/freetds-#{version}.tar.gz"
 relative_path "freetds-#{version}"
 
 build do
-  license "LGPL-2.1"
+  license "LGPL-2.0"
   license_file "./COPYING"
   license_file "./COPYING.lib"
 
