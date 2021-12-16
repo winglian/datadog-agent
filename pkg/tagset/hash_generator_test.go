@@ -113,3 +113,64 @@ func genTags(count int, div int) ([]string, []string) {
 
 	return tags, uniq
 }
+
+func TestHash2Map(t *testing.T) {
+	g := NewHashGenerator()
+	l := NewHashingTagsAccumulator()
+	l.Append("foo", "bar", "baz", "foo")
+
+	r := NewHashingTagsAccumulator()
+	r.Append("foo", "eek", "ook", "bar")
+
+	got := g.Hash2(l, r)
+	exp := hash("foo", "bar", "baz", "eek", "ook")
+	
+	assert.EqualValues(t, exp, got)
+	assert.EqualValues(t, []string{"foo", "bar", "baz"}, l.Get())
+	assert.EqualValues(t, []string{"ook", "eek"}, r.Get())
+}
+
+func TestHash2Fast(t *testing.T) {
+	g := NewHashGenerator()
+	l := NewHashingTagsAccumulator()
+	l.Append("foo")
+
+	r := NewHashingTagsAccumulator()
+	r.Append("foo", "eek")
+
+	got := g.Hash2(l, r)
+	exp := hash("foo", "eek")
+
+	assert.EqualValues(t, exp, got)
+	assert.EqualValues(t, []string{"foo"}, l.Get())
+	assert.EqualValues(t, []string{"eek"}, r.Get())
+}
+
+func hash(xs ...string) uint64 {
+	var hash uint64
+	h := NewHashingTagsAccumulator()
+	h.Append(xs...)
+	for _, h := range h.Hashes() {
+		hash ^= h
+	}
+	return hash
+}
+
+func BenchmarkHash2(b *testing.B) {
+	tags, _ := genTags(2048, 1)
+	for i := 1; i <= 1024; i *= 4 {
+		for j  := 1; j <= 1024; j *= 4 {
+			l := NewHashingTagsAccumulatorWithTags(tags[:i])
+			r := NewHashingTagsAccumulatorWithTags(tags[i:i+j])
+			b.Run(fmt.Sprintf("%d+%d", i, j), func(b *testing.B) {
+				hg := NewHashGenerator()
+				l, r := l.Dup(), r.Dup()
+				b.ReportAllocs()
+				b.ResetTimer()
+				for n := 0; n < b.N; n++ {
+					Hash = hg.Hash2(l, r)
+				}
+			})
+		}
+	}
+}

@@ -135,3 +135,114 @@ func (g *HashGenerator) Hash(tb *HashingTagsAccumulator) uint64 {
 
 	return hash
 }
+
+// Hash2 combines the hashes of unique tags in l and r accumulators. Duplicate tags are removed.
+func (g *HashGenerator) Hash2(l *HashingTagsAccumulator, r *HashingTagsAccumulator) uint64 {
+	var hash uint64
+	ntags := l.Len() + r.Len()
+	
+	if ntags > hashSetSize {
+		// FIXME(vickenty): should be a better way
+		l.AppendHashingAccumulator(r)
+		l.SortUniq()
+		r.Reset()
+		
+		for _, h := range l.hash {
+			hash ^= h
+		}
+	} else if ntags > bruteforceSize {
+		// reset the `seen` hashset.
+		// it copies `g.empty` instead of using make because it's faster
+
+		// for smaller tag sets, initialize only a portion of the array. when len(tags) is
+		// close to a power of two, size one up to keep hashset load low.
+		size := 1 << bits.Len(uint(ntags+ntags/8))
+		if size > hashSetSize {
+			size = hashSetSize
+		}
+		mask := uint64(size - 1)
+		copy(g.seenIdx[:size], g.empty[:size])
+
+		hash ^= g.iterMap(l, mask, nil)
+		hash ^= g.iterMap(r, mask, l.data)
+	} else {
+		hash ^= g.iterFast(l, nil)
+		hash ^= g.iterFast(r, l.data)
+	}
+
+	return hash
+}
+
+func (g *HashGenerator) iterMap(tb *HashingTagsAccumulator, mask uint64, prev []string) uint64 {
+	var hash uint64
+
+	tags := tb.data
+	hashes := tb.hash
+	ntags := len(tags)
+	ibase := int16(len(prev))
+
+	for i := 0; i < ntags; {
+		h := hashes[i]
+		j := h & mask
+		for {
+			if g.seenIdx[j] == blank {
+				g.seen[j] = h
+				g.seenIdx[j] = int16(i) + ibase
+				hash ^= h
+				i++
+				break
+			} else if g.seen[j] == h {
+				idx := g.seenIdx[j]
+				if idx >= ibase && tags[idx-ibase] == tags[i] || prev[idx] == tags[i] {
+					tags[i] = tags[ntags-1]
+					hashes[i] = hashes[ntags-1]
+					ntags--
+					break
+				}
+			}
+			
+			j = (j + 1) & mask
+		}
+	}
+	
+	tb.Truncate(ntags)
+
+	return hash
+}
+
+func (g *HashGenerator) iterFast(tb *HashingTagsAccumulator, prev []string) uint64 {
+	var hash uint64
+	tags := tb.data
+	hashes := tb.hash
+	ntags := len(tags)
+	ibase := len(prev)
+OUTER:
+	for i := 0; i < ntags; {
+		h := hashes[i]
+
+		for j := 0; j < ibase; j++ {
+			if g.seen[j] == h && prev[j] == tags[i] {
+				tags[i] = tags[ntags-1]
+				hashes[i] = hashes[ntags-1]
+				ntags--
+				continue OUTER
+			}
+		}
+
+		for j := 0; j < i; j++ {
+			if g.seen[j+ibase] == h && tags[j] == tags[i] {
+				tags[i] = tags[ntags-1]
+				hashes[i] = hashes[ntags-1]
+				ntags--
+				continue OUTER
+			}
+		}
+
+		hash ^= h
+		g.seen[i + ibase] = h
+		i++
+	}
+	tb.Truncate(ntags)
+
+	return hash
+}
