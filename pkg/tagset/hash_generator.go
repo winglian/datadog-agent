@@ -142,7 +142,6 @@ func (g *HashGenerator) Hash2(l *HashingTagsAccumulator, r *HashingTagsAccumulat
 	ntags := l.Len() + r.Len()
 
 	if ntags > hashSetSize {
-		// FIXME(vickenty): should be a better way
 		l.AppendHashingAccumulator(r)
 		l.SortUniq()
 		r.Reset()
