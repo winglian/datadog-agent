@@ -141,21 +141,21 @@ static __always_inline int http_begin_response(http_transaction_t *http, const c
 }
 
 static __always_inline void http_parse_data(char *p, http_packet_t *packet_type, http_method_t *method) {
-    if (!MEMCMP_U64(p, "HTTP", 4)) {
+    if (!MEMCMP_U32(p, "HTTP", 4)) {
         *packet_type = HTTP_RESPONSE;
-    } else if (!MEMCMP_U64(p, "GET", 3)) {
+    } else if (!MEMCMP_U32(p, "GET", 3)) {
         *packet_type = HTTP_REQUEST;
         *method = HTTP_GET;
-    } else if (!MEMCMP_U64(p, "POST", 4)) {
+    } else if (!MEMCMP_U32(p, "POST", 4)) {
         *packet_type = HTTP_REQUEST;
         *method = HTTP_POST;
-    } else if (!MEMCMP_U64(p, "PUT", 3)) {
+    } else if (!MEMCMP_U32(p, "PUT", 3)) {
         *packet_type = HTTP_REQUEST;
         *method = HTTP_PUT;
     } else if (!MEMCMP_U64(p, "DELETE", 6)) {
         *packet_type = HTTP_REQUEST;
         *method = HTTP_DELETE;
-    } else if (!MEMCMP_U64(p, "HEAD", 4)) {
+    } else if (!MEMCMP_U32(p, "HEAD", 4)) {
         *packet_type = HTTP_REQUEST;
         *method = HTTP_HEAD;
     } else if (!MEMCMP_U64(p, "OPTIONS", 7)) {
