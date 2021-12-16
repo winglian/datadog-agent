@@ -141,27 +141,27 @@ static __always_inline int http_begin_response(http_transaction_t *http, const c
 }
 
 static __always_inline void http_parse_data(char *p, http_packet_t *packet_type, http_method_t *method) {
-    if ((p[0] == 'H') && (p[1] == 'T') && (p[2] == 'T') && (p[3] == 'P')) {
+    if (!MEMCMP_U64(p, "HTTP", 4)) {
         *packet_type = HTTP_RESPONSE;
-    } else if ((p[0] == 'G') && (p[1] == 'E') && (p[2] == 'T')) {
+    } else if (!MEMCMP_U64(p, "GET", 3)) {
         *packet_type = HTTP_REQUEST;
         *method = HTTP_GET;
-    } else if ((p[0] == 'P') && (p[1] == 'O') && (p[2] == 'S') && (p[3] == 'T')) {
+    } else if (!MEMCMP_U64(p, "POST", 4)) {
         *packet_type = HTTP_REQUEST;
         *method = HTTP_POST;
-    } else if ((p[0] == 'P') && (p[1] == 'U') && (p[2] == 'T')) {
+    } else if (!MEMCMP_U64(p, "PUT", 3)) {
         *packet_type = HTTP_REQUEST;
         *method = HTTP_PUT;
-    } else if ((p[0] == 'D') && (p[1] == 'E') && (p[2] == 'L') && (p[3] == 'E') && (p[4] == 'T') && (p[5] == 'E')) {
+    } else if (!MEMCMP_U64(p, "DELETE", 6)) {
         *packet_type = HTTP_REQUEST;
         *method = HTTP_DELETE;
-    } else if ((p[0] == 'H') && (p[1] == 'E') && (p[2] == 'A') && (p[3] == 'D')) {
+    } else if (!MEMCMP_U64(p, "HEAD", 4)) {
         *packet_type = HTTP_REQUEST;
         *method = HTTP_HEAD;
-    } else if ((p[0] == 'O') && (p[1] == 'P') && (p[2] == 'T') && (p[3] == 'I') && (p[4] == 'O') && (p[5] == 'N') && (p[6] == 'S')) {
+    } else if (!MEMCMP_U64(p, "OPTIONS", 7)) {
         *packet_type = HTTP_REQUEST;
         *method = HTTP_OPTIONS;
-    } else if ((p[0] == 'P') && (p[1] == 'A') && (p[2] == 'T') && (p[3] == 'C') && (p[4] == 'H')) {
+    } else if (!MEMCMP_U64(p, "PATCH", 5)) {
         *packet_type = HTTP_REQUEST;
         *method = HTTP_PATCH;
     }

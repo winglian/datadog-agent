@@ -151,4 +151,15 @@ struct bpf_map_def {
 #define BPF_KRETPROBE_READ_RET_IP(ip, ctx) ({ bpf_probe_read(&(ip), sizeof(ip), \
                                                   (void*)(PT_REGS_FP(ctx) + sizeof(ip))); })
 
+#define CONST_MASK_U64_1BYTES 0x00000000000000ff
+#define CONST_MASK_U64_2BYTES 0x000000000000ffff
+#define CONST_MASK_U64_3BYTES 0x0000000000ffffff
+#define CONST_MASK_U64_4BYTES 0x00000000ffffffff
+#define CONST_MASK_U64_5BYTES 0x000000ffffffffff
+#define CONST_MASK_U64_6BYTES 0x0000ffffffffffff
+#define CONST_MASK_U64_7BYTES 0x00ffffffffffffff
+#define CONST_MASK_U64_8BYTES 0xffffffffffffffff
+
+#define MEMCMP_U64(buf, val, size) ((*((u64*)buf) & CONST_MASK_U64_##size##BYTES) != (*((u64*)val)& CONST_MASK_U64_##size##BYTES))
+
 #endif
