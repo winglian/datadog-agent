@@ -140,6 +140,34 @@ static __always_inline int http_begin_response(http_transaction_t *http, const c
     return 1;
 }
 
+#if U64 == 1
+static __always_inline void http_parse_data(char *p, http_packet_t *packet_type, http_method_t *method) {
+    if (!MEMCMP_U64(p, "HTTP", 4)) {
+        *packet_type = HTTP_RESPONSE;
+    } else if (!MEMCMP_U64(p, "GET", 3)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_GET;
+    } else if (!MEMCMP_U64(p, "POST", 4)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_POST;
+    } else if (!MEMCMP_U64(p, "PUT", 3)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_PUT;
+    } else if (!MEMCMP_U64(p, "DELETE", 6)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_DELETE;
+    } else if (!MEMCMP_U64(p, "HEAD", 4)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_HEAD;
+    } else if (!MEMCMP_U64(p, "OPTIONS", 7)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_OPTIONS;
+    } else if (!MEMCMP_U64(p, "PATCH", 5)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_PATCH;
+    }
+}
+#elif U64U32 == 1
 static __always_inline void http_parse_data(char *p, http_packet_t *packet_type, http_method_t *method) {
     if (!MEMCMP_U32(p, "HTTP", 4)) {
         *packet_type = HTTP_RESPONSE;
@@ -166,6 +194,61 @@ static __always_inline void http_parse_data(char *p, http_packet_t *packet_type,
         *method = HTTP_PATCH;
     }
 }
+#elif BUILTIN == 1
+static __always_inline void http_parse_data(char *p, http_packet_t *packet_type, http_method_t *method) {
+    if (!__builtin_memcmp(p, "HTTP", 4)) {
+        *packet_type = HTTP_RESPONSE;
+    } else if (!__builtin_memcmp(p, "GET", 3)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_GET;
+    } else if (!__builtin_memcmp(p, "POST", 4)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_POST;
+    } else if (!__builtin_memcmp(p, "PUT", 3)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_PUT;
+    } else if (!__builtin_memcmp(p, "DELETE", 6)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_DELETE;
+    } else if (!__builtin_memcmp(p, "HEAD", 4)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_HEAD;
+    } else if (!__builtin_memcmp(p, "OPTIONS", 7)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_OPTIONS;
+    } else if (!__builtin_memcmp(p, "PATCH", 5)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_PATCH;
+    }
+}
+#elif ORIG == 1
+static __always_inline void http_parse_data(char *p, http_packet_t *packet_type, http_method_t *method) {
+    if ((p[0] == 'H') && (p[1] == 'T') && (p[2] == 'T') && (p[3] == 'P')) {
+        *packet_type = HTTP_RESPONSE;
+    } else if ((p[0] == 'G') && (p[1] == 'E') && (p[2] == 'T')) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_GET;
+    } else if ((p[0] == 'P') && (p[1] == 'O') && (p[2] == 'S') && (p[3] == 'T')) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_POST;
+    } else if ((p[0] == 'P') && (p[1] == 'U') && (p[2] == 'T')) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_PUT;
+    } else if ((p[0] == 'D') && (p[1] == 'E') && (p[2] == 'L') && (p[3] == 'E') && (p[4] == 'T') && (p[5] == 'E')) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_DELETE;
+    } else if ((p[0] == 'H') && (p[1] == 'E') && (p[2] == 'A') && (p[3] == 'D')) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_HEAD;
+    } else if ((p[0] == 'O') && (p[1] == 'P') && (p[2] == 'T') && (p[3] == 'I') && (p[4] == 'O') && (p[5] == 'N') && (p[6] == 'S')) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_OPTIONS;
+    } else if ((p[0] == 'P') && (p[1] == 'A') && (p[2] == 'T') && (p[3] == 'C') && (p[4] == 'H')) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_PATCH;
+    }
+}
+#endif
 
 static __always_inline int http_process(char *buffer, skb_info_t *skb_info, u16 src_port) {
     http_packet_t packet_type = HTTP_PACKET_UNKNOWN;
