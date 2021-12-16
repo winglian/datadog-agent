@@ -124,7 +124,7 @@ func TestHash2Map(t *testing.T) {
 
 	got := g.Hash2(l, r)
 	exp := hash("foo", "bar", "baz", "eek", "ook")
-	
+
 	assert.EqualValues(t, exp, got)
 	assert.EqualValues(t, []string{"foo", "bar", "baz"}, l.Get())
 	assert.EqualValues(t, []string{"ook", "eek"}, r.Get())
@@ -156,21 +156,53 @@ func hash(xs ...string) uint64 {
 	return hash
 }
 
-func BenchmarkHash2(b *testing.B) {
+func BenchmarkHash2Uniq(b *testing.B) {
 	tags, _ := genTags(2048, 1)
-	for i := 1; i <= 1024; i *= 4 {
-		for j  := 1; j <= 1024; j *= 4 {
-			l := NewHashingTagsAccumulatorWithTags(tags[:i])
-			r := NewHashingTagsAccumulatorWithTags(tags[i:i+j])
-			b.Run(fmt.Sprintf("%d+%d", i, j), func(b *testing.B) {
-				hg := NewHashGenerator()
-				l, r := l.Dup(), r.Dup()
-				b.ReportAllocs()
-				b.ResetTimer()
-				for n := 0; n < b.N; n++ {
-					Hash = hg.Hash2(l, r)
-				}
-			})
-		}
+	for i := 1; i < 4096; i *= 2 {
+		l := NewHashingTagsAccumulatorWithTags(tags[:i/2])
+		r := NewHashingTagsAccumulatorWithTags(tags[i/2 : i])
+		b.Run(fmt.Sprintf("%d-tags", i), func(b *testing.B) {
+			hg := NewHashGenerator()
+			l, r := l.Dup(), r.Dup()
+			b.ReportAllocs()
+			b.ResetTimer()
+			for n := 0; n < b.N; n++ {
+				Hash = hg.Hash2(l, r)
+			}
+		})
+	}
+}
+
+func BenchmarkHash2Same(b *testing.B) {
+	tags, _ := genTags(2048, 1)
+	for i := 1; i < 4096; i *= 2 {
+		l := NewHashingTagsAccumulatorWithTags(tags[:i/2])
+		r := NewHashingTagsAccumulatorWithTags(tags[:i/2])
+		b.Run(fmt.Sprintf("%d-tags", i), func(b *testing.B) {
+			hg := NewHashGenerator()
+			l, r := l.Dup(), r.Dup()
+			b.ReportAllocs()
+			b.ResetTimer()
+			for n := 0; n < b.N; n++ {
+				Hash = hg.Hash2(l, r)
+			}
+		})
+	}
+}
+
+func BenchmarkHash2Dup(b *testing.B) {
+	tags, _ := genTags(2048, 4)
+	for i := 1; i < 4096; i *= 2 {
+		l := NewHashingTagsAccumulatorWithTags(tags[:i/2])
+		r := NewHashingTagsAccumulatorWithTags(tags[i/2 : i])
+		b.Run(fmt.Sprintf("%d-tags", i), func(b *testing.B) {
+			hg := NewHashGenerator()
+			l, r := l.Dup(), r.Dup()
+			b.ReportAllocs()
+			b.ResetTimer()
+			for n := 0; n < b.N; n++ {
+				Hash = hg.Hash2(l, r)
+			}
+		})
 	}
 }

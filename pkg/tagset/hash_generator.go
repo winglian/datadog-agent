@@ -140,13 +140,13 @@ func (g *HashGenerator) Hash(tb *HashingTagsAccumulator) uint64 {
 func (g *HashGenerator) Hash2(l *HashingTagsAccumulator, r *HashingTagsAccumulator) uint64 {
 	var hash uint64
 	ntags := l.Len() + r.Len()
-	
+
 	if ntags > hashSetSize {
 		// FIXME(vickenty): should be a better way
 		l.AppendHashingAccumulator(r)
 		l.SortUniq()
 		r.Reset()
-		
+
 		for _, h := range l.hash {
 			hash ^= h
 		}
@@ -163,86 +163,89 @@ func (g *HashGenerator) Hash2(l *HashingTagsAccumulator, r *HashingTagsAccumulat
 		mask := uint64(size - 1)
 		copy(g.seenIdx[:size], g.empty[:size])
 
-		hash ^= g.iterMap(l, mask, nil)
-		hash ^= g.iterMap(r, mask, l.data)
-	} else {
-		hash ^= g.iterFast(l, nil)
-		hash ^= g.iterFast(r, l.data)
-	}
+		ibase := int16(0)
+		for _, tb := range [2]*HashingTagsAccumulator{l, r} {
+			tags := tb.data
+			hashes := tb.hash
+			ntags := len(hashes)
 
-	return hash
-}
-
-func (g *HashGenerator) iterMap(tb *HashingTagsAccumulator, mask uint64, prev []string) uint64 {
-	var hash uint64
-
-	tags := tb.data
-	hashes := tb.hash
-	ntags := len(tags)
-	ibase := int16(len(prev))
-
-	for i := 0; i < ntags; {
-		h := hashes[i]
-		j := h & mask
-		for {
-			if g.seenIdx[j] == blank {
-				g.seen[j] = h
-				g.seenIdx[j] = int16(i) + ibase
-				hash ^= h
-				i++
-				break
-			} else if g.seen[j] == h {
-				idx := g.seenIdx[j]
-				if idx >= ibase && tags[idx-ibase] == tags[i] || prev[idx] == tags[i] {
-					tags[i] = tags[ntags-1]
-					hashes[i] = hashes[ntags-1]
-					ntags--
-					break
+			for i := 0; i < ntags; {
+				h := hashes[i]
+				j := h & mask
+				for {
+					if g.seenIdx[j] == blank {
+						g.seen[j] = h
+						g.seenIdx[j] = int16(i) + ibase
+						hash ^= h
+						i++
+						break
+					} else if g.seen[j] == h {
+						idx := g.seenIdx[j]
+						if (idx >= ibase && tags[idx-ibase] == tags[i]) ||
+							(idx < ibase && l.data[idx] == tags[i]) {
+							tags[i] = tags[ntags-1]
+							hashes[i] = hashes[ntags-1]
+							ntags--
+							break
+						}
+					}
+					j = (j + 1) & mask
 				}
 			}
-			
-			j = (j + 1) & mask
+			ibase = int16(ntags)
+			tb.Truncate(ntags)
 		}
-	}
-	
-	tb.Truncate(ntags)
+	} else {
+		ldata := l.data
+		lhash := l.hash
+		lsize := len(ldata)
 
-	return hash
-}
-
-func (g *HashGenerator) iterFast(tb *HashingTagsAccumulator, prev []string) uint64 {
-	var hash uint64
-	tags := tb.data
-	hashes := tb.hash
-	ntags := len(tags)
-	ibase := len(prev)
-OUTER:
-	for i := 0; i < ntags; {
-		h := hashes[i]
-
-		for j := 0; j < ibase; j++ {
-			if g.seen[j] == h && prev[j] == tags[i] {
-				tags[i] = tags[ntags-1]
-				hashes[i] = hashes[ntags-1]
-				ntags--
-				continue OUTER
+	L:
+		for i := 0; i < lsize; {
+			h := lhash[i]
+			for j := 0; j < i; j++ {
+				if g.seen[j] == h && ldata[j] == ldata[i] {
+					lsize--
+					ldata[i] = ldata[lsize]
+					lhash[i] = lhash[lsize]
+					continue L
+				}
 			}
+			hash ^= h
+			g.seen[i] = h
+			i++
 		}
+		l.Truncate(lsize)
 
-		for j := 0; j < i; j++ {
-			if g.seen[j+ibase] == h && tags[j] == tags[i] {
-				tags[i] = tags[ntags-1]
-				hashes[i] = hashes[ntags-1]
-				ntags--
-				continue OUTER
+		rdata := r.data
+		rhash := r.hash
+		rsize := len(rdata)
+	R:
+		for i := 0; i < rsize; {
+			h := rhash[i]
+			for j := 0; j < lsize; j++ {
+				if g.seen[j] == h && ldata[j] == rdata[i] {
+					rsize--
+					rdata[i] = rdata[rsize]
+					rhash[i] = rhash[rsize]
+					continue R
+				}
 			}
+			for j := 0; j < i; j++ {
+				if g.seen[lsize+j] == h && rdata[j] == rdata[i] {
+					rsize--
+					rdata[i] = rdata[rsize]
+					rhash[i] = rhash[rsize]
+					continue R
+				}
+			}
+			hash ^= h
+			g.seen[lsize+i] = h
+			i++
 		}
+		r.Truncate(rsize)
 
-		hash ^= h
-		g.seen[i + ibase] = h
-		i++
 	}
-	tb.Truncate(ntags)
 
 	return hash
 }
