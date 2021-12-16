@@ -10,9 +10,10 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/config/remote/uptane"
 	"github.com/DataDog/datadog-agent/pkg/config/remote/util"
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
-	"github.com/DataDog/datadog-agent/pkg/util/grpc"
+	agentgrpc "github.com/DataDog/datadog-agent/pkg/util/grpc"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -40,6 +41,15 @@ type Facts struct {
 }
 
 func NewClient(ctx context.Context, facts Facts, products []pbgo.Product) (*Client, error) {
+	client, err := newClient(ctx, facts, products)
+	if err != nil {
+		return nil, err
+	}
+	go client.pollLoop()
+	return client, nil
+}
+
+func newClient(ctx context.Context, facts Facts, products []pbgo.Product, dialOpts ...grpc.DialOption) (*Client, error) {
 	token, err := security.FetchAuthToken()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not acquire agent auth token")
@@ -49,7 +59,7 @@ func NewClient(ctx context.Context, facts Facts, products []pbgo.Product) (*Clie
 		"authorization": []string{fmt.Sprintf("Bearer %s", token)},
 	}
 	ctx = metadata.NewOutgoingContext(ctx, md)
-	grpcClient, err := grpc.GetDDAgentSecureClient(ctx)
+	grpcClient, err := agentgrpc.GetDDAgentSecureClient(ctx, dialOpts...)
 	if err != nil {
 		close()
 		return nil, err
@@ -63,7 +73,7 @@ func NewClient(ctx context.Context, facts Facts, products []pbgo.Product) (*Clie
 	for _, product := range products {
 		enabledProducts[product] = struct{}{}
 	}
-	c := &Client{
+	return &Client{
 		ctx:                ctx,
 		facts:              facts,
 		enabledProducts:    enabledProducts,
@@ -73,9 +83,7 @@ func NewClient(ctx context.Context, facts Facts, products []pbgo.Product) (*Clie
 		partialClient:      partialClient,
 		apmSamplingUpdates: make(chan APMSamplingUpdate, 8),
 		configs:            newConfigs(),
-	}
-	go c.pollLoop()
-	return c, nil
+	}, nil
 }
 
 func (c *Client) Close() {
@@ -108,6 +116,10 @@ func (c *Client) poll() error {
 	c.Lock()
 	defer c.Unlock()
 	state := c.partialClient.State()
+	lastPollErr := ""
+	if c.lastPollErr != nil {
+		lastPollErr = c.lastPollErr.Error()
+	}
 	response, err := c.grpc.ClientGetConfigs(c.ctx, &pbgo.ClientGetConfigsRequest{
 		Client: &pbgo.Client{
 			Id:      c.facts.ID,
@@ -118,7 +130,7 @@ func (c *Client) poll() error {
 				TargetsVersion: state.TargetsVersion,
 				Configs:        c.configs.state(),
 				HasError:       c.lastPollErr != nil,
-				Error:          c.lastPollErr.Error(),
+				Error:          lastPollErr,
 			},
 			Products: c.products(),
 		},

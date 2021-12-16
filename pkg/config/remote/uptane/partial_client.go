@@ -81,6 +81,7 @@ func NewPartialClient() (*PartialClient, error) {
 		rootClient:  client.NewClient(localStore, remoteStore),
 		localStore:  localStore,
 		remoteStore: remoteStore,
+		rootVersion: meta.RootsDirector().LastVersion(),
 	}
 	return c, nil
 }
@@ -105,6 +106,9 @@ func (c *PartialClient) getRoot() (*data.Root, error) {
 }
 
 func (c *PartialClient) validateAndUpdateTargets(rawTargets []byte) error {
+	if len(rawTargets) == 0 {
+		return nil
+	}
 	root, err := c.getRoot()
 	if err != nil {
 		return err
@@ -156,6 +160,10 @@ func (c *PartialClient) Update(response *pbgo.ClientGetConfigsResponse) error {
 	if err != nil {
 		return err
 	}
+	err = c.updateRootVersion()
+	if err != nil {
+		return err
+	}
 	err = c.validateAndUpdateTargets(response.Targets.Raw)
 	if err != nil {
 		return err
@@ -168,6 +176,23 @@ func (c *PartialClient) Update(response *pbgo.ClientGetConfigsResponse) error {
 		}
 	}
 	c.valid = true
+	return nil
+}
+
+func (c *PartialClient) updateRootVersion() error {
+	meta, err := c.localStore.GetMeta()
+	if err != nil {
+		return err
+	}
+	rootMeta, rootFound := meta["root.json"]
+	if !rootFound {
+		return fmt.Errorf("could not find root.json in the local store")
+	}
+	version, err := metaVersion(rootMeta)
+	if err != nil {
+		return err
+	}
+	c.rootVersion = version
 	return nil
 }
 
