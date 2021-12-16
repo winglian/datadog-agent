@@ -33,6 +33,12 @@ type configs struct {
 	apmSampling *apmSamplingConfigs
 }
 
+func newConfigs() *configs {
+	return &configs{
+		apmSampling: newApmSamplingConfigs(),
+	}
+}
+
 type update struct {
 	apmSamplingUpdate *APMSamplingUpdate
 }

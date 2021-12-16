@@ -56,6 +56,7 @@ func NewClient(ctx context.Context, facts Facts, products []pbgo.Product) (*Clie
 	}
 	partialClient, err := uptane.NewPartialClient()
 	if err != nil {
+		close()
 		return nil, err
 	}
 	enabledProducts := make(map[pbgo.Product]struct{})
@@ -71,6 +72,7 @@ func NewClient(ctx context.Context, facts Facts, products []pbgo.Product) (*Clie
 		pollInterval:       1 * time.Second,
 		partialClient:      partialClient,
 		apmSamplingUpdates: make(chan APMSamplingUpdate, 8),
+		configs:            newConfigs(),
 	}
 	go c.pollLoop()
 	return c, nil
@@ -132,7 +134,8 @@ func (c *Client) poll() error {
 	if err != nil {
 		return err
 	}
-	c.publishUpdates(c.configs.update(c.products(), configFiles))
+	updates := c.configs.update(c.products(), configFiles)
+	c.publishUpdates(updates)
 	return nil
 }
 
