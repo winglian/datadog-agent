@@ -2,6 +2,8 @@ package remote
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -15,6 +17,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/config/remote/meta"
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
+	"github.com/DataDog/datadog-agent/pkg/trace/pb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -99,10 +102,19 @@ func TestClientEmptyResponse(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestClientAPMUpdate(t *testing.T) {
+func TestClientValidResponse(t *testing.T) {
 	testServer := getTestServer(t)
 
-	embeddedRoot := generateRoot(generateKey(), 1, generateKey())
+	targetsKey := generateKey()
+	embeddedRoot := generateRoot(generateKey(), 1, targetsKey)
+	apmConfig := pb.APMSampling{
+		TargetTps: []pb.TargetTPS{{Service: "service1", Env: "env1", Value: 4}},
+	}
+	rawApmConfig, err := apmConfig.MarshalMsg(nil)
+	assert.NoError(t, err)
+	target1 := generateTarget(rawApmConfig, 5)
+	target2content, target2 := generateRandomTarget(2)
+	targets := generateTargets(targetsKey, 1, data.TargetFiles{"datadog/3/APM_SAMPLING/id/1": target1, "datadog/3/TESTING1/id/2": target2})
 	config.Datadog.Set("remote_configuration.director_root", embeddedRoot)
 
 	testFacts := Facts{ID: "test-agent", Name: "test-agent-name", Version: "v6.1.1"}
@@ -120,13 +132,31 @@ func TestClientAPMUpdate(t *testing.T) {
 		Version:  testFacts.Version,
 		Products: []pbgo.Product{pbgo.Product_APM_SAMPLING},
 	}}).Return(&pbgo.ClientGetConfigsResponse{
-		Roots:       []*pbgo.TopMeta{},
-		Targets:     &pbgo.TopMeta{},
-		TargetFiles: []*pbgo.File{},
+		Roots: []*pbgo.TopMeta{},
+		Targets: &pbgo.TopMeta{
+			Version: 1,
+			Raw:     targets,
+		},
+		TargetFiles: []*pbgo.File{
+			{Path: "datadog/3/APM_SAMPLING/id/1", Raw: rawApmConfig},
+			{Path: "datadog/3/TESTING1/id/2", Raw: target2content},
+		},
 	}, nil)
 
 	err = client.poll()
 	assert.NoError(t, err)
+	apmUpdates := client.APMSamplingUpdates()
+	require.Len(t, apmUpdates, 1)
+	apmUpdate := <-apmUpdates
+	assert.Equal(t, APMSamplingUpdate{
+		Config: &APMSamplingConfig{
+			Config: Config{
+				ID:      "id",
+				Version: 5,
+			},
+			APMSampling: apmConfig,
+		},
+	}, apmUpdate)
 }
 
 func generateKey() *sign.PrivateKey {
@@ -169,4 +199,29 @@ func generateRoot(key *sign.PrivateKey, version int, targetsKey *sign.PrivateKey
 	signedRoot, _ := sign.Marshal(&root, key.Signer())
 	serializedRoot, _ := json.Marshal(signedRoot)
 	return serializedRoot
+}
+
+func hashSha256(data []byte) []byte {
+	hash := sha256.Sum256(data)
+	return hash[:]
+}
+
+func generateRandomTarget(version int) ([]byte, data.TargetFileMeta) {
+	file := make([]byte, 128)
+	rand.Read(file)
+	return file, generateTarget(file, version)
+}
+
+func generateTarget(file []byte, version int) data.TargetFileMeta {
+	custom, _ := json.Marshal(&versionCustom{Version: uint64(version)})
+	customJSON := json.RawMessage(custom)
+	return data.TargetFileMeta{
+		FileMeta: data.FileMeta{
+			Length: int64(len(file)),
+			Hashes: data.Hashes{
+				"sha256": hashSha256(file),
+			},
+			Custom: &customJSON,
+		},
+	}
 }

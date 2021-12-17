@@ -167,7 +167,7 @@ func (c *Client) buildConfigFiles() (configFiles, error) {
 			if err != nil {
 				return nil, err
 			}
-			targetVersion, err := targetVersion(*target.Custom)
+			targetVersion, err := targetVersion(target.Custom)
 			if err != nil {
 				return nil, err
 			}

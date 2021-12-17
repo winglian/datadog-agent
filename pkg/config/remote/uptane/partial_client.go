@@ -225,9 +225,10 @@ func (c *PartialClient) targetFile(path string) ([]byte, error) {
 		return nil, fmt.Errorf("target file %s not found", path)
 	}
 	var targetMeta *data.TargetFileMeta
-	for targetPath, target := range c.targetMetas {
+	for targetPath := range c.targetMetas {
 		if targetPath == path {
-			targetMeta = &target
+			t := c.targetMetas[targetPath]
+			targetMeta = &t
 		}
 	}
 	if targetMeta == nil {
