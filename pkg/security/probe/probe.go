@@ -901,6 +901,7 @@ func NewProbe(config *config.Config, client *statsd.Client) (*Probe, error) {
 		log.Warnf("constant fetcher failed: %v", err)
 		return nil, err
 	}
+	fmt.Println(constants)
 
 	p.managerOptions.ConstantEditors = append(p.managerOptions.ConstantEditors, constantfetch.CreateConstantEditors(constants)...)
 
