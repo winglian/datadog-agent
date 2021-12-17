@@ -275,6 +275,33 @@ static __always_inline void http_parse_data(char *p, http_packet_t *packet_type,
         *method = HTTP_PATCH;
     }
 }
+#elif BUILTINSTRNCMP == 1
+static __always_inline void http_parse_data(char *p, http_packet_t *packet_type, http_method_t *method) {
+    if (!__builtin_strncmp(p, "HTTP", __builtin_strlen("HTTP"))) {
+        *packet_type = HTTP_RESPONSE;
+    } else if (!__builtin_strncmp(p, "GET", __builtin_strlen("GET"))) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_GET;
+    } else if (!__builtin_strncmp(p, "POST", __builtin_strlen("POST"))) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_POST;
+    } else if (!__builtin_strncmp(p, "PUT", __builtin_strlen("PUT"))) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_PUT;
+    } else if (!__builtin_strncmp(p, "DELETE", __builtin_strlen("DELETE"))) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_DELETE;
+    } else if (!__builtin_strncmp(p, "HEAD", __builtin_strlen("HEAD"))) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_HEAD;
+    } else if (!__builtin_strncmp(p, "OPTIONS", __builtin_strlen("OPTIONS"))) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_OPTIONS;
+    } else if (!__builtin_strncmp(p, "PATCH", __builtin_strlen("PATCH"))) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_PATCH;
+    }
+}
 #elif ORIG == 1
 static __always_inline void http_parse_data(char *p, http_packet_t *packet_type, http_method_t *method) {
     if ((p[0] == 'H') && (p[1] == 'T') && (p[2] == 'T') && (p[3] == 'P')) {
