@@ -169,4 +169,6 @@ struct bpf_map_def {
 
 #define MEMCMP_U32(buf, val, size) ((*((u32*)buf) & CONST_MASK_U32_##size##BYTES) != (*((u32*)val)& CONST_MASK_U32_##size##BYTES))
 
+#define MEMCMP_UX(buf, val, size) ((*((u64*)buf) & CONST_MASK_U64_##size##BYTES) != val)
+
 #endif

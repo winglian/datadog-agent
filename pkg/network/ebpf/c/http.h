@@ -167,6 +167,33 @@ static __always_inline void http_parse_data(char *p, http_packet_t *packet_type,
         *method = HTTP_PATCH;
     }
 }
+#elif UX == 1
+static __always_inline void http_parse_data(char *p, http_packet_t *packet_type, http_method_t *method) {
+    if (!MEMCMP_UX(p, /*"HTTP"*/0x50545448, 4)) {
+        *packet_type = HTTP_RESPONSE;
+    } else if (!MEMCMP_UX(p, /*"GET"*/0x544547, 3)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_GET;
+    } else if (!MEMCMP_UX(p, /*"POST"*/0x54534f50, 4)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_POST;
+    } else if (!MEMCMP_UX(p, /*"PUT"*/0x545550, 3)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_PUT;
+    } else if (!MEMCMP_UX(p, /*"DELETE"*/0x4554454c4544, 6)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_DELETE;
+    } else if (!MEMCMP_UX(p, /*"HEAD"*/0x44414548, 4)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_HEAD;
+    } else if (!MEMCMP_UX(p, /*"OPTIONS"*/0x534e4f4954504f, 7)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_OPTIONS;
+    } else if (!MEMCMP_UX(p, /*"PATCH"*/0x48435441, 5)) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_PATCH;
+    }
+}
 #elif U64U32 == 1
 static __always_inline void http_parse_data(char *p, http_packet_t *packet_type, http_method_t *method) {
     if (!MEMCMP_U32(p, "HTTP", 4)) {
