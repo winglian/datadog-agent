@@ -128,9 +128,8 @@ func TestSubscribe(t *testing.T) {
 				{
 					Events: []Event{
 						{
-							Type:    EventTypeSet,
-							Sources: []Source{fooSource},
-							Entity:  fooContainer,
+							Type:   EventTypeSet,
+							Entity: fooContainer,
 						},
 					},
 				},
@@ -186,14 +185,12 @@ func TestSubscribe(t *testing.T) {
 				{
 					Events: []Event{
 						{
-							Type:    EventTypeSet,
-							Sources: []Source{fooSource},
-							Entity:  barContainer,
+							Type:   EventTypeSet,
+							Entity: barContainer,
 						},
 						{
-							Type:    EventTypeSet,
-							Sources: []Source{fooSource},
-							Entity:  fooContainer,
+							Type:   EventTypeSet,
+							Entity: fooContainer,
 						},
 					},
 				},
@@ -222,8 +219,7 @@ func TestSubscribe(t *testing.T) {
 				{
 					Events: []Event{
 						{
-							Type:    EventTypeSet,
-							Sources: []Source{fooSource},
+							Type: EventTypeSet,
 							Entity: &Container{
 								EntityID: fooContainer.EntityID,
 								EntityMeta: EntityMeta{
@@ -237,8 +233,7 @@ func TestSubscribe(t *testing.T) {
 				{
 					Events: []Event{
 						{
-							Type:    EventTypeSet,
-							Sources: []Source{barSource, fooSource},
+							Type: EventTypeSet,
 							Entity: &Container{
 								EntityID: fooContainer.EntityID,
 								EntityMeta: EntityMeta{
@@ -273,8 +268,7 @@ func TestSubscribe(t *testing.T) {
 				{
 					Events: []Event{
 						{
-							Type:    EventTypeSet,
-							Sources: []Source{barSource, fooSource},
+							Type: EventTypeSet,
 							Entity: &Container{
 								EntityID: fooContainer.EntityID,
 								EntityMeta: EntityMeta{
@@ -310,18 +304,16 @@ func TestSubscribe(t *testing.T) {
 				{
 					Events: []Event{
 						{
-							Type:    EventTypeSet,
-							Sources: []Source{fooSource},
-							Entity:  fooContainer,
+							Type:   EventTypeSet,
+							Entity: fooContainer,
 						},
 					},
 				},
 				{
 					Events: []Event{
 						{
-							Type:    EventTypeUnset,
-							Sources: []Source{fooSource},
-							Entity:  fooContainer.GetID(),
+							Type:   EventTypeUnset,
+							Entity: fooContainer.GetID(),
 						},
 					},
 				},
@@ -360,18 +352,16 @@ func TestSubscribe(t *testing.T) {
 				{
 					Events: []Event{
 						{
-							Type:    EventTypeSet,
-							Sources: []Source{fooSource},
-							Entity:  fooContainer,
+							Type:   EventTypeSet,
+							Entity: fooContainer,
 						},
 					},
 				},
 				{
 					Events: []Event{
 						{
-							Type:    EventTypeUnset,
-							Sources: []Source{fooSource},
-							Entity:  fooContainer.GetID(),
+							Type:   EventTypeUnset,
+							Entity: fooContainer.GetID(),
 						},
 					},
 				},
