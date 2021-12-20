@@ -15,7 +15,7 @@ import (
 // IterableSeries represents an iterable collection of Serie.
 // Serie can be appended to IterableSeries while IterableSeries is serialized
 type IterableSeries struct {
-	c                   chan *Serie
+	c                   *BufferedSerieChan
 	receiverStoppedChan chan struct{}
 	callback            func(*Serie)
 	current             *Serie
@@ -25,9 +25,9 @@ type IterableSeries struct {
 // NewIterableSeries creates a new instance of *IterableSeries
 // `callback` is called each time `Append` is called.
 // `chanSize` is the internal channel buffer size
-func NewIterableSeries(callback func(*Serie), chanSize int) *IterableSeries {
+func NewIterableSeries(callback func(*Serie), chanSize int, bufferSize int) *IterableSeries {
 	return &IterableSeries{
-		c:                   make(chan *Serie, chanSize),
+		c:                   NewBufferedSerieChan(chanSize, bufferSize),
 		receiverStoppedChan: make(chan struct{}),
 		callback:            callback,
 		current:             nil,
@@ -38,12 +38,7 @@ func NewIterableSeries(callback func(*Serie), chanSize int) *IterableSeries {
 func (series *IterableSeries) Append(serie *Serie) {
 	series.callback(serie)
 	atomic.AddUint64(&series.count, 1)
-	select {
-	case series.c <- serie:
-
-	// Make sure `Append` doesn't block. See `IterationStopped()`.
-	case <-series.receiverStoppedChan:
-	}
+	series.c.Put(serie, series.receiverStoppedChan)
 }
 
 // SeriesCount returns the number of series appended with `IterableSeries.Append`.
@@ -53,7 +48,7 @@ func (series *IterableSeries) SeriesCount() uint64 {
 
 // SenderStopped must be called when sender stop calling Append.
 func (series *IterableSeries) SenderStopped() {
-	close(series.c)
+	series.c.Close()
 }
 
 // IterationStopped must be called when the receiver stops calling `MoveNext`.
@@ -76,25 +71,25 @@ func (series *IterableSeries) WriteFooter(stream *jsoniter.Stream) error {
 
 // WriteCurrentItem writes the json representation of an item
 func (series *IterableSeries) WriteCurrentItem(stream *jsoniter.Stream) error {
-	if series.current == nil {
+	if series.Current() == nil {
 		return errors.New("nil serie")
 	}
-	return writeItem(stream, series.current)
+	return writeItem(stream, series.Current())
 }
 
 // DescribeCurrentItem returns a text description for logs
 func (series *IterableSeries) DescribeCurrentItem() string {
-	if series.current == nil {
+	if series.Current() == nil {
 		return "nil serie"
 	}
-	return describeItem(series.current)
+	return describeItem(series.Current())
 }
 
 // MoveNext advances to the next element.
 // Returns false for the end of the iteration.
 func (series *IterableSeries) MoveNext() bool {
 	var ok bool
-	series.current, ok = <-series.c
+	series.current, ok = series.c.Get()
 	return ok
 }
 

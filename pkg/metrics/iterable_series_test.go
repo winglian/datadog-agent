@@ -6,6 +6,7 @@
 package metrics
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
@@ -16,7 +17,7 @@ import (
 )
 
 func TestIterableSeries(t *testing.T) {
-	iterableSeries := NewIterableSeries(func(*Serie) {}, 1)
+	iterableSeries := NewIterableSeries(func(*Serie) {}, 10, 1)
 	done := make(chan struct{})
 	var descritions []string
 	go func() {
@@ -38,10 +39,35 @@ func TestIterableSeries(t *testing.T) {
 	r.True(strings.Contains(descritions[2], "serie3"))
 }
 
+func TestIterableSeries42(t *testing.T) {
+	iterableSeries := NewIterableSeries(func(*Serie) {}, 10, 2)
+	done := make(chan struct{})
+	var series []*Serie
+	go func() {
+		defer iterableSeries.IterationStopped()
+		for iterableSeries.MoveNext() {
+			series = append(series, iterableSeries.Current())
+		}
+		close(done)
+	}()
+	var expected []string
+	for i := 0; i < 11; i++ {
+		name := "serie" + strconv.Itoa(i)
+		expected = append(expected, name)
+		iterableSeries.Append(&Serie{Name: name})
+	}
+	iterableSeries.SenderStopped()
+	<-done
+	r := require.New(t)
+	r.Len(series, len(expected))
+	for i, v := range expected {
+		r.Equal(v, series[i].Name)
+	}
+}
 func TestIterableSeriesCallback(t *testing.T) {
 	var series Series
 	callback := func(s *Serie) { series = append(series, s) }
-	iterableSeries := NewIterableSeries(callback, 10)
+	iterableSeries := NewIterableSeries(callback, 10, 10)
 	iterableSeries.Append(&Serie{Name: "serie1"})
 	iterableSeries.Append(&Serie{Name: "serie2"})
 
@@ -53,7 +79,7 @@ func TestIterableSeriesCallback(t *testing.T) {
 }
 
 func TestIterableSeriesReceiverStopped(t *testing.T) {
-	iterableSeries := NewIterableSeries(func(*Serie) {}, 1)
+	iterableSeries := NewIterableSeries(func(*Serie) {}, 1, 1)
 	iterableSeries.Append(&Serie{Name: "serie1"})
 
 	// Next call to Append must not block
@@ -68,7 +94,7 @@ func TestIterableStreamJSONMarshalerAdapter(t *testing.T) {
 	series = append(series, &Serie{Name: "serie2"})
 	series = append(series, &Serie{Name: "serie3"})
 
-	iterableSeries := NewIterableSeries(func(*Serie) {}, 3)
+	iterableSeries := NewIterableSeries(func(*Serie) {}, 4, 10) // $$ TODO
 	for _, serie := range series {
 		iterableSeries.Append(serie)
 	}

@@ -641,7 +641,7 @@ func (agg *BufferedAggregator) flushSeriesAndSketches(start time.Time, waitForSe
 				log.Debugf("Flushing the following metrics: %s", s)
 			}
 			tagsetTlm.updateHugeSerieTelemetry(s)
-		}, agg.flushMetricsAndSerializeInParallelChanSize)
+		}, agg.flushMetricsAndSerializeInParallelChanSize, 1000)
 		done := make(chan struct{})
 		agg.sendIterableSeries(start, series, done)
 		sketches := agg.getSeriesAndSketches(start, series)
