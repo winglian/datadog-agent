@@ -11,7 +11,6 @@ package aggregator
 import (
 	"github.com/DataDog/datadog-agent/pkg/aggregator/ckey"
 	"github.com/DataDog/datadog-agent/pkg/aggregator/tags"
-	"github.com/DataDog/datadog-agent/pkg/tagset"
 
 	// stdlib
 	"math"
@@ -27,9 +26,7 @@ import (
 )
 
 func generateContextKey(sample metrics.MetricSampleContext) ckey.ContextKey {
-	bldr := tagset.NewBuilder(10)
-	sample.GetTags(bldr)
-	return ckey.Generate(sample.GetName(), sample.GetHost(), bldr.Close())
+	return ckey.Generate(sample.GetName(), sample.GetHost(), sample.GetTags())
 }
 
 func testCheckGaugeSampling(t *testing.T, store *tags.Tlm) {

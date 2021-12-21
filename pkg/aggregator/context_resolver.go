@@ -11,7 +11,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/aggregator/ckey"
 	"github.com/DataDog/datadog-agent/pkg/aggregator/tags"
 	"github.com/DataDog/datadog-agent/pkg/metrics"
-	"github.com/DataDog/datadog-agent/pkg/tagset"
 )
 
 // Context holds the elements that form a context, and can be serialized into a context key
@@ -36,9 +35,7 @@ func newContextResolver(tagsTlm *tags.Tlm) *contextResolver {
 
 // trackContext returns the contextKey associated with the context of the metricSample and tracks that context
 func (cr *contextResolver) trackContext(metricSampleContext metrics.MetricSampleContext) ckey.ContextKey {
-	tb := tagset.NewBuilder(10)
-	metricSampleContext.GetTags(tb) // tags here are not sorted and can contain duplicates
-	tags := tb.Close()
+	tags := metricSampleContext.GetTags()
 	contextKey := ckey.Generate(metricSampleContext.GetName(), metricSampleContext.GetHost(), tags)
 
 	if _, ok := cr.contextsByKey[contextKey]; !ok {
