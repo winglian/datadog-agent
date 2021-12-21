@@ -23,8 +23,12 @@ if ohai['platform'] == "windows"
   # dir will be determined by the Windows installer. This path must not contain
   # spaces because Omnibus doesn't quote the Git commands it launches.
   install_dir "C:/opt/datadog-agent/"
-  python_2_embedded "#{install_dir}/embedded2"
-  python_3_embedded "#{install_dir}/embedded3"
+
+  # Don't put the embedded python in the install dir - the MSI and Zip packagers will process
+  # them differently.
+  python_2_embedded "C:/opt/embedded2"
+  python_3_embedded "C:/opt/embedded3"
+
   maintainer 'Datadog Inc.' # Windows doesn't want our e-mail address :(
 else
   if redhat? || suse?
@@ -116,9 +120,13 @@ package :zip do
     skip_packager true
   else
     extra_package_dirs [
+      "#{windows_safe_path(python_3_embedded)}",
       "#{Omnibus::Config.source_dir()}\\etc\\datadog-agent\\extra_package_files",
       "#{Omnibus::Config.source_dir()}\\cf-root",
     ]
+    if with_python_runtime? "2"
+      extra_package_dirs << "#{windows_safe_path(python_2_embedded)}"
+    end
 
     # Always sign everything for binaries zip
     additional_sign_files [
