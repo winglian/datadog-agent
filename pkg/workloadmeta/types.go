@@ -49,9 +49,6 @@ type ECSLaunchType string
 // EventType is the type of an event.
 type EventType int
 
-// ContainerRuntime is the container runtime used by a container.
-type ContainerRuntime string
-
 // List of enumerable constants for the types above.
 const (
 	KindContainer       Kind = "container"

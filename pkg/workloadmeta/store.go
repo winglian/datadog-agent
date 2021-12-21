@@ -361,7 +361,6 @@ func (s *store) handleEvents(evs []CollectorEvent) {
 
 		switch ev.Type {
 		case EventTypeSet:
-			entityOfSource, ok := entitiesOfKind[meta.ID]
 			if !ok {
 				entitiesOfKind[meta.ID] = newCachedEntity()
 				cachedEntity = entitiesOfKind[meta.ID]
