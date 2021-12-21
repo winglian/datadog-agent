@@ -3,6 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
+//go:build !serverless
 // +build !serverless
 
 package listeners
@@ -36,7 +37,7 @@ func NewContainerListener() (ServiceListener, error) {
 	l := &ContainerListener{}
 	f := workloadmeta.NewFilter(
 		[]workloadmeta.Kind{workloadmeta.KindContainer},
-		[]workloadmeta.Source{workloadmeta.SourceDocker, workloadmeta.SourceContainerd},
+		workloadmeta.SourceRuntime,
 	)
 
 	var err error

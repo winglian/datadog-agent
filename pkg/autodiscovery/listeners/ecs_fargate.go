@@ -3,6 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2017-present Datadog, Inc.
 
+//go:build !serverless
 // +build !serverless
 
 package listeners
@@ -30,7 +31,7 @@ func NewECSFargateListener() (ServiceListener, error) {
 	l := &ECSFargateListener{}
 	f := workloadmeta.NewFilter(
 		[]workloadmeta.Kind{workloadmeta.KindECSTask},
-		[]workloadmeta.Source{workloadmeta.SourceECSFargate},
+		workloadmeta.SourceClusterOrchestrator,
 	)
 
 	var err error

@@ -49,6 +49,9 @@ type ECSLaunchType string
 // EventType is the type of an event.
 type EventType int
 
+// ContainerRuntime is the container runtime used by a container.
+type ContainerRuntime string
+
 // List of enumerable constants for the types above.
 const (
 	KindContainer       Kind = "container"
@@ -56,14 +59,9 @@ const (
 	KindECSTask         Kind = "ecs_task"
 	KindGardenContainer Kind = "garden_container"
 
-	SourceDocker       Source = "docker"
-	SourceContainerd   Source = "containerd"
-	SourceECS          Source = "ecs"
-	SourceECSFargate   Source = "ecs_fargate"
-	SourceKubelet      Source = "kubelet"
-	SourceKubeMetadata Source = "kube_metadata"
-	SourcePodman       Source = "podman"
-	SourceCloudfoundry Source = "cloudfoundry"
+	SourceRuntime             Source = "runtime"
+	SourceNodeOrchestrator    Source = "node_orchestrator"
+	SourceClusterOrchestrator Source = "cluster_orchestrator"
 
 	ContainerRuntimeDocker     ContainerRuntime = "docker"
 	ContainerRuntimeContainerd ContainerRuntime = "containerd"

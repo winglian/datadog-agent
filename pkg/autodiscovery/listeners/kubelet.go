@@ -47,7 +47,7 @@ func NewKubeletListener() (ServiceListener, error) {
 	l := &KubeletListener{}
 	f := workloadmeta.NewFilter(
 		[]workloadmeta.Kind{workloadmeta.KindKubernetesPod},
-		[]workloadmeta.Source{workloadmeta.SourceKubelet},
+		workloadmeta.SourceNodeOrchestrator,
 	)
 
 	var err error

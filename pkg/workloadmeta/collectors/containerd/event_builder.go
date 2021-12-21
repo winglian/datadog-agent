@@ -3,6 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
+//go:build containerd
 // +build containerd
 
 package containerd
@@ -60,7 +61,7 @@ func createSetEvent(ctx context.Context, containerID string, containerdClient cu
 
 	return workloadmeta.CollectorEvent{
 		Type:   workloadmeta.EventTypeSet,
-		Source: workloadmeta.SourceContainerd,
+		Source: workloadmeta.SourceRuntime,
 		Entity: &entity,
 	}, nil
 }
@@ -68,7 +69,7 @@ func createSetEvent(ctx context.Context, containerID string, containerdClient cu
 func createDeletionEvent(containerID string) workloadmeta.CollectorEvent {
 	return workloadmeta.CollectorEvent{
 		Type:   workloadmeta.EventTypeUnset,
-		Source: workloadmeta.SourceContainerd,
+		Source: workloadmeta.SourceRuntime,
 		Entity: workloadmeta.EntityID{
 			Kind: workloadmeta.KindContainer,
 			ID:   containerID,
