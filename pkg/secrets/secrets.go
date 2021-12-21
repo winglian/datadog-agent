@@ -10,17 +10,35 @@ package secrets
 import (
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/benbjohnson/clock"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/DataDog/datadog-agent/pkg/util/common"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
+type secret struct {
+	value     string
+	handle    string
+	origin    common.StringSet
+	fetchTime time.Time
+}
+
+func newSecret(handle string, value string, origin string) secret {
+	return secret{
+		value:     value,
+		handle:    handle,
+		origin:    common.NewStringSet(origin),
+		fetchTime: internalClock.Now(),
+	}
+}
+
+type secretMap map[string]secret
+
 var (
-	secretCache map[string]string
-	// list of handles and where they were found
-	secretOrigin map[string]common.StringSet
+	secretCache = secretMap{}
 
 	secretBackendCommand               string
 	secretBackendArguments             []string
@@ -29,11 +47,12 @@ var (
 
 	// SecretBackendOutputMaxSize defines max size of the JSON output from a secrets reader backend
 	SecretBackendOutputMaxSize = 1024 * 1024
+
+	internalClock clock.Clock
 )
 
 func init() {
-	secretCache = make(map[string]string)
-	secretOrigin = make(map[string]common.StringSet)
+	internalClock = clock.New()
 }
 
 // Init initializes the command and other options of the secrets package. Since
@@ -149,8 +168,8 @@ func Decrypt(data []byte, origin string) ([]byte, error) {
 			if secret, ok := secretCache[handle]; ok {
 				log.Debugf("Secret '%s' was retrieved from cache", handle)
 				// keep track of place where a handle was found
-				secretOrigin[handle].Add(origin)
-				return secret, nil
+				secret.origin.Add(origin)
+				return secret.value, nil
 			}
 			newHandles = append(newHandles, handle)
 		}
@@ -167,7 +186,7 @@ func Decrypt(data []byte, origin string) ([]byte, error) {
 
 	// check if any new secrets need to be fetch
 	if len(newHandles) != 0 {
-		secrets, err := secretFetcher(newHandles, origin)
+		err := secretFetcher(newHandles, origin)
 		if err != nil {
 			return nil, err
 		}
@@ -175,9 +194,9 @@ func Decrypt(data []byte, origin string) ([]byte, error) {
 		// Replace all new encrypted secrets in the config
 		err = walk(&config, func(str string) (string, error) {
 			if ok, handle := isEnc(str); ok {
-				if secret, ok := secrets[handle]; ok {
+				if secret, ok := secretCache[handle]; ok {
 					log.Debugf("Secret '%s' was retrieved from executable", handle)
-					return secret, nil
+					return secret.value, nil
 				}
 				// This should never happen since fetchSecret will return an error
 				// if not every handles have been fetched.
@@ -206,8 +225,8 @@ func GetDebugInfo() (*SecretInfo, error) {
 	info.populateRights()
 
 	info.SecretsHandles = map[string][]string{}
-	for handle, originNames := range secretOrigin {
-		info.SecretsHandles[handle] = originNames.GetAll()
+	for _, s := range secretCache {
+		info.SecretsHandles[s.handle] = s.origin.GetAll()
 	}
 	return info, nil
 }

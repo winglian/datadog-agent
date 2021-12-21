@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/telemetry"
-	"github.com/DataDog/datadog-agent/pkg/util/common"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
@@ -114,45 +113,41 @@ var runCommand = execCommand
 // fetchSecret receives a list of secrets name to fetch, exec a custom
 // executable to fetch the actual secrets and returns them. Origin should be
 // the name of the configuration where the secret was referenced.
-func fetchSecret(secretsHandle []string, origin string) (map[string]string, error) {
+func fetchSecret(secretsHandle []string, origin string) error {
 	payload := map[string]interface{}{
 		"version": PayloadVersion,
 		"secrets": secretsHandle,
 	}
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
-		return nil, fmt.Errorf("could not serialize secrets IDs to fetch password: %s", err)
+		return fmt.Errorf("could not serialize secrets IDs to fetch password: %s", err)
 	}
 	output, err := runCommand(string(jsonPayload))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	secrets := map[string]Secret{}
 	err = json.Unmarshal(output, &secrets)
 	if err != nil {
-		return nil, fmt.Errorf("could not unmarshal 'secret_backend_command' output: %s", err)
+		return fmt.Errorf("could not unmarshal 'secret_backend_command' output: %s", err)
 	}
 
-	res := map[string]string{}
-	for _, sec := range secretsHandle {
-		v, ok := secrets[sec]
+	for _, handle := range secretsHandle {
+		v, ok := secrets[handle]
 		if ok == false {
-			return nil, fmt.Errorf("secret handle '%s' was not decrypted by the secret_backend_command", sec)
+			return fmt.Errorf("secret handle '%s' was not decrypted by the secret_backend_command", handle)
 		}
 
 		if v.ErrorMsg != "" {
-			return nil, fmt.Errorf("an error occurred while decrypting '%s': %s", sec, v.ErrorMsg)
+			return fmt.Errorf("an error occurred while decrypting '%s': %s", handle, v.ErrorMsg)
 		}
 		if v.Value == "" {
-			return nil, fmt.Errorf("decrypted secret for '%s' is empty", sec)
+			return fmt.Errorf("decrypted secret for '%s' is empty", handle)
 		}
 
 		// add it to the cache
-		secretCache[sec] = v.Value
-		// keep track of place where a handle was found
-		secretOrigin[sec] = common.NewStringSet(origin)
-		res[sec] = v.Value
+		secretCache[handle] = newSecret(handle, v.Value, origin)
 	}
-	return res, nil
+	return nil
 }

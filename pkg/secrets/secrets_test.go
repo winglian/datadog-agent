@@ -12,7 +12,6 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/DataDog/datadog-agent/pkg/util/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	yaml "gopkg.in/yaml.v2"
@@ -168,8 +167,8 @@ func TestWalkerComplex(t *testing.T) {
 
 func TestDecryptNoCommand(t *testing.T) {
 	defer func() { secretFetcher = fetchSecret }()
-	secretFetcher = func(secrets []string, origin string) (map[string]string, error) {
-		return nil, fmt.Errorf("some error")
+	secretFetcher = func(secrets []string, origin string) error {
+		return fmt.Errorf("some error")
 	}
 
 	// since we didn't set any command this should return without any error
@@ -184,8 +183,8 @@ func TestDecryptSecretError(t *testing.T) {
 		secretFetcher = fetchSecret
 	}()
 
-	secretFetcher = func(secrets []string, origin string) (map[string]string, error) {
-		return nil, fmt.Errorf("some error")
+	secretFetcher = func(secrets []string, origin string) error {
+		return fmt.Errorf("some error")
 	}
 
 	_, err := Decrypt(testConf, "test")
@@ -201,19 +200,17 @@ func TestDecryptSecretStringMapStringWithDashValue(t *testing.T) {
 
 	defer func() {
 		secretBackendCommand = ""
-		secretCache = map[string]string{}
-		secretOrigin = map[string]common.StringSet{}
+		secretCache = secretMap{}
 		secretFetcher = fetchSecret
 	}()
 
-	secretFetcher = func(secrets []string, origin string) (map[string]string, error) {
+	secretFetcher = func(secrets []string, origin string) error {
 		assert.Equal(t, []string{
 			"pass1",
 		}, secrets)
 
-		return map[string]string{
-			"pass1": "password1",
-		}, nil
+		secretCache["pass1"] = newSecret("pass1", "password1", origin)
+		return nil
 	}
 
 	newConf, err := Decrypt(testConfDash, "test")
@@ -226,22 +223,20 @@ func TestDecryptSecretNoCache(t *testing.T) {
 
 	defer func() {
 		secretBackendCommand = ""
-		secretCache = map[string]string{}
-		secretOrigin = map[string]common.StringSet{}
+		secretCache = secretMap{}
 		secretFetcher = fetchSecret
 	}()
 
-	secretFetcher = func(secrets []string, origin string) (map[string]string, error) {
+	secretFetcher = func(secrets []string, origin string) error {
 		sort.Strings(secrets)
 		assert.Equal(t, []string{
 			"pass1",
 			"pass2",
 		}, secrets)
 
-		return map[string]string{
-			"pass1": "password1",
-			"pass2": "password2",
-		}, nil
+		secretCache["pass1"] = newSecret("pass1", "password1", origin)
+		secretCache["pass2"] = newSecret("pass2", "password2", origin)
+		return nil
 	}
 
 	newConf, err := Decrypt(testConf, "test")
@@ -253,23 +248,21 @@ func TestDecryptSecretPartialCache(t *testing.T) {
 	secretBackendCommand = "some_command"
 	defer func() { secretBackendCommand = "" }()
 
-	secretCache["pass1"] = "password1"
-	secretOrigin["pass1"] = common.NewStringSet("test")
+	secretCache["pass1"] = newSecret("pass1", "password1", "origin")
 	defer func() {
-		secretCache = map[string]string{}
-		secretOrigin = map[string]common.StringSet{}
+		secretCache = secretMap{}
 		secretFetcher = fetchSecret
 	}()
 
-	secretFetcher = func(secrets []string, origin string) (map[string]string, error) {
+	secretFetcher = func(secrets []string, origin string) error {
 		sort.Strings(secrets)
 		assert.Equal(t, []string{
 			"pass2",
 		}, secrets)
 
-		return map[string]string{
-			"pass2": "password2",
-		}, nil
+		secretCache["pass2"] = newSecret("pass2", "password2", origin)
+
+		return nil
 	}
 
 	newConf, err := Decrypt(testConf, "test")
@@ -281,19 +274,16 @@ func TestDecryptSecretFullCache(t *testing.T) {
 	secretBackendCommand = "some_command"
 	defer func() { secretBackendCommand = "" }()
 
-	secretCache["pass1"] = "password1"
-	secretCache["pass2"] = "password2"
-	secretOrigin["pass1"] = common.NewStringSet("previous_test")
-	secretOrigin["pass2"] = common.NewStringSet("previous_test")
+	secretCache["pass1"] = newSecret("pass1", "password1", "origin")
+	secretCache["pass2"] = newSecret("pass2", "password2", "origin")
 	defer func() {
-		secretCache = map[string]string{}
-		secretOrigin = map[string]common.StringSet{}
+		secretCache = secretMap{}
 		secretFetcher = fetchSecret
 	}()
 
-	secretFetcher = func(secrets []string, origin string) (map[string]string, error) {
+	secretFetcher = func(secrets []string, origin string) error {
 		require.Fail(t, "Secret Cache was not used properly")
-		return nil, nil
+		return nil
 	}
 
 	newConf, err := Decrypt(testConf, "test")
@@ -306,8 +296,7 @@ func TestDebugInfo(t *testing.T) {
 
 	defer func() {
 		secretBackendCommand = ""
-		secretCache = map[string]string{}
-		secretOrigin = map[string]common.StringSet{}
+		secretCache = secretMap{}
 		runCommand = execCommand
 	}()
 

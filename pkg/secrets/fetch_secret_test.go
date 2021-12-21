@@ -15,10 +15,9 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/benbjohnson/clock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/DataDog/datadog-agent/pkg/util/common"
 )
 
 var (
@@ -145,84 +144,81 @@ func TestExecCommandError(t *testing.T) {
 
 func TestFetchSecretExecError(t *testing.T) {
 	defer func() {
-		secretCache = map[string]string{}
-		secretOrigin = map[string]common.StringSet{}
+		secretCache = secretMap{}
 	}()
 
 	runCommand = func(string) ([]byte, error) { return nil, fmt.Errorf("some error") }
-	_, err := fetchSecret([]string{"handle1", "handle2"}, "test")
+	err := fetchSecret([]string{"handle1", "handle2"}, "test")
 	assert.NotNil(t, err)
 }
 
 func TestFetchSecretUnmarshalError(t *testing.T) {
 	defer func() {
-		secretCache = map[string]string{}
-		secretOrigin = map[string]common.StringSet{}
+		secretCache = secretMap{}
 	}()
 
 	runCommand = func(string) ([]byte, error) { return []byte("{"), nil }
-	_, err := fetchSecret([]string{"handle1", "handle2"}, "test")
+	err := fetchSecret([]string{"handle1", "handle2"}, "test")
 	assert.NotNil(t, err)
 }
 
 func TestFetchSecretMissingSecret(t *testing.T) {
 	defer func() {
-		secretCache = map[string]string{}
-		secretOrigin = map[string]common.StringSet{}
+		secretCache = secretMap{}
 	}()
 
 	secrets := []string{"handle1", "handle2"}
 
 	runCommand = func(string) ([]byte, error) { return []byte("{}"), nil }
-	_, err := fetchSecret(secrets, "test")
+	err := fetchSecret(secrets, "test")
 	assert.NotNil(t, err)
 	assert.Equal(t, "secret handle 'handle1' was not decrypted by the secret_backend_command", err.Error())
 }
 
 func TestFetchSecretErrorForHandle(t *testing.T) {
 	defer func() {
-		secretCache = map[string]string{}
-		secretOrigin = map[string]common.StringSet{}
+		secretCache = secretMap{}
 	}()
 
 	runCommand = func(string) ([]byte, error) {
 		return []byte("{\"handle1\":{\"value\": null, \"error\": \"some error\"}}"), nil
 	}
-	_, err := fetchSecret([]string{"handle1"}, "test")
+	err := fetchSecret([]string{"handle1"}, "test")
 	assert.NotNil(t, err)
 	assert.Equal(t, "an error occurred while decrypting 'handle1': some error", err.Error())
 }
 
 func TestFetchSecretEmptyValue(t *testing.T) {
 	defer func() {
-		secretCache = map[string]string{}
-		secretOrigin = map[string]common.StringSet{}
+		secretCache = secretMap{}
 	}()
 
 	runCommand = func(string) ([]byte, error) {
 		return []byte("{\"handle1\":{\"value\": null}}"), nil
 	}
-	_, err := fetchSecret([]string{"handle1"}, "test")
+	err := fetchSecret([]string{"handle1"}, "test")
 	assert.NotNil(t, err)
 	assert.Equal(t, "decrypted secret for 'handle1' is empty", err.Error())
 
 	runCommand = func(string) ([]byte, error) {
 		return []byte("{\"handle1\":{\"value\": \"\"}}"), nil
 	}
-	_, err = fetchSecret([]string{"handle1"}, "test")
+	err = fetchSecret([]string{"handle1"}, "test")
 	assert.NotNil(t, err)
 	assert.Equal(t, "decrypted secret for 'handle1' is empty", err.Error())
 }
 
 func TestFetchSecret(t *testing.T) {
 	defer func() {
-		secretCache = map[string]string{}
-		secretOrigin = map[string]common.StringSet{}
+		secretCache = secretMap{}
+		internalClock = clock.New()
 	}()
 
-	secrets := []string{"handle1", "handle2"}
+	internalClock = clock.NewMock()
+
 	// some dummy value to check the cache is not purge
-	secretCache["test"] = "yes"
+	oldSecret := newSecret("old", "value", "old_file")
+	secretCache["old"] = oldSecret
 
 	runCommand = func(string) ([]byte, error) {
 		res := []byte("{\"handle1\":{\"value\":\"p1\"},")
@@ -230,16 +226,12 @@ func TestFetchSecret(t *testing.T) {
 		res = append(res, []byte("\"handle3\":{\"value\":\"p3\"}}")...)
 		return res, nil
 	}
-	resp, err := fetchSecret(secrets, "test")
+	err := fetchSecret([]string{"handle1", "handle2"}, "test")
 	require.Nil(t, err)
-	assert.Equal(t, map[string]string{
-		"handle1": "p1",
-		"handle2": "p2",
-	}, resp)
-	assert.Equal(t, map[string]string{
-		"test":    "yes",
-		"handle1": "p1",
-		"handle2": "p2",
+
+	assert.Equal(t, secretMap{
+		"old":     oldSecret,
+		"handle1": newSecret("handle1", "p1", "test"),
+		"handle2": newSecret("handle2", "p2", "test"),
 	}, secretCache)
-	assert.Equal(t, map[string]common.StringSet{"handle1": common.NewStringSet("test"), "handle2": common.NewStringSet("test")}, secretOrigin)
 }
