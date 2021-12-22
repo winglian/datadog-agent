@@ -11,9 +11,9 @@
         "JMXFETCH_VERSION": "0.44.3",
         "JMXFETCH_HASH": "50b22c3721419eeb7bb52bb6083641ff93c4fe12ae7a95fefd70892394976981",
         "MACOS_BUILD_VERSION": "master",
-        "WINDOWS_DDNPM_DRIVER": "testsigned",
+        "WINDOWS_DDNPM_DRIVER": "release-signed",
         "WINDOWS_DDNPM_VERSION": "1.4.1",
-        "WINDOWS_DDNPM_SHASUM": "c742eb1563144fba3d110f3a31b19f42c13c262ba131d76fbcda6042b1556ad2",
+        "WINDOWS_DDNPM_SHASUM": "5296ded6814a99e5eaf9f4552cfb0bd9245b836bb1cca01ddc7748a513acd4c2",
         "SECURITY_AGENT_POLICIES_VERSION": "master"
     },
     "nightly-a7": {
@@ -23,9 +23,9 @@
         "JMXFETCH_VERSION": "0.44.3",
         "JMXFETCH_HASH": "50b22c3721419eeb7bb52bb6083641ff93c4fe12ae7a95fefd70892394976981",
         "MACOS_BUILD_VERSION": "master",
-        "WINDOWS_DDNPM_DRIVER": "testsigned",
+        "WINDOWS_DDNPM_DRIVER": "release-signed",
         "WINDOWS_DDNPM_VERSION": "1.4.1",
-        "WINDOWS_DDNPM_SHASUM": "c742eb1563144fba3d110f3a31b19f42c13c262ba131d76fbcda6042b1556ad2",
+        "WINDOWS_DDNPM_SHASUM": "5296ded6814a99e5eaf9f4552cfb0bd9245b836bb1cca01ddc7748a513acd4c2",
         "SECURITY_AGENT_POLICIES_VERSION": "master"
     },
     "release-a6": {
