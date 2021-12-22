@@ -838,7 +838,7 @@ func TestNewServerExtraTags(t *testing.T) {
 	demux := mockDemultiplexerWithFlushInterval(time.Hour)
 	s, err := NewServer(demux, nil)
 	require.NoError(err, "starting the DogStatsD server shouldn't fail")
-	require.Len(s.extraTags, 0, "no tags should have been read")
+	require.Equal([]string{}, s.extraTags.Sorted(), "no tags should have been read")
 	s.Stop()
 	demux.Stop(false)
 
@@ -847,7 +847,7 @@ func TestNewServerExtraTags(t *testing.T) {
 	demux = mockDemultiplexerWithFlushInterval(time.Hour)
 	s, err = NewServer(demux, nil)
 	require.NoError(err, "starting the DogStatsD server shouldn't fail")
-	require.Len(s.extraTags, 0, "no tags should have been read")
+	require.Equal([]string{}, s.extraTags.Sorted(), "no tags should have been read")
 	s.Stop()
 	demux.Stop(false)
 
@@ -856,9 +856,7 @@ func TestNewServerExtraTags(t *testing.T) {
 	demux = mockDemultiplexerWithFlushInterval(time.Hour)
 	s, err = NewServer(demux, nil)
 	require.NoError(err, "starting the DogStatsD server shouldn't fail")
-	require.Len(s.extraTags, 2, "two tags should have been read")
-	require.Equal(s.extraTags[0], "hello:world", "the tag hello:world should be set")
-	require.Equal(s.extraTags[1], "extra:tags", "the tag extra:tags should be set")
+	require.Equal([]string{"extra:tags", "hello:world"}, s.extraTags.Sorted())
 	s.Stop()
 	demux.Stop(false)
 
@@ -868,9 +866,7 @@ func TestNewServerExtraTags(t *testing.T) {
 	demux = mockDemultiplexerWithFlushInterval(time.Hour)
 	s, err = NewServer(demux, []string{"extra:tags", "new:constructor"})
 	require.NoError(err, "starting the DogStatsD server shouldn't fail")
-	require.Len(s.extraTags, 2, "two tags should have been read")
-	require.Equal(s.extraTags[0], "extra:tags", "the tag extra:tags should be set")
-	require.Equal(s.extraTags[1], "new:constructor", "the tag new:constructor should be set")
+	require.Equal([]string{"extra:tags", "new:constructor"}, s.extraTags.Sorted())
 	s.Stop()
 	demux.Stop(false)
 }
