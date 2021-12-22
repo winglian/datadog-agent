@@ -16,14 +16,10 @@ import (
 
 // Context holds the elements that form a context, and can be serialized into a context key
 type Context struct {
-	Name string
-	Host string
-	tags *tags.Entry
-}
-
-// Tags returns tags for the context.
-func (c *Context) Tags() []string {
-	return c.tags.Tags()
+	Name      string
+	Host      string
+	tagsEntry *tags.Entry
+	Tags      *tagset.Tags
 }
 
 // contextResolver allows tracking and expiring contexts
@@ -47,10 +43,12 @@ func (cr *contextResolver) trackContext(metricSampleContext metrics.MetricSample
 	contextKey := ckey.Generate(metricSampleContext.GetName(), metricSampleContext.GetHost(), tags)
 
 	if _, ok := cr.contextsByKey[contextKey]; !ok {
+		tagsEntry := cr.tagsCache.Insert(tags.Hash(), tags)
 		cr.contextsByKey[contextKey] = &Context{
-			Name: metricSampleContext.GetName(),
-			tags: cr.tagsCache.Insert(tags.Hash(), tags),
-			Host: metricSampleContext.GetHost(),
+			Name:      metricSampleContext.GetName(),
+			tagsEntry: tagsEntry,
+			Tags:      tagsEntry.Tags(),
+			Host:      metricSampleContext.GetHost(),
 		}
 	}
 
@@ -72,7 +70,7 @@ func (cr *contextResolver) removeKeys(expiredContextKeys []ckey.ContextKey) {
 		delete(cr.contextsByKey, expiredContextKey)
 
 		if context != nil {
-			context.tags.Release()
+			context.tagsEntry.Release()
 		}
 	}
 }

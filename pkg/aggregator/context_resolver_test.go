@@ -37,7 +37,7 @@ func benchWithTagsStore(t *testing.B, test func(*testing.B, *tags.Store)) {
 func assertContext(t *testing.T, cx *Context, name string, tags []string, host string) {
 	assert.Equal(t, cx.Name, name)
 	assert.Equal(t, cx.Host, host)
-	assert.Equal(t, tagset.NewTags(cx.Tags()).Sorted(), tagset.NewTags(tags).Sorted())
+	assert.Equal(t, cx.Tags.String(), tagset.NewTags(tags).String())
 }
 
 func TestGenerateContextKey(t *testing.T) {
@@ -172,19 +172,4 @@ func testCountBasedExpireContexts(t *testing.T, store *tags.Store) {
 }
 func TestCountBasedExpireContexts(t *testing.T) {
 	testWithTagsStore(t, testCountBasedExpireContexts)
-}
-
-func testTagDeduplication(t *testing.T, store *tags.Store) {
-	resolver := newContextResolver(store)
-
-	ckey := resolver.trackContext(&metrics.MetricSample{
-		Name: "foo",
-		Tags: []string{"bar", "bar"},
-	})
-
-	assert.Equal(t, len(resolver.contextsByKey[ckey].Tags()), 1)
-	assert.Equal(t, resolver.contextsByKey[ckey].Tags(), []string{"bar"})
-}
-func TestTagDeduplication(t *testing.T) {
-	testWithTagsStore(t, testTagDeduplication)
 }

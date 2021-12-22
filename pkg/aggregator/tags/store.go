@@ -23,8 +23,8 @@ type Entry struct {
 // shared with other users and should not be modified. Users can keep
 // the slice after the entry was removed from the store; it is not
 // recycled or otherwise modified by the store.
-func (e *Entry) Tags() []string {
-	return e.tags.UnsafeReadOnlySlice()
+func (e *Entry) Tags() *tagset.Tags {
+	return e.tags
 }
 
 // Release decrements internal reference counter, potentially marking
