@@ -11,6 +11,7 @@ package aggregator
 import (
 	"github.com/DataDog/datadog-agent/pkg/aggregator/ckey"
 	"github.com/DataDog/datadog-agent/pkg/aggregator/tags"
+	"github.com/DataDog/datadog-agent/pkg/tagset"
 
 	// stdlib
 	"math"
@@ -36,7 +37,7 @@ func testCheckGaugeSampling(t *testing.T, store *tags.Tlm) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 		Timestamp:  12345.0,
 	}
@@ -44,7 +45,7 @@ func testCheckGaugeSampling(t *testing.T, store *tags.Tlm) {
 		Name:       "my.metric.name",
 		Value:      2,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 		Timestamp:  12347.0,
 	}
@@ -52,7 +53,7 @@ func testCheckGaugeSampling(t *testing.T, store *tags.Tlm) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar", "baz"},
+		Tags:       tagset.NewTags([]string{"foo", "bar", "baz"}),
 		SampleRate: 1,
 		Timestamp:  12348.0,
 	}
@@ -98,7 +99,7 @@ func testCheckRateSampling(t *testing.T, store *tags.Tlm) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.RateType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 		Timestamp:  12345.0,
 	}
@@ -106,7 +107,7 @@ func testCheckRateSampling(t *testing.T, store *tags.Tlm) {
 		Name:       "my.metric.name",
 		Value:      10,
 		Mtype:      metrics.RateType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 		Timestamp:  12347.5,
 	}
@@ -114,7 +115,7 @@ func testCheckRateSampling(t *testing.T, store *tags.Tlm) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.RateType,
-		Tags:       []string{"foo", "bar", "baz"},
+		Tags:       tagset.NewTags([]string{"foo", "bar", "baz"}),
 		SampleRate: 1,
 		Timestamp:  12348.0,
 	}
@@ -150,7 +151,7 @@ func testHistogramCountSampling(t *testing.T, store *tags.Tlm) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.HistogramType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 		Timestamp:  12345.0,
 	}
@@ -158,7 +159,7 @@ func testHistogramCountSampling(t *testing.T, store *tags.Tlm) {
 		Name:       "my.metric.name",
 		Value:      10,
 		Mtype:      metrics.HistogramType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 		Timestamp:  12347.5,
 	}
@@ -166,7 +167,7 @@ func testHistogramCountSampling(t *testing.T, store *tags.Tlm) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.HistogramType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 		Timestamp:  12348.0,
 	}

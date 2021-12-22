@@ -31,6 +31,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/serializer"
 	"github.com/DataDog/datadog-agent/pkg/serializer/marshaler"
 	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
+	"github.com/DataDog/datadog-agent/pkg/tagset"
 	"github.com/DataDog/datadog-agent/pkg/util/flavor"
 	"github.com/DataDog/datadog-agent/pkg/version"
 )
@@ -322,10 +323,11 @@ func TestDistributionsTooManyTags(t *testing.T) {
 			agg := newTestBufferedAggregator(s, nil, "hostname", DefaultFlushInterval)
 			start := time.Now()
 
-			var tags []string
+			bldr := tagset.NewBuilder(tagCount)
 			for i := 0; i < tagCount; i++ {
-				tags = append(tags, fmt.Sprintf("tag%d", i))
+				bldr.Add(fmt.Sprintf("tag%d", i))
 			}
+			tags := bldr.Close()
 
 			samp := &metrics.MetricSample{
 				Name:  "test.sample",

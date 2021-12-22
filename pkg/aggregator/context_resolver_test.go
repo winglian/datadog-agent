@@ -34,10 +34,10 @@ func benchWithTagsStore(t *testing.B, test func(*testing.B, *tags.Tlm)) {
 	t.Run("useStore=false", func(t *testing.B) { test(t, tags.NewTlm(false, "test")) })
 }
 
-func assertContext(t *testing.T, cx *Context, name string, tags []string, host string) {
+func assertContext(t *testing.T, cx *Context, name string, tags *tagset.Tags, host string) {
 	assert.Equal(t, cx.Name, name)
 	assert.Equal(t, cx.Host, host)
-	assert.Equal(t, cx.Tags.String(), tagset.NewTags(tags).String())
+	assert.Equal(t, cx.Tags.String(), tags.String())
 }
 
 func TestGenerateContextKey(t *testing.T) {
@@ -45,7 +45,7 @@ func TestGenerateContextKey(t *testing.T) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		Host:       "metric-hostname",
 		SampleRate: 1,
 	}
@@ -59,21 +59,21 @@ func testTrackContext(t *testing.T, store *tags.Tlm) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 	}
 	mSample2 := metrics.MetricSample{
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar", "baz"},
+		Tags:       tagset.NewTags([]string{"foo", "bar", "baz"}),
 		SampleRate: 1,
 	}
 	mSample3 := metrics.MetricSample{ // same as mSample2, with different Host
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar", "baz"},
+		Tags:       tagset.NewTags([]string{"foo", "bar", "baz"}),
 		Host:       "metric-hostname",
 		SampleRate: 1,
 	}
@@ -108,14 +108,14 @@ func testExpireContexts(t *testing.T, store *tags.Tlm) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 	}
 	mSample2 := metrics.MetricSample{
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar", "baz"},
+		Tags:       tagset.NewTags([]string{"foo", "bar", "baz"}),
 		SampleRate: 1,
 	}
 	contextResolver := newTimestampContextResolver(store)

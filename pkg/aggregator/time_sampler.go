@@ -10,6 +10,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/aggregator/tags"
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/metrics"
+	"github.com/DataDog/datadog-agent/pkg/tagset"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
@@ -229,7 +230,7 @@ func (s *TimeSampler) countersSampleZeroValue(timestamp int64, contextMetrics me
 				Value:      0.0,
 				RawValue:   "0.0",
 				Mtype:      metrics.CounterType,
-				Tags:       []string{},
+				Tags:       tagset.EmptyTags,
 				Host:       "",
 				SampleRate: 1,
 				Timestamp:  float64(timestamp),

@@ -42,7 +42,7 @@ func testBucketSampling(t *testing.T, store *tags.Tlm) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 	}
 	sampler.addSample(&mSample, 12345.0)
@@ -76,21 +76,21 @@ func testContextSampling(t *testing.T, store *tags.Tlm) {
 		Name:       "my.metric.name1",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 	}
 	mSample2 := metrics.MetricSample{
 		Name:       "my.metric.name2",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 	}
 	mSample3 := metrics.MetricSample{
 		Name:       "my.metric.name3",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		Host:       "metric-hostname",
 		SampleRate: 1,
 	}
@@ -143,7 +143,7 @@ func testCounterExpirySeconds(t *testing.T, store *tags.Tlm) {
 		Name:       "my.counter1",
 		Value:      1,
 		Mtype:      metrics.CounterType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 	}
 	contextCounter1 := generateContextKey(sampleCounter1)
@@ -152,7 +152,7 @@ func testCounterExpirySeconds(t *testing.T, store *tags.Tlm) {
 		Name:       "my.counter2",
 		Value:      2,
 		Mtype:      metrics.CounterType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 	}
 	contextCounter2 := generateContextKey(sampleCounter2)
@@ -161,7 +161,7 @@ func testCounterExpirySeconds(t *testing.T, store *tags.Tlm) {
 		Name:       "my.gauge",
 		Value:      2,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 	}
 
@@ -213,7 +213,7 @@ func testCounterExpirySeconds(t *testing.T, store *tags.Tlm) {
 		Name:       "my.counter1",
 		Value:      1,
 		Mtype:      metrics.CounterType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 	}
 
@@ -279,7 +279,7 @@ func testSketch(t *testing.T, store *tags.Tlm) {
 	var (
 		sampler = NewTimeSampler(0, store)
 
-		insert = func(t *testing.T, ts float64, name string, tags []string, host string, values ...float64) {
+		insert = func(t *testing.T, ts float64, name string, tags *tagset.Tags, host string, values ...float64) {
 			t.Helper()
 			for _, v := range values {
 				sampler.addSample(&metrics.MetricSample{
@@ -306,7 +306,7 @@ func testSketch(t *testing.T, store *tags.Tlm) {
 		var (
 			now  float64
 			name = "m.0"
-			tags = []string{"a"}
+			tags = tagset.NewTags([]string{"a"})
 			host = "host"
 			exp  = &quantile.Sketch{}
 		)
@@ -322,7 +322,7 @@ func testSketch(t *testing.T, store *tags.Tlm) {
 		_, flushed := flushSerie(sampler, now)
 		metrics.AssertSketchSeriesEqual(t, metrics.SketchSeries{
 			Name:     name,
-			Tags:     tags,
+			Tags:     tags.UnsafeReadOnlySlice(), // TODO: series do not yet support tagset.Tags
 			Host:     host,
 			Interval: 10,
 			Points: []metrics.SketchPoint{
@@ -331,7 +331,7 @@ func testSketch(t *testing.T, store *tags.Tlm) {
 					Ts:     0,
 				},
 			},
-			ContextKey: ckey.Generate(name, host, tagset.NewTags(tags)),
+			ContextKey: ckey.Generate(name, host, tags),
 		}, flushed[0])
 
 		_, flushed = flushSerie(sampler, now)
@@ -351,14 +351,14 @@ func testSketchBucketSampling(t *testing.T, store *tags.Tlm) {
 		Name:       "test.metric.name",
 		Value:      1,
 		Mtype:      metrics.DistributionType,
-		Tags:       []string{"a", "b"},
+		Tags:       tagset.NewTags([]string{"a", "b"}),
 		SampleRate: 1,
 	}
 	mSample2 := metrics.MetricSample{
 		Name:       "test.metric.name",
 		Value:      2,
 		Mtype:      metrics.DistributionType,
-		Tags:       []string{"a", "b"},
+		Tags:       tagset.NewTags([]string{"a", "b"}),
 		SampleRate: 1,
 	}
 	sampler.addSample(&mSample1, 10001)
@@ -398,14 +398,14 @@ func testSketchContextSampling(t *testing.T, store *tags.Tlm) {
 		Name:       "test.metric.name1",
 		Value:      1,
 		Mtype:      metrics.DistributionType,
-		Tags:       []string{"a", "b"},
+		Tags:       tagset.NewTags([]string{"a", "b"}),
 		SampleRate: 1,
 	}
 	mSample2 := metrics.MetricSample{
 		Name:       "test.metric.name2",
 		Value:      1,
 		Mtype:      metrics.DistributionType,
-		Tags:       []string{"a", "c"},
+		Tags:       tagset.NewTags([]string{"a", "c"}),
 		SampleRate: 1,
 	}
 	sampler.addSample(&mSample1, 10011)
@@ -452,7 +452,7 @@ func testBucketSamplingWithSketchAndSeries(t *testing.T, store *tags.Tlm) {
 		Name:       "distribution.metric.name1",
 		Value:      1,
 		Mtype:      metrics.DistributionType,
-		Tags:       []string{"a", "b"},
+		Tags:       tagset.NewTags([]string{"a", "b"}),
 		SampleRate: 1,
 	}
 	sampler.addSample(&dSample1, 12345.0)
@@ -463,7 +463,7 @@ func testBucketSamplingWithSketchAndSeries(t *testing.T, store *tags.Tlm) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 	}
 	sampler.addSample(&mSample, 12345.0)
@@ -510,7 +510,7 @@ func benchmarkTimeSampler(b *testing.B, store *tags.Tlm) {
 		Name:       "my.metric.name",
 		Value:      1,
 		Mtype:      metrics.GaugeType,
-		Tags:       []string{"foo", "bar"},
+		Tags:       tagset.NewTags([]string{"foo", "bar"}),
 		SampleRate: 1,
 		Timestamp:  12345.0,
 	}
