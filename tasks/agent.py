@@ -454,7 +454,6 @@ def bundle_install_omnibus(ctx, gem_path=None, env=None):
             cmd += f" --path {gem_path}"
         ctx.run(cmd, env=env)
 
-
 # hardened-runtime needs to be set to False to build on MacOS < 10.13.6, as the -o runtime option is not supported.
 @task(
     help={

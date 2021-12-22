@@ -291,6 +291,9 @@ def deps(ctx, verbose=False):
     Setup Go dependencies
     """
 
+    ctx.run("echo 'Before deps'")
+    ctx.run("echo 'Before deps'", hide=False)
+
     print("downloading dependencies")
     start = datetime.datetime.now()
     verbosity = ' -x' if verbose else ''
