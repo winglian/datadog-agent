@@ -50,14 +50,14 @@ func (e *EntityTags) getStandard() []string {
 }
 
 func (e *EntityTags) get(cardinality collectors.TagCardinality) []string {
-	tags := e.getHashedTags(cardinality).UnsafeReadOnlySlice()
+	tags := e.getTags(cardinality).UnsafeReadOnlySlice()
 	// copy this slice, to avoid aliasing issues (TODO: use *Tags)
 	rv := make([]string, len(tags))
 	copy(rv, tags)
 	return rv
 }
 
-func (e *EntityTags) getHashedTags(cardinality collectors.TagCardinality) *tagset.Tags {
+func (e *EntityTags) getTags(cardinality collectors.TagCardinality) *tagset.Tags {
 	e.computeCache()
 
 	if cardinality == collectors.HighCardinality {
