@@ -26,8 +26,8 @@ if ohai['platform'] == "windows"
 
   # Don't put the embedded python in the install dir - the MSI and Zip packagers will process
   # them differently.
-  python_2_embedded "C:/opt/embedded2"
-  python_3_embedded "C:/opt/embedded3"
+  python_2_embedded "#{Omnibus::Config.source_dir()}\\embedded_pythons\\embedded2"
+  python_3_embedded "#{Omnibus::Config.source_dir()}\\embedded_pythons\\embedded3"
 
   maintainer 'Datadog Inc.' # Windows doesn't want our e-mail address :(
 else
@@ -120,14 +120,11 @@ package :zip do
     skip_packager true
   else
     extra_package_dirs [
-      "#{windows_safe_path(python_3_embedded)}",
+      "#{Omnibus::Config.source_dir()}\\embedded_pythons",
       "#{Omnibus::Config.source_dir()}\\etc\\datadog-agent\\extra_package_files",
       "#{Omnibus::Config.source_dir()}\\cf-root",
     ]
-    if with_python_runtime? "2"
-      extra_package_dirs << "#{windows_safe_path(python_2_embedded)}"
-    end
-
+  
     # Always sign everything for binaries zip
     additional_sign_files [
         "#{Omnibus::Config.source_dir()}\\cf-root\\bin\\agent\\security-agent.exe",
