@@ -3,31 +3,25 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
-// Go vet raise an error when test the "Warn" method: call has possible formatting directive %s
-// +build !dovet
-
 package log
 
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 	"testing"
 
-	"github.com/DataDog/datadog-agent/pkg/util/scrubber"
 	"github.com/cihub/seelog"
 	"github.com/stretchr/testify/assert"
 )
 
-func changeLogLevel(level string) error {
-	if logger == nil {
-		return errors.New("cannot set log-level: logger not initialized")
+func changeLogLevel(level string) {
+	lvl, ok := seelog.LogLevelFromString(level)
+	if !ok {
+		panic(fmt.Sprintf("Invalid log level %s in tests", level))
 	}
-
-	return logger.changeLogLevel(level)
+	Default.level = lvl
 }
 
 // createExtraTextContext defines custom formatter for context logging on tests.
@@ -56,7 +50,7 @@ func TestBasicLogging(t *testing.T) {
 	assert.Nil(t, err)
 
 	SetupLogger(l, "debug")
-	assert.NotNil(t, logger)
+	assert.NotNil(t, Default) // TODO: not much sense in this
 
 	Tracef("%s", "foo")
 	Debugf("%s", "foo")
@@ -105,9 +99,7 @@ func TestBasicLogging(t *testing.T) {
 
 func TestLogBuffer(t *testing.T) {
 	// reset buffer state
-	logsBuffer = []func(){}
-	bufferLogsBeforeInit = true
-	logger = nil
+	Default = newDDLogger(newDeferredLogger(), seelog.TraceLvl, defaultStackDepth)
 
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
@@ -123,7 +115,7 @@ func TestLogBuffer(t *testing.T) {
 	Criticalf("%s", "foo")
 
 	SetupLogger(l, "debug")
-	assert.NotNil(t, logger)
+	assert.NotNil(t, Default)
 
 	w.Flush()
 
@@ -132,9 +124,7 @@ func TestLogBuffer(t *testing.T) {
 }
 func TestLogBufferWithContext(t *testing.T) {
 	// reset buffer state
-	logsBuffer = []func(){}
-	bufferLogsBeforeInit = true
-	logger = nil
+	Default = newDDLogger(newDeferredLogger(), seelog.TraceLvl, defaultStackDepth)
 
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
@@ -150,23 +140,11 @@ func TestLogBufferWithContext(t *testing.T) {
 	Criticalc("baz", "number", 1, "str", "hello")
 
 	SetupLogger(l, "debug")
-	assert.NotNil(t, logger)
+	assert.NotNil(t, Default)
 	w.Flush()
 
 	// Trace will not be logged, Error and Critical will directly be logged to Stderr
 	assert.Equal(t, strings.Count(b.String(), "baz"), 5)
-}
-
-// Set up for scrubbing tests, by temporarily setting Scrubber; this avoids testing
-// the default scrubber's functionality in this module
-func setupScrubbing(t *testing.T) {
-	oldScrubber := scrubber.DefaultScrubber
-	scrubber.DefaultScrubber = scrubber.New()
-	scrubber.DefaultScrubber.AddReplacer(scrubber.SingleLine, scrubber.Replacer{
-		Regex: regexp.MustCompile("SECRET"),
-		Repl:  []byte("******"),
-	})
-	t.Cleanup(func() { scrubber.DefaultScrubber = oldScrubber })
 }
 
 func TestCredentialScrubbingLogging(t *testing.T) {
@@ -179,7 +157,7 @@ func TestCredentialScrubbingLogging(t *testing.T) {
 	assert.Nil(t, err)
 
 	SetupLogger(l, "info")
-	assert.NotNil(t, logger)
+	assert.NotNil(t, Default)
 
 	Info("don't tell anyone: ", "SECRET")
 	Infof("this is a SECRET password: %s", "hunter2")
@@ -203,7 +181,7 @@ func TestExtraLogging(t *testing.T) {
 	assert.Nil(t, err)
 
 	SetupLogger(l, "info")
-	assert.NotNil(t, logger)
+	assert.NotNil(t, Default)
 
 	err = RegisterAdditionalLogger("extra", lA)
 	assert.Nil(t, err)
@@ -217,30 +195,6 @@ func TestExtraLogging(t *testing.T) {
 	assert.Equal(t, strings.Count(a.String(), "don't tell anyone:  ******"), 1)
 	assert.Equal(t, strings.Count(a.String(), "this is a ****** password: hunter2"), 1)
 	assert.Equal(t, b.String(), a.String())
-}
-
-func TestFormatErrorfScrubbing(t *testing.T) {
-	setupScrubbing(t)
-
-	err := formatErrorf("%s", "a SECRET message")
-	assert.Equal(t, "a ****** message", err.Error())
-}
-
-func TestFormatErrorScrubbing(t *testing.T) {
-	setupScrubbing(t)
-
-	err := formatError("a big SECRET")
-	assert.Equal(t, "a big ******", err.Error())
-}
-
-func TestFormatErrorcScrubbing(t *testing.T) {
-	setupScrubbing(t)
-
-	err := formatErrorc("super-SECRET")
-	assert.Equal(t, "super-******", err.Error())
-
-	err = formatErrorc("secrets", "key", "a SECRET", "SECRET-key2", "SECRET2")
-	assert.Equal(t, "secrets (key:a ******, ******-key2:******2)", err.Error())
 }
 
 func TestWarnNotNil(t *testing.T) {
