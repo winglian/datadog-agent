@@ -21,32 +21,28 @@ func (l *scrubbingLogger) scrub(s string) string {
 	return s
 }
 
-func (l *scrubbingLogger) trace(message string, depth int) {
-	l.inner.trace(l.scrub(message), depth)
+func (l *scrubbingLogger) trace(message string, context []interface{}, depth int) {
+	l.inner.trace(l.scrub(message), context, depth)
 }
 
-func (l *scrubbingLogger) debug(message string, depth int) {
-	l.inner.debug(l.scrub(message), depth)
+func (l *scrubbingLogger) debug(message string, context []interface{}, depth int) {
+	l.inner.debug(l.scrub(message), context, depth)
 }
 
-func (l *scrubbingLogger) info(message string, depth int) {
-	l.inner.info(l.scrub(message), depth)
+func (l *scrubbingLogger) info(message string, context []interface{}, depth int) {
+	l.inner.info(l.scrub(message), context, depth)
 }
 
-func (l *scrubbingLogger) warn(message string, depth int) {
-	l.inner.warn(l.scrub(message), depth)
+func (l *scrubbingLogger) warn(message string, context []interface{}, depth int) {
+	l.inner.warn(l.scrub(message), context, depth)
 }
 
-func (l *scrubbingLogger) error(message string, depth int) {
-	l.inner.error(l.scrub(message), depth)
+func (l *scrubbingLogger) error(message string, context []interface{}, depth int) {
+	l.inner.error(l.scrub(message), context, depth)
 }
 
-func (l *scrubbingLogger) critical(message string, depth int) {
-	l.inner.critical(l.scrub(message), depth)
-}
-
-func (l *scrubbingLogger) withContext(context []interface{}) ddLogger {
-	return newScrubbingLogger(l.inner.withContext(context))
+func (l *scrubbingLogger) critical(message string, context []interface{}, depth int) {
+	l.inner.critical(l.scrub(message), context, depth)
 }
 
 func (l *scrubbingLogger) flush() {

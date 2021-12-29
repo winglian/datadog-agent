@@ -29,10 +29,6 @@ type deferredLogger struct {
 	// forwardTo is the logger to which all calls are forwarded.  If this is nil, then
 	// calls are deferred.
 	forwardTo *DDLogger
-
-	// children is the list of child loggers that will also be forwarded when
-	// forwarding begins
-	children []*deferredLogger
 }
 
 var _ ddLogger = (*deferredLogger)(nil)
@@ -51,51 +47,30 @@ func (l *deferredLogger) call(call deferredCall) {
 	}
 }
 
-func (l *deferredLogger) trace(message string, depth int) {
-	l.call(func(logger *DDLogger) { logger.Trace(message) })
+func (l *deferredLogger) trace(message string, context []interface{}, depth int) {
+	l.call(func(logger *DDLogger) { logger.trace(message, context, depth) })
 }
 
-func (l *deferredLogger) debug(message string, depth int) {
-	l.call(func(logger *DDLogger) { logger.Debug(message) })
+func (l *deferredLogger) debug(message string, context []interface{}, depth int) {
+	l.call(func(logger *DDLogger) { logger.debug(message, context, depth) })
 }
 
-func (l *deferredLogger) info(message string, depth int) {
-	l.call(func(logger *DDLogger) { logger.Info(message) })
+func (l *deferredLogger) info(message string, context []interface{}, depth int) {
+	l.call(func(logger *DDLogger) { logger.info(message, context, depth) })
 }
 
-func (l *deferredLogger) warn(message string, depth int) {
-	l.call(func(logger *DDLogger) { logger.Warn(message) })
+func (l *deferredLogger) warn(message string, context []interface{}, depth int) {
+	l.call(func(logger *DDLogger) { logger.warn(message, context, depth) })
 }
 
-func (l *deferredLogger) error(message string, depth int) {
-	l.call(func(logger *DDLogger) { logger.Error(message) })
+func (l *deferredLogger) error(message string, context []interface{}, depth int) {
+	l.call(func(logger *DDLogger) { logger.error(message, context, depth) })
 	l.fallback(seelog.ErrorLvl, message)
 }
 
-func (l *deferredLogger) critical(message string, depth int) {
-	l.call(func(logger *DDLogger) { logger.Critical(message) })
+func (l *deferredLogger) critical(message string, context []interface{}, depth int) {
+	l.call(func(logger *DDLogger) { logger.critical(message, context, depth) })
 	l.fallback(seelog.CriticalLvl, message)
-}
-
-func (l *deferredLogger) withContext(context []interface{}) ddLogger {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if l.forwardTo != nil {
-		return &deferredLogger{
-			forwardTo: l.forwardTo.WithContext(context),
-		}
-	}
-
-	newContext := make([]interface{}, 0, len(l.context)+len(context))
-	copy(newContext[:len(l.context)], l.context)
-	copy(newContext[len(l.context):], context)
-
-	child := &deferredLogger{
-		context: newContext,
-	}
-	l.children = append(l.children, child)
-
-	return child
 }
 
 func (l *deferredLogger) flush() {
@@ -113,15 +88,9 @@ func (l *deferredLogger) fallback(level seelog.LogLevel, message string) {
 func (l *deferredLogger) forward(logger *DDLogger) {
 	l.mu.Lock()
 
-	forwardTo := logger.WithContext(l.context)
-	l.forwardTo = forwardTo
-
+	l.forwardTo = logger
 	for _, call := range l.calls {
-		call(forwardTo)
-	}
-
-	for _, child := range l.children {
-		child.forward(logger)
+		call(logger)
 	}
 
 	l.mu.Unlock()

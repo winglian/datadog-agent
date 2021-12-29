@@ -19,20 +19,10 @@ func buildLogEntry(v ...interface{}) string {
 	return fmt.Sprintf(fmtBuffer.String(), v...)
 }
 
-func scrubMessage(message string) string {
+func scrubbedError(message string) error {
 	msgScrubbed, err := scrubber.ScrubBytes([]byte(message))
 	if err == nil {
-		return string(msgScrubbed)
+		return errors.New(string(msgScrubbed))
 	}
-	return "[REDACTED] - failure to clean the message"
-}
-
-func formatErrorf(format string, params ...interface{}) error {
-	msg := scrubMessage(fmt.Sprintf(format, params...))
-	return errors.New(msg)
-}
-
-func formatError(v ...interface{}) error {
-	msg := scrubMessage(fmt.Sprint(v...))
-	return errors.New(msg)
+	return errors.New("[REDACTED] - failure to clean the message")
 }

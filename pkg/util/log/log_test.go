@@ -99,7 +99,7 @@ func TestBasicLogging(t *testing.T) {
 
 func TestLogBuffer(t *testing.T) {
 	// reset buffer state
-	Default = newDDLogger(newDeferredLogger(), seelog.TraceLvl, defaultStackDepth)
+	Default = newDDLogger(newDeferredLogger(), seelog.TraceLvl)
 
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
@@ -124,7 +124,7 @@ func TestLogBuffer(t *testing.T) {
 }
 func TestLogBufferWithContext(t *testing.T) {
 	// reset buffer state
-	Default = newDDLogger(newDeferredLogger(), seelog.TraceLvl, defaultStackDepth)
+	Default = newDDLogger(newDeferredLogger(), seelog.TraceLvl)
 
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)

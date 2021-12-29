@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	defaultStackDepth = 3
+	defaultStackDepth = 4
 
 	// Default is the default logger. Package-level functions in this package
 	// call this logger.
@@ -37,8 +37,8 @@ func init() {
 	// thing once SetupLogging is called.  These log at the Trace level so that
 	// all messages are captured.  When those messages are forwarded, they will
 	// be level-filtered again.
-	Default = newDDLogger(newDeferredLogger(), seelog.TraceLvl, defaultStackDepth)
-	DefaultJmx = newDDLogger(newDeferredLogger(), seelog.TraceLvl, defaultStackDepth)
+	Default = newDDLogger(newDeferredLogger(), seelog.TraceLvl)
+	DefaultJmx = newDDLogger(newDeferredLogger(), seelog.TraceLvl)
 }
 
 // SetupLogger setup agent wide logger
@@ -62,7 +62,7 @@ func setupCommonLogger(current *DDLogger, i seelog.LoggerInterface, level string
 		lvl = seelog.InfoLvl
 	}
 
-	rv := newDDLogger(scrl, lvl, defaultStackDepth)
+	rv := newDDLogger(scrl, lvl)
 
 	// if the previous logger was a deferredLogger, forward its messages to the new one
 	// TODO: refactor
@@ -84,56 +84,50 @@ func Tracef(format string, params ...interface{}) {
 	Default.Tracef(format, params...)
 }
 
-// TracecStackDepth logs at the trace level with context and the current stack depth plus the additional given one
-//
-// Deprecated.  Prefer WithStackDepth and WithContext.
+// TracecStackDepth logs at the trace level with context and the current stack
+// depth plus the additional given one
 func TracecStackDepth(message string, depth int, context ...interface{}) {
-	Default.WithStackDepth(depth).WithContext(context...).Trace(message)
+	Default.TracecStackDepth(message, depth, context...)
 }
 
 // Tracec logs at the trace level with context
-//
-// Deprecated.  Prefer WithContext.
 func Tracec(message string, context ...interface{}) {
-	TracecStackDepth(message, 1, context...)
+	Default.Tracec(message, context...)
 }
 
-// TraceStackDepth logs at the trace level and the current stack depth plus the additional given one and returns an error containing the formated log message
-//
-// Deprecated.  Prefer WithStackDepth.
+// TraceStackDepth logs at the trace level and the current stack depth plus the
+// additional given one and returns an error containing the formated log
+// message
 func TraceStackDepth(depth int, v ...interface{}) {
-	Default.WithStackDepth(depth).Trace(v...)
+	Default.TraceStackDepth(depth, v...)
 }
 
-// Debug logs at the debug level
+// Debug logs at the Debug level
 func Debug(v ...interface{}) {
 	Default.Debug(v...)
 }
 
-// Debugf logs with format at the debug level
+// Debugf logs with format at the Debug level
 func Debugf(format string, params ...interface{}) {
 	Default.Debugf(format, params...)
 }
 
-// DebugcStackDepth logs at the debug level with context and the current stack depth plus the additional given one
-//
-// Deprecated.  Prefer WithStackDepth and WithContext.
+// DebugcStackDepth logs at the Debug level with context and the current stack
+// depth plus the additional given one
 func DebugcStackDepth(message string, depth int, context ...interface{}) {
-	Default.WithStackDepth(depth).WithContext(context...).Debug(message)
+	Default.DebugcStackDepth(message, depth, context...)
 }
 
-// Debugc logs at the debug level with context
-//
-// Deprecated.  Prefer WithContext.
+// Debugc logs at the Debug level with context
 func Debugc(message string, context ...interface{}) {
-	DebugcStackDepth(message, 1, context...)
+	Default.Debugc(message, context...)
 }
 
-// DebugStackDepth logs at the debug level and the current stack depth plus the additional given one and returns an error containing the formated log message
-//
-// Deprecated.  Prefer WithStackDepth.
+// DebugStackDepth logs at the Debug level and the current stack depth plus the
+// additional given one and returns an error containing the formated log
+// message
 func DebugStackDepth(depth int, v ...interface{}) {
-	Default.WithStackDepth(depth).Debug(v...)
+	Default.DebugStackDepth(depth, v...)
 }
 
 // Info logs at the info level
@@ -146,118 +140,106 @@ func Infof(format string, params ...interface{}) {
 	Default.Infof(format, params...)
 }
 
-// InfocStackDepth logs at the info level with context and the current stack depth plus the additional given one
-//
-// Deprecated.  Prefer WithStackDepth and WithContext.
+// InfocStackDepth logs at the info level with context and the current stack
+// depth plus the additional given one
 func InfocStackDepth(message string, depth int, context ...interface{}) {
-	Default.WithStackDepth(depth).WithContext(context...).Info(message)
+	Default.InfocStackDepth(message, depth, context...)
 }
 
 // Infoc logs at the info level with context
-//
-// Deprecated.  Prefer WithContext.
 func Infoc(message string, context ...interface{}) {
-	InfocStackDepth(message, 1, context...)
+	Default.Infoc(message, context...)
 }
 
-// InfoStackDepth logs at the info level and the current stack depth plus the additional given one
-//
-// Deprecated.  Prefer WithStackDepth.
+// InfoStackDepth logs at the info level and the current stack depth plus the
+// additional given one and returns an error containing the formated log
+// message
 func InfoStackDepth(depth int, v ...interface{}) {
-	Default.WithStackDepth(depth).Info(v...)
+	Default.InfoStackDepth(depth, v...)
 }
 
-// Warn logs at the warn level and returns an error containing the formated log message
+// Warn logs at the warn level
 func Warn(v ...interface{}) error {
 	return Default.Warn(v...)
 }
 
-// Warnf logs with format at the warn level and returns an error containing the formated log message
+// Warnf logs with format at the warn level
 func Warnf(format string, params ...interface{}) error {
 	return Default.Warnf(format, params...)
 }
 
-// WarncStackDepth logs at the warn level with context and the current stack depth plus the additional given one and returns an error containing the formated log message
-//
-// Deprecated.  Prefer WithStackDepth and WithContext.
+// WarncStackDepth logs at the warn level with context and the current stack
+// depth plus the additional given one
 func WarncStackDepth(message string, depth int, context ...interface{}) error {
-	return Default.WithStackDepth(depth).WithContext(context...).Warn(message)
+	return Default.WarncStackDepth(message, depth, context...)
 }
 
-// Warnc logs at the warn level with context and returns an error containing the formated log message
-//
-// Deprecated.  Prefer WithContext.
+// Warnc logs at the warn level with context
 func Warnc(message string, context ...interface{}) error {
-	return WarncStackDepth(message, 1, context...)
+	return Default.Warnc(message, context...)
 }
 
-// WarnStackDepth logs at the warn level and the current stack depth plus the additional given one and returns an error containing the formated log message
-//
-// Deprecated.  Prefer WithStackDepth.
+// WarnStackDepth logs at the warn level and the current stack depth plus the
+// additional given one and returns an error containing the formated log
+// message
 func WarnStackDepth(depth int, v ...interface{}) error {
-	return Default.WithStackDepth(depth).Warn(v...)
+	return Default.WarnStackDepth(depth, v...)
 }
 
-// Error logs at the error level and returns an error containing the formated log message
+// Error logs at the error level
 func Error(v ...interface{}) error {
 	return Default.Error(v...)
 }
 
-// Errorf logs with format at the error level and returns an error containing the formated log message
+// Errorf logs with format at the error level
 func Errorf(format string, params ...interface{}) error {
 	return Default.Errorf(format, params...)
 }
 
-// ErrorcStackDepth logs at the error level with context and the current stack depth plus the additional given one and returns an error containing the formated log message
-//
-// Deprecated.  Prefer WithStackDepth and WithContext.
+// ErrorcStackDepth logs at the error level with context and the current stack
+// depth plus the additional given one
 func ErrorcStackDepth(message string, depth int, context ...interface{}) error {
-	return Default.WithStackDepth(depth).WithContext(context...).Error(message)
+	return Default.ErrorcStackDepth(message, depth, context...)
 }
 
-// Errorc logs at the error level with context and returns an error containing the formated log message
-//
-// Deprecated.  Prefer WithContext.
+// Errorc logs at the error level with context
 func Errorc(message string, context ...interface{}) error {
-	return ErrorcStackDepth(message, 1, context...)
+	return Default.Errorc(message, context...)
 }
 
-// ErrorStackDepth logs at the error level and the current stack depth plus the additional given one and returns an error containing the formated log message
-//
-// Deprecated.  Prefer WithStackDepth.
+// ErrorStackDepth logs at the error level and the current stack depth plus the
+// additional given one and returns an error containing the formated log
+// message
 func ErrorStackDepth(depth int, v ...interface{}) error {
-	return Default.WithStackDepth(depth).Error(v...)
+	return Default.ErrorStackDepth(depth, v...)
 }
 
-// Critical logs at the critical level and returns an error containing the formated log message
+// Critical logs at the critical level
 func Critical(v ...interface{}) error {
 	return Default.Critical(v...)
 }
 
-// Criticalf logs with format at the critical level and returns an error containing the formated log message
+// Criticalf logs with format at the critical level
 func Criticalf(format string, params ...interface{}) error {
 	return Default.Criticalf(format, params...)
 }
 
-// CriticalcStackDepth logs at the critical level with context and the current stack depth plus the additional given one and returns an error containing the formated log message
-//
-// Deprecated.  Prefer WithStackDepth and WithContext.
+// CriticalcStackDepth logs at the critical level with context and the current stack
+// depth plus the additional given one
 func CriticalcStackDepth(message string, depth int, context ...interface{}) error {
-	return Default.WithStackDepth(depth).WithContext(context...).Critical(message)
+	return Default.CriticalcStackDepth(message, depth, context...)
 }
 
-// Criticalc logs at the critical level with context and returns an error containing the formated log message
-//
-// Deprecated.  Prefer WithContext.
+// Criticalc logs at the critical level with context
 func Criticalc(message string, context ...interface{}) error {
-	return CriticalcStackDepth(message, 1, context...)
+	return Default.Criticalc(message, context...)
 }
 
-// CriticalStackDepth logs at the critical level and the current stack depth plus the additional given one and returns an error containing the formated log message
-//
-// Deprecated.  Prefer WithStackDepth.
+// CriticalStackDepth logs at the critical level and the current stack depth plus the
+// additional given one and returns an error containing the formated log
+// message
 func CriticalStackDepth(depth int, v ...interface{}) error {
-	return Default.WithStackDepth(depth).Critical(v...)
+	return Default.CriticalStackDepth(depth, v...)
 }
 
 // JMXError Logs for JMX check
