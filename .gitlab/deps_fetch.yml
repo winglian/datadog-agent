@@ -14,6 +14,9 @@ go_deps:
   needs: []
   script:
     - inv -e deps
+    # Remove Go mod download cache, we don't need to keep it
+    # and it weighs around 500MB.
+    - rm -rf $GOPATH/pkg/mod/cache
     - cd $GOPATH/pkg/mod/ && tar czf $CI_PROJECT_DIR/modcache.tar.gz .
   artifacts:
     expire_in: 1 day
