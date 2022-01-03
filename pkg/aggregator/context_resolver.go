@@ -30,14 +30,12 @@ func (c *Context) Tags() []string {
 type contextResolver struct {
 	contextsByKey map[ckey.ContextKey]*Context
 	tagsCache     *tags.Store
-	keyGenerator  *ckey.KeyGenerator
 }
 
 func newContextResolver(cache *tags.Store) *contextResolver {
 	return &contextResolver{
 		contextsByKey: make(map[ckey.ContextKey]*Context),
 		tagsCache:     cache,
-		keyGenerator:  ckey.NewKeyGenerator(),
 	}
 }
 
@@ -46,12 +44,12 @@ func (cr *contextResolver) trackContext(metricSampleContext metrics.MetricSample
 	tb := tagset.NewBuilder(10)
 	metricSampleContext.GetTags(tb) // tags here are not sorted and can contain duplicates
 	tags := tb.Close()
-	contextKey := cr.keyGenerator.Generate(metricSampleContext.GetName(), metricSampleContext.GetHost(), tags)
+	contextKey := ckey.Generate(metricSampleContext.GetName(), metricSampleContext.GetHost(), tags)
 
 	if _, ok := cr.contextsByKey[contextKey]; !ok {
 		cr.contextsByKey[contextKey] = &Context{
 			Name: metricSampleContext.GetName(),
-			tags: cr.tagsCache.Insert(ckey.TagsKey(tags.Hash()), tags),
+			tags: cr.tagsCache.Insert(tags.Hash(), tags),
 			Host: metricSampleContext.GetHost(),
 		}
 	}

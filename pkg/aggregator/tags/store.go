@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"math/bits"
 
-	"github.com/DataDog/datadog-agent/pkg/aggregator/ckey"
 	"github.com/DataDog/datadog-agent/pkg/tagset"
 	"github.com/DataDog/datadog-agent/pkg/telemetry"
 )
@@ -37,7 +36,7 @@ func (e *Entry) Release() {
 // Store is a reference counted container of tags slices, to be shared
 // between contexts.
 type Store struct {
-	tagsByKey map[ckey.TagsKey]*Entry
+	tagsByKey map[uint64]*Entry
 	cap       int
 	enabled   bool
 	telemetry storeTelemetry
@@ -46,7 +45,7 @@ type Store struct {
 // NewStore returns new empty Store.
 func NewStore(enabled bool, name string) *Store {
 	return &Store{
-		tagsByKey: map[ckey.TagsKey]*Entry{},
+		tagsByKey: map[uint64]*Entry{},
 		enabled:   enabled,
 		telemetry: newStoreTelemetry(name),
 	}
@@ -56,7 +55,7 @@ func NewStore(enabled bool, name string) *Store {
 // the cache, a new entry is stored in the Store with the tags Insert
 // increments reference count for the returned entry; callers should call
 // Entry.Release() when the returned pointer is no longer in use.
-func (tc *Store) Insert(key ckey.TagsKey, tags *tagset.Tags) *Entry {
+func (tc *Store) Insert(key uint64, tags *tagset.Tags) *Entry {
 	if !tc.enabled {
 		return &Entry{
 			tags: tags,
@@ -93,7 +92,7 @@ func (tc *Store) Shrink() {
 	}
 
 	if len(tc.tagsByKey) < tc.cap/2 {
-		new := make(map[ckey.TagsKey]*Entry, len(tc.tagsByKey))
+		new := make(map[uint64]*Entry, len(tc.tagsByKey))
 		for k, v := range tc.tagsByKey {
 			new[k] = v
 		}
