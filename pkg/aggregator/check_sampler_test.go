@@ -32,7 +32,7 @@ func generateContextKey(sample metrics.MetricSampleContext) ckey.ContextKey {
 	return ckey.Generate(sample.GetName(), sample.GetHost(), bldr.Close())
 }
 
-func testCheckGaugeSampling(t *testing.T, store *tags.Store) {
+func testCheckGaugeSampling(t *testing.T, store *tags.Tlm) {
 	checkSampler := newCheckSampler(1, true, 1*time.Second, store)
 
 	mSample1 := metrics.MetricSample{
@@ -94,7 +94,7 @@ func TestCheckGaugeSampling(t *testing.T) {
 	testWithTagsStore(t, testCheckGaugeSampling)
 }
 
-func testCheckRateSampling(t *testing.T, store *tags.Store) {
+func testCheckRateSampling(t *testing.T, store *tags.Tlm) {
 	checkSampler := newCheckSampler(1, true, 1*time.Second, store)
 
 	mSample1 := metrics.MetricSample{
@@ -146,7 +146,7 @@ func TestCheckRateSampling(t *testing.T) {
 	testWithTagsStore(t, testCheckRateSampling)
 }
 
-func testHistogramCountSampling(t *testing.T, store *tags.Store) {
+func testHistogramCountSampling(t *testing.T, store *tags.Tlm) {
 	checkSampler := newCheckSampler(1, true, 1*time.Second, store)
 
 	mSample1 := metrics.MetricSample{
@@ -210,7 +210,7 @@ func TestHistogramCountSampling(t *testing.T) {
 	testWithTagsStore(t, testHistogramCountSampling)
 }
 
-func testCheckHistogramBucketSampling(t *testing.T, store *tags.Store) {
+func testCheckHistogramBucketSampling(t *testing.T, store *tags.Tlm) {
 	checkSampler := newCheckSampler(1, true, 1*time.Second, store)
 
 	bucket1 := &metrics.HistogramBucket{
@@ -286,7 +286,7 @@ func TestCheckHistogramBucketSampling(t *testing.T) {
 	testWithTagsStore(t, testCheckHistogramBucketSampling)
 }
 
-func testCheckHistogramBucketDontFlushFirstValue(t *testing.T, store *tags.Store) {
+func testCheckHistogramBucketDontFlushFirstValue(t *testing.T, store *tags.Tlm) {
 	checkSampler := newCheckSampler(1, true, 1*time.Second, store)
 
 	bucket1 := &metrics.HistogramBucket{
@@ -341,7 +341,7 @@ func TestCheckHistogramBucketDontFlushFirstValue(t *testing.T) {
 	testWithTagsStore(t, testCheckHistogramBucketDontFlushFirstValue)
 }
 
-func testCheckHistogramBucketInfinityBucket(t *testing.T, store *tags.Store) {
+func testCheckHistogramBucketInfinityBucket(t *testing.T, store *tags.Tlm) {
 	checkSampler := newCheckSampler(1, true, 1*time.Second, store)
 
 	bucket1 := &metrics.HistogramBucket{

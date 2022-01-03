@@ -13,75 +13,75 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/telemetry"
 )
 
-// Entry is used to keep track of tag slices shared by the contexts.
-type Entry struct {
-	tags *tagset.Tags
-	refs uint64
+// TODO: move ../tagset_tlm.go in here??
+// TODO: use an interface so "disabled" is just empty functions
+// TODO: keep existing config??
+
+// activeTagset is used to keep track of tag slices shared by the contexts.
+type activeTagset struct {
+	// tagCount is the number of tags in this tagset
+	tagCount int
+	refs     uint64
 }
 
-// Tags returns the strings stored in the Entry. The slice may be
-// shared with other users and should not be modified. Users can keep
-// the slice after the entry was removed from the store; it is not
-// recycled or otherwise modified by the store.
-func (e *Entry) Tags() *tagset.Tags {
-	return e.tags
-}
+// Tlm tracks telemetry about the aggregator's use of tags.
+type Tlm struct {
+	// tagsByKey stores the active tagsets, keyed by their hash
+	tagsByKey map[uint64]*activeTagset
 
-// Release decrements internal reference counter, potentially marking
-// the entry as unused.
-func (e *Entry) Release() {
-	e.refs--
-}
+	// cap is a shortcut to the current capacity of tagsByKey
+	cap int
 
-// Store is a reference counted container of tags slices, to be shared
-// between contexts.
-type Store struct {
-	tagsByKey map[uint64]*Entry
-	cap       int
-	enabled   bool
+	// enabled is true if tagset telemetry is enabled
+	enabled bool
+
+	// telemetry stores the actual telemetry for the tagset
 	telemetry storeTelemetry
 }
 
-// NewStore returns new empty Store.
-func NewStore(enabled bool, name string) *Store {
-	return &Store{
-		tagsByKey: map[uint64]*Entry{},
+// NewTlm returns new empty Store.
+func NewTlm(enabled bool, name string) *Tlm {
+	return &Tlm{
+		tagsByKey: map[uint64]*activeTagset{},
 		enabled:   enabled,
 		telemetry: newStoreTelemetry(name),
 	}
 }
 
-// Insert returns an Entry that corresponds to the key. If the key is not in
-// the cache, a new entry is stored in the Store with the tags Insert
-// increments reference count for the returned entry; callers should call
-// Entry.Release() when the returned pointer is no longer in use.
-func (tc *Store) Insert(key uint64, tags *tagset.Tags) *Entry {
+// Use registers a use of the given tags instance in the aggregator.  This
+// must be balanced by a later Release.
+func (tc *Tlm) Use(tags *tagset.Tags) {
 	if !tc.enabled {
-		return &Entry{
-			tags: tags,
-			refs: 1,
-		}
+		return
 	}
 
+	key := tags.Hash()
 	entry := tc.tagsByKey[key]
 	if entry != nil {
 		entry.refs++
 		tc.telemetry.hits.Inc()
 	} else {
-		entry = &Entry{
-			tags: tags,
-			refs: 1,
+		tc.tagsByKey[key] = &activeTagset{
+			tagCount: tags.Len(),
+			refs:     1,
 		}
-		tc.tagsByKey[key] = entry
 		tc.cap++
 		tc.telemetry.miss.Inc()
 	}
 
-	return entry
+	return
+}
+
+// Release decrements internal reference counter, potentially marking
+// the entry as unused.
+func (tc *Tlm) Release(tags *tagset.Tags) {
+	if e, ok := tc.tagsByKey[tags.Hash()]; ok {
+		e.refs--
+	}
 }
 
 // Shrink will try to release memory if cache usage drops low enough.
-func (tc *Store) Shrink() {
+func (tc *Tlm) Shrink() {
 	stats := entryStats{}
 	for key, entry := range tc.tagsByKey {
 		if entry.refs == 0 {
@@ -92,7 +92,7 @@ func (tc *Store) Shrink() {
 	}
 
 	if len(tc.tagsByKey) < tc.cap/2 {
-		new := make(map[uint64]*Entry, len(tc.tagsByKey))
+		new := make(map[uint64]*activeTagset, len(tc.tagsByKey))
 		for k, v := range tc.tagsByKey {
 			new[k] = v
 		}
@@ -103,7 +103,7 @@ func (tc *Store) Shrink() {
 	tc.updateTelemetry(&stats)
 }
 
-func (tc *Store) updateTelemetry(s *entryStats) {
+func (tc *Tlm) updateTelemetry(s *entryStats) {
 	t := &tc.telemetry
 
 	tlmMaxEntries.Set(float64(tc.cap), t.name)
@@ -164,7 +164,7 @@ type entryStats struct {
 	count    int
 }
 
-func (s *entryStats) visit(e *Entry) {
+func (s *entryStats) visit(e *activeTagset) {
 	r := e.refs
 	if r < 4 {
 		s.refsFreq[r-1]++
@@ -174,7 +174,7 @@ func (s *entryStats) visit(e *Entry) {
 		s.refsFreq[7]++
 	}
 
-	n := e.tags.Len()
+	n := e.tagCount
 	if n < s.minSize || s.count == 0 {
 		s.minSize = n
 	}

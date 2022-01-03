@@ -26,7 +26,7 @@ func benchmarkAddBucket(bucketValue int64, b *testing.B) {
 	demux := InitAndStartAgentDemultiplexer(options, "hostname")
 	defer demux.Stop(true)
 
-	checkSampler := newCheckSampler(1, true, 1000, tags.NewStore(true, "bench"))
+	checkSampler := newCheckSampler(1, true, 1000, tags.NewTlm(true, "bench"))
 
 	bucket := &metrics.HistogramBucket{
 		Name:       "my.histogram",
@@ -45,7 +45,7 @@ func benchmarkAddBucket(bucketValue int64, b *testing.B) {
 }
 
 func benchmarkAddBucketWideBounds(bucketValue int64, b *testing.B) {
-	checkSampler := newCheckSampler(1, true, 1000, tags.NewStore(true, "bench"))
+	checkSampler := newCheckSampler(1, true, 1000, tags.NewTlm(true, "bench"))
 
 	bounds := []float64{0, .0005, .001, .003, .005, .007, .01, .015, .02, .025, .03, .04, .05, .06, .07, .08, .09, .1, .5, 1, 5, 10}
 	bucket := &metrics.HistogramBucket{

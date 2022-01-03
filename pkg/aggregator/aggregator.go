@@ -214,7 +214,7 @@ type BufferedAggregator struct {
 	MetricSamplePool *metrics.MetricSamplePool
 
 	statsdSampler          TimeSampler
-	tagsStore              *tags.Store
+	tagsTlm                *tags.Tlm
 	checkSamplers          map[check.ID]*CheckSampler
 	serviceChecks          metrics.ServiceChecks
 	events                 metrics.Events
@@ -261,7 +261,7 @@ func NewBufferedAggregator(s serializer.MetricSerializer, eventPlatformForwarder
 		agentName = flavor.HerokuAgent
 	}
 
-	tagsStore := tags.NewStore(config.Datadog.GetBool("aggregator_use_tags_store"), "aggregator")
+	tagsTlm := tags.NewTlm(config.Datadog.GetBool("aggregator_use_tags_store"), "aggregator")
 
 	aggregator := &BufferedAggregator{
 		bufferedMetricIn:       make(chan []metrics.MetricSample, bufferSize),
@@ -285,8 +285,8 @@ func NewBufferedAggregator(s serializer.MetricSerializer, eventPlatformForwarder
 
 		MetricSamplePool: metrics.NewMetricSamplePool(MetricSamplePoolBatchSize),
 
-		tagsStore:               tagsStore,
-		statsdSampler:           *NewTimeSampler(bucketSize, tagsStore),
+		tagsTlm:                 tagsTlm,
+		statsdSampler:           *NewTimeSampler(bucketSize, tagsTlm),
 		checkSamplers:           make(map[check.ID]*CheckSampler),
 		flushInterval:           flushInterval,
 		serializer:              s,
@@ -383,7 +383,7 @@ func (agg *BufferedAggregator) registerSender(id check.ID) error {
 		config.Datadog.GetInt("check_sampler_bucket_commits_count_expiry"),
 		config.Datadog.GetBool("check_sampler_expire_metrics"),
 		config.Datadog.GetDuration("check_sampler_stateful_metric_expiration_time"),
-		agg.tagsStore,
+		agg.tagsTlm,
 	)
 	return nil
 }
@@ -822,7 +822,7 @@ func (agg *BufferedAggregator) run() {
 			// Do this here, rather than in the Flush():
 			// - make sure Shrink doesn't happen concurrently with sample processing.
 			// - we don't need to Shrink() on stop
-			agg.tagsStore.Shrink()
+			agg.tagsTlm.Shrink()
 
 			addFlushTime("MainFlushTime", int64(time.Since(start)))
 			aggregatorNumberOfFlush.Add(1)

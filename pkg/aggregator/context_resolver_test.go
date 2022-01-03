@@ -24,14 +24,14 @@ import (
 )
 
 // Helper functions to run tests and benchmarks for context resolver, time and check samplers.
-func testWithTagsStore(t *testing.T, test func(*testing.T, *tags.Store)) {
-	t.Run("useStore=true", func(t *testing.T) { test(t, tags.NewStore(true, "test")) })
-	t.Run("useStore=false", func(t *testing.T) { test(t, tags.NewStore(false, "test")) })
+func testWithTagsStore(t *testing.T, test func(*testing.T, *tags.Tlm)) {
+	t.Run("useStore=true", func(t *testing.T) { test(t, tags.NewTlm(true, "test")) })
+	t.Run("useStore=false", func(t *testing.T) { test(t, tags.NewTlm(false, "test")) })
 }
 
-func benchWithTagsStore(t *testing.B, test func(*testing.B, *tags.Store)) {
-	t.Run("useStore=true", func(t *testing.B) { test(t, tags.NewStore(true, "test")) })
-	t.Run("useStore=false", func(t *testing.B) { test(t, tags.NewStore(false, "test")) })
+func benchWithTagsStore(t *testing.B, test func(*testing.B, *tags.Tlm)) {
+	t.Run("useStore=true", func(t *testing.B) { test(t, tags.NewTlm(true, "test")) })
+	t.Run("useStore=false", func(t *testing.B) { test(t, tags.NewTlm(false, "test")) })
 }
 
 func assertContext(t *testing.T, cx *Context, name string, tags []string, host string) {
@@ -54,7 +54,7 @@ func TestGenerateContextKey(t *testing.T) {
 	assert.Equal(t, ckey.ContextKey(0x14298ff49d0c6bb9), contextKey)
 }
 
-func testTrackContext(t *testing.T, store *tags.Store) {
+func testTrackContext(t *testing.T, store *tags.Tlm) {
 	mSample1 := metrics.MetricSample{
 		Name:       "my.metric.name",
 		Value:      1,
@@ -103,7 +103,7 @@ func TestTrackContext(t *testing.T) {
 	testWithTagsStore(t, testTrackContext)
 }
 
-func testExpireContexts(t *testing.T, store *tags.Store) {
+func testExpireContexts(t *testing.T, store *tags.Tlm) {
 	mSample1 := metrics.MetricSample{
 		Name:       "my.metric.name",
 		Value:      1,
@@ -147,7 +147,7 @@ func TestExpireContexts(t *testing.T) {
 	testWithTagsStore(t, testExpireContexts)
 }
 
-func testCountBasedExpireContexts(t *testing.T, store *tags.Store) {
+func testCountBasedExpireContexts(t *testing.T, store *tags.Tlm) {
 	mSample1 := metrics.MetricSample{Name: "my.metric.name1"}
 	mSample2 := metrics.MetricSample{Name: "my.metric.name2"}
 	mSample3 := metrics.MetricSample{Name: "my.metric.name3"}

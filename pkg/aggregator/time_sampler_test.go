@@ -29,13 +29,13 @@ func generateSerieContextKey(serie *metrics.Serie) ckey.ContextKey {
 
 // TimeSampler
 func TestCalculateBucketStart(t *testing.T) {
-	sampler := NewTimeSampler(10, tags.NewStore(false, "test"))
+	sampler := NewTimeSampler(10, tags.NewTlm(false, "test"))
 
 	assert.Equal(t, int64(123450), sampler.calculateBucketStart(123456.5))
 	assert.Equal(t, int64(123460), sampler.calculateBucketStart(123460.5))
 }
 
-func testBucketSampling(t *testing.T, store *tags.Store) {
+func testBucketSampling(t *testing.T, store *tags.Tlm) {
 	sampler := NewTimeSampler(10, store)
 
 	mSample := metrics.MetricSample{
@@ -69,7 +69,7 @@ func TestBucketSampling(t *testing.T) {
 	testWithTagsStore(t, testBucketSampling)
 }
 
-func testContextSampling(t *testing.T, store *tags.Store) {
+func testContextSampling(t *testing.T, store *tags.Tlm) {
 	sampler := NewTimeSampler(10, store)
 
 	mSample1 := metrics.MetricSample{
@@ -136,7 +136,7 @@ func TestContextSampling(t *testing.T) {
 	testWithTagsStore(t, testContextSampling)
 }
 
-func testCounterExpirySeconds(t *testing.T, store *tags.Store) {
+func testCounterExpirySeconds(t *testing.T, store *tags.Tlm) {
 	sampler := NewTimeSampler(10, store)
 	math.Abs(1)
 	sampleCounter1 := &metrics.MetricSample{
@@ -271,7 +271,7 @@ func TestCounterExpirySeconds(t *testing.T) {
 	testWithTagsStore(t, testCounterExpirySeconds)
 }
 
-func testSketch(t *testing.T, store *tags.Store) {
+func testSketch(t *testing.T, store *tags.Tlm) {
 	const (
 		defaultBucketSize = 10
 	)
@@ -343,7 +343,7 @@ func TestSketch(t *testing.T) {
 	testWithTagsStore(t, testSketch)
 }
 
-func testSketchBucketSampling(t *testing.T, store *tags.Store) {
+func testSketchBucketSampling(t *testing.T, store *tags.Tlm) {
 
 	sampler := NewTimeSampler(10, store)
 
@@ -390,7 +390,7 @@ func TestSketchBucketSampling(t *testing.T) {
 	testWithTagsStore(t, testSketchBucketSampling)
 }
 
-func testSketchContextSampling(t *testing.T, store *tags.Store) {
+func testSketchContextSampling(t *testing.T, store *tags.Tlm) {
 
 	sampler := NewTimeSampler(10, store)
 
@@ -444,7 +444,7 @@ func TestSketchContextSampling(t *testing.T) {
 	testWithTagsStore(t, testSketchContextSampling)
 }
 
-func testBucketSamplingWithSketchAndSeries(t *testing.T, store *tags.Store) {
+func testBucketSamplingWithSketchAndSeries(t *testing.T, store *tags.Tlm) {
 
 	sampler := NewTimeSampler(10, store)
 
@@ -504,7 +504,7 @@ func TestBucketSamplingWithSketchAndSeries(t *testing.T) {
 	testWithTagsStore(t, testBucketSamplingWithSketchAndSeries)
 }
 
-func benchmarkTimeSampler(b *testing.B, store *tags.Store) {
+func benchmarkTimeSampler(b *testing.B, store *tags.Tlm) {
 	sampler := NewTimeSampler(10, store)
 	sample := metrics.MetricSample{
 		Name:       "my.metric.name",

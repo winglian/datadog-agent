@@ -13,40 +13,37 @@ import (
 )
 
 func TestStore(t *testing.T) {
-	c := NewStore(true, "test")
+	c := NewTlm(true, "test")
 
 	t1 := tagset.NewTags([]string{"1"})
 	h1 := t1.Hash()
 	t2 := tagset.NewTags([]string{"2"})
 	h2 := t2.Hash()
 
-	t1a := c.Insert(t1.Hash(), t1)
+	c.Use(t1)
 
 	require.EqualValues(t, 1, len(c.tagsByKey))
 	require.EqualValues(t, 1, c.cap)
 	require.EqualValues(t, 1, c.tagsByKey[h1].refs)
 
-	t1b := c.Insert(t1.Hash(), t1)
+	c.Use(t1)
 	require.EqualValues(t, 1, len(c.tagsByKey))
 	require.EqualValues(t, 1, c.cap)
 	require.EqualValues(t, 2, c.tagsByKey[h1].refs)
-	require.Same(t, t1a, t1b)
 
-	t2a := c.Insert(t2.Hash(), t2)
+	c.Use(t2)
 	require.EqualValues(t, 2, len(c.tagsByKey))
 	require.EqualValues(t, 2, c.cap)
 	require.EqualValues(t, 2, c.tagsByKey[h1].refs)
 	require.EqualValues(t, 1, c.tagsByKey[h2].refs)
-	require.NotSame(t, t1a, t2a)
 
-	t2b := c.Insert(t2.Hash(), t2)
+	c.Use(t2)
 	require.EqualValues(t, 2, len(c.tagsByKey))
 	require.EqualValues(t, 2, c.cap)
 	require.EqualValues(t, 2, c.tagsByKey[h1].refs)
 	require.EqualValues(t, 2, c.tagsByKey[h2].refs)
-	require.Same(t, t2a, t2b)
 
-	t1a.Release()
+	c.Release(t1)
 	require.EqualValues(t, 2, len(c.tagsByKey))
 	require.EqualValues(t, 2, c.cap)
 	require.EqualValues(t, 1, c.tagsByKey[h1].refs)
@@ -56,13 +53,13 @@ func TestStore(t *testing.T) {
 	require.EqualValues(t, 2, len(c.tagsByKey))
 	require.EqualValues(t, 2, c.cap)
 
-	t2a.Release()
+	c.Release(t2)
 	require.EqualValues(t, 2, len(c.tagsByKey))
 	require.EqualValues(t, 2, c.cap)
 	require.EqualValues(t, 1, c.tagsByKey[h1].refs)
 	require.EqualValues(t, 1, c.tagsByKey[h2].refs)
 
-	t1b.Release()
+	c.Release(t1)
 	require.EqualValues(t, 2, len(c.tagsByKey))
 	require.EqualValues(t, 2, c.cap)
 	require.EqualValues(t, 0, c.tagsByKey[h1].refs)
@@ -73,7 +70,7 @@ func TestStore(t *testing.T) {
 	require.EqualValues(t, 2, c.cap)
 	require.EqualValues(t, 1, c.tagsByKey[h2].refs)
 
-	t2b.Release()
+	c.Release(t2)
 	require.EqualValues(t, 1, len(c.tagsByKey))
 	require.EqualValues(t, 2, c.cap)
 	require.EqualValues(t, 0, c.tagsByKey[h2].refs)
@@ -84,32 +81,28 @@ func TestStore(t *testing.T) {
 }
 
 func TestStoreDisabled(t *testing.T) {
-	c := NewStore(false, "test")
+	c := NewTlm(false, "test")
 
 	t1 := tagset.NewTags([]string{"1"})
 	t2 := tagset.NewTags([]string{"2"})
 
-	t1a := c.Insert(t1.Hash(), t1)
+	c.Use(t1)
 	require.EqualValues(t, 0, len(c.tagsByKey))
 	require.EqualValues(t, 0, c.cap)
 
-	t1b := c.Insert(t1.Hash(), t1)
-	require.EqualValues(t, 0, len(c.tagsByKey))
-	require.EqualValues(t, 0, c.cap)
-	require.NotSame(t, t1a, t1b)
-	require.Equal(t, t1a, t1b)
-
-	t2a := c.Insert(t2.Hash(), t2)
-	require.EqualValues(t, 0, len(c.tagsByKey))
-	require.EqualValues(t, 0, c.cap)
-	require.NotSame(t, t1a, t2a)
-	require.NotEqual(t, t1a, t2a)
-
-	t1a.Release()
+	c.Use(t1)
 	require.EqualValues(t, 0, len(c.tagsByKey))
 	require.EqualValues(t, 0, c.cap)
 
-	t2a.Release()
+	c.Use(t2)
+	require.EqualValues(t, 0, len(c.tagsByKey))
+	require.EqualValues(t, 0, c.cap)
+
+	c.Release(t1)
+	require.EqualValues(t, 0, len(c.tagsByKey))
+	require.EqualValues(t, 0, c.cap)
+
+	c.Release(t2)
 	require.EqualValues(t, 0, len(c.tagsByKey))
 	require.EqualValues(t, 0, c.cap)
 

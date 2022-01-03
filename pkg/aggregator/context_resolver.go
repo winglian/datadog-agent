@@ -16,22 +16,21 @@ import (
 
 // Context holds the elements that form a context, and can be serialized into a context key
 type Context struct {
-	Name      string
-	Host      string
-	tagsEntry *tags.Entry
-	Tags      *tagset.Tags
+	Name string
+	Host string
+	Tags *tagset.Tags
 }
 
 // contextResolver allows tracking and expiring contexts
 type contextResolver struct {
 	contextsByKey map[ckey.ContextKey]*Context
-	tagsCache     *tags.Store
+	tagsTlm       *tags.Tlm
 }
 
-func newContextResolver(cache *tags.Store) *contextResolver {
+func newContextResolver(tagsTlm *tags.Tlm) *contextResolver {
 	return &contextResolver{
 		contextsByKey: make(map[ckey.ContextKey]*Context),
-		tagsCache:     cache,
+		tagsTlm:       tagsTlm,
 	}
 }
 
@@ -43,12 +42,11 @@ func (cr *contextResolver) trackContext(metricSampleContext metrics.MetricSample
 	contextKey := ckey.Generate(metricSampleContext.GetName(), metricSampleContext.GetHost(), tags)
 
 	if _, ok := cr.contextsByKey[contextKey]; !ok {
-		tagsEntry := cr.tagsCache.Insert(tags.Hash(), tags)
+		cr.tagsTlm.Use(tags)
 		cr.contextsByKey[contextKey] = &Context{
-			Name:      metricSampleContext.GetName(),
-			tagsEntry: tagsEntry,
-			Tags:      tagsEntry.Tags(),
-			Host:      metricSampleContext.GetHost(),
+			Name: metricSampleContext.GetName(),
+			Tags: tags,
+			Host: metricSampleContext.GetHost(),
 		}
 	}
 
@@ -70,7 +68,7 @@ func (cr *contextResolver) removeKeys(expiredContextKeys []ckey.ContextKey) {
 		delete(cr.contextsByKey, expiredContextKey)
 
 		if context != nil {
-			context.tagsEntry.Release()
+			cr.tagsTlm.Release(context.Tags)
 		}
 	}
 }
@@ -81,9 +79,9 @@ type timestampContextResolver struct {
 	lastSeenByKey map[ckey.ContextKey]float64
 }
 
-func newTimestampContextResolver(cache *tags.Store) *timestampContextResolver {
+func newTimestampContextResolver(tagsTlm *tags.Tlm) *timestampContextResolver {
 	return &timestampContextResolver{
-		resolver:      newContextResolver(cache),
+		resolver:      newContextResolver(tagsTlm),
 		lastSeenByKey: make(map[ckey.ContextKey]float64),
 	}
 }
@@ -145,7 +143,7 @@ type countBasedContextResolver struct {
 	expireCountInterval int64
 }
 
-func newCountBasedContextResolver(expireCountInterval int, cache *tags.Store) *countBasedContextResolver {
+func newCountBasedContextResolver(expireCountInterval int, cache *tags.Tlm) *countBasedContextResolver {
 	return &countBasedContextResolver{
 		resolver:            newContextResolver(cache),
 		expireCountByKey:    make(map[ckey.ContextKey]int64),
