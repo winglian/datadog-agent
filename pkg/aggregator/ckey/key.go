@@ -45,8 +45,14 @@ type KeyGenerator struct {
 
 // Generate returns the ContextKey hash for the given parameters.
 // tagsBuf is re-arranged in place and truncated to only contain unique tags.
-func (g *KeyGenerator) Generate(name, hostname string, tagsBuf *tagset.HashingTagsAccumulator, tagsBuf2Hash uint64) ContextKey {
-	hash := murmur3.StringSum64(name) ^ murmur3.StringSum64(hostname) ^ g.hg.Hash(tagsBuf) ^ tagsBuf2Hash
+// func (g *KeyGenerator) Generate(name, hostname string, tagsBuf *tagset.HashingTagsAccumulator, tagsBuf2Hash uint64) ContextKey {
+// 	hash := murmur3.StringSum64(name) ^ murmur3.StringSum64(hostname) ^ g.hg.Hash(tagsBuf) ^ tagsBuf2Hash
+// 	return ContextKey(hash)
+// }
+// Generate returns the ContextKey hash for the given parameters.
+// tagsBuf is re-arranged in place and truncated to only contain unique tags.
+func (g *KeyGenerator) Generate(name, hostname string, tagsBuf *tagset.HashingTagsAccumulator, _ uint64) ContextKey {
+	hash := murmur3.StringSum64(name) ^ murmur3.StringSum64(hostname) ^ g.hg.Hash(tagsBuf)
 	return ContextKey(hash)
 }
 

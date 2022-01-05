@@ -11,16 +11,15 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/aggregator/ckey"
 	"github.com/DataDog/datadog-agent/pkg/metrics"
 	"github.com/DataDog/datadog-agent/pkg/tagset"
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
 )
 
 var (
-	// reuseSlice = telemetry.NewCounter("context_resolver", "reuse_slice",
-	// 	nil, "Series split")
-	// notReuseSlice = telemetry.NewCounter("context_resolver", "notreuse_slice",
-	// 	nil, "Series split")
-	k8sTagsCount = telemetry.NewGauge("context_resolver", "k8s_tag_count",
-		nil, "TODO")
+// reuseSlice = telemetry.NewCounter("context_resolver", "reuse_slice",
+// 	nil, "Series split")
+// notReuseSlice = telemetry.NewCounter("context_resolver", "notreuse_slice",
+// 	nil, "Series split")
+// k8sTagsCount = telemetry.NewGauge("context_resolver", "k8s_tag_count",
+// 	nil, "TODO")
 )
 
 // Context holds the elements that form a context, and can be serialized into a context key
@@ -36,33 +35,39 @@ type contextResolver struct {
 	keyGenerator  *ckey.KeyGenerator
 	// buffer slice allocated once per contextResolver to combine and sort
 	// tags, origin detection tags and k8s tags.
-	tagsBuffer1 *tagset.HashingTagsAccumulator
+	tagsBuffer *tagset.HashingTagsAccumulator
 
-	tagsBuffer2 *tagset.HashingTagsAccumulator
+	//	tagsBuffer2 *tagset.HashingTagsAccumulator
 	// lastContext ckey.ContextKey
 	// lastSlice   []string
 }
 
 // generateContextKey generates the contextKey associated with the context of the metricSample
 func (cr *contextResolver) generateContextKey(metricSampleContext metrics.MetricSampleContext) (ckey.ContextKey, ckey.ContextKey) {
-	hash2 := cr.keyGenerator.GenerateHash(cr.tagsBuffer2)
-	return cr.keyGenerator.Generate(metricSampleContext.GetName(), metricSampleContext.GetHost(), cr.tagsBuffer1, hash2), ckey.ContextKey(hash2)
+	// hash2 := cr.keyGenerator.GenerateHash(cr.tagsBuffer2)
+	// return cr.keyGenerator.Generate(metricSampleContext.GetName(), metricSampleContext.GetHost(), cr.tagsBuffer1, hash2), ckey.ContextKey(hash2)
+
+	return cr.keyGenerator.Generate(metricSampleContext.GetName(), metricSampleContext.GetHost(), cr.tagsBuffer, 0), ckey.ContextKey(0)
 }
 
 func newContextResolver() *contextResolver {
 	return &contextResolver{
 		contextsByKey: make(map[ckey.ContextKey]*Context),
 		keyGenerator:  ckey.NewKeyGenerator(),
-		tagsBuffer1:   tagset.NewHashingTagsAccumulator(),
-		tagsBuffer2:   tagset.NewHashingTagsAccumulator(),
+		tagsBuffer:    tagset.NewHashingTagsAccumulator(),
+		// tagsBuffer1:   tagset.NewHashingTagsAccumulator(),
+		// tagsBuffer2:   tagset.NewHashingTagsAccumulator(),
 	}
 }
 
 // trackContext returns the contextKey associated with the context of the metricSample and tracks that context
 func (cr *contextResolver) trackContext(metricSampleContext metrics.MetricSampleContext) ckey.ContextKey {
-	metricSampleContext.GetTags(cr.tagsBuffer1, cr.tagsBuffer2) // tags here are not sorted and can contain duplicates
-	//	contextKey, contextKey2Only := cr.generateContextKey(metricSampleContext) // the generator will remove duplicates from cr.tagsBuffer (and doesn't mind the order)
+	metricSampleContext.GetTags(cr.tagsBuffer, cr.tagsBuffer)   // tags here are not sorted and can contain duplicates
 	contextKey, _ := cr.generateContextKey(metricSampleContext) // the generator will remove duplicates from cr.tagsBuffer (and doesn't mind the order)
+
+	//metricSampleContext.GetTags(cr.tagsBuffer1, cr.tagsBuffer2) // tags here are not sorted and can contain duplicates
+	//	contextKey, contextKey2Only := cr.generateContextKey(metricSampleContext) // the generator will remove duplicates from cr.tagsBuffer (and doesn't mind the order)
+	//contextKey, _ := cr.generateContextKey(metricSampleContext) // the generator will remove duplicates from cr.tagsBuffer (and doesn't mind the order)
 
 	if _, ok := cr.contextsByKey[contextKey]; !ok {
 
@@ -73,21 +78,22 @@ func (cr *contextResolver) trackContext(metricSampleContext metrics.MetricSample
 		// } else {
 		// 	reuseSlice.Inc()
 		// }
-		tags2 := cr.tagsBuffer2.Copy()
-		k8sTagsCount.Set(float64(len(tags2)))
+		// tags2 := cr.tagsBuffer2.Copy()
+		// k8sTagsCount.Set(float64(len(tags2)))
 
 		// making a copy of tags for the context since tagsBuffer
 		// will be reused later. This allow us to allocate one slice
 		// per context instead of one per sample.
 		cr.contextsByKey[contextKey] = &Context{
 			Name: metricSampleContext.GetName(),
-			Tags: metrics.NewCompositeTags(cr.tagsBuffer1.Copy(), tags2),
+			Tags: metrics.NewCompositeTags(cr.tagsBuffer.Copy(), nil),
 			Host: metricSampleContext.GetHost(),
 		}
 	}
 
-	cr.tagsBuffer1.Reset()
-	cr.tagsBuffer2.Reset()
+	cr.tagsBuffer.Reset()
+	// cr.tagsBuffer1.Reset()
+	// cr.tagsBuffer2.Reset()
 	return contextKey
 }
 
