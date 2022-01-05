@@ -65,6 +65,7 @@ func (cr *contextResolver) trackContext(metricSampleContext metrics.MetricSample
 
 		if contextKey2Only != cr.lastContext {
 			cr.lastSlice = cr.tagsBuffer2.Copy()
+			cr.lastContext = contextKey2Only
 			notReuseSlice.Inc()
 		} else {
 			reuseSlice.Inc()
