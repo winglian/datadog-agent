@@ -136,6 +136,10 @@ func newLogContext(logsConfig *config.LogsConfigKeys, endpointPrefix string, int
 		return nil, nil, log.Errorf("Invalid endpoints: %v", err)
 	}
 
+	for _, status := range endpoints.GetStatus() {
+		log.Info(status)
+	}
+
 	destinationsCtx := client.NewDestinationsContext()
 	destinationsCtx.Start()
 
@@ -208,7 +212,7 @@ func RunAgent(ctx context.Context) (err error) {
 		log.Infof("All security-agent components are deactivated, exiting")
 
 		// A sleep is necessary so that sysV doesn't think the agent has failed
-		// to startup because of an error. Only applies on Debian 7 and SUSE 11.
+		// to startup because of an error. Only applies on Debian 7.
 		time.Sleep(5 * time.Second)
 
 		return nil
@@ -251,12 +255,14 @@ func RunAgent(ctx context.Context) (err error) {
 	if err != nil {
 		log.Error("Misconfiguration of agent endpoints: ", err)
 	}
-	f := forwarder.NewDefaultForwarder(forwarder.NewOptionsWithResolvers(resolver.NewSingleDomainResolvers(keysPerDomain)))
-	f.Start() //nolint:errcheck
-	s := serializer.NewSerializer(f, nil)
 
-	aggregatorInstance := aggregator.InitAggregator(s, nil, hostname)
-	aggregatorInstance.AddAgentStartupTelemetry(fmt.Sprintf("%s - Datadog Security Agent", version.AgentVersion))
+	forwarderOpts := forwarder.NewOptionsWithResolvers(resolver.NewSingleDomainResolvers(keysPerDomain))
+	opts := aggregator.DefaultDemultiplexerOptions(forwarderOpts)
+	opts.UseEventPlatformForwarder = false
+	opts.UseOrchestratorForwarder = false
+	opts.UseContainerLifecycleForwarder = false
+	demux := aggregator.InitAndStartAgentDemultiplexer(opts, hostname)
+	demux.AddAgentStartupTelemetry(fmt.Sprintf("%s - Datadog Security Agent", version.AgentVersion))
 
 	stopper = restart.NewSerialStopper()
 
@@ -280,7 +286,8 @@ func RunAgent(ctx context.Context) (err error) {
 		}
 	}
 
-	if err = startCompliance(hostname, stopper, statsdClient); err != nil {
+	complianceAgent, err := startCompliance(hostname, stopper, statsdClient)
+	if err != nil {
 		return err
 	}
 
@@ -294,7 +301,7 @@ func RunAgent(ctx context.Context) (err error) {
 		return err
 	}
 
-	srv, err = api.NewServer(runtimeAgent)
+	srv, err = api.NewServer(runtimeAgent, complianceAgent)
 	if err != nil {
 		return log.Errorf("Error while creating api server, exiting: %v", err)
 	}

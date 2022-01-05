@@ -1,7 +1,13 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2016-present Datadog, Inc.
+
 package parser
 
 import (
 	"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/japanese"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
 )
@@ -14,6 +20,8 @@ const (
 	UTF16LE Encoding = iota
 	// UTF16BE UTF16 big endian
 	UTF16BE
+	// SHIFTJIS Shift JIS (Japanese)
+	SHIFTJIS
 )
 
 // EncodedText a parser for decoding encoded logfiles.  It treats each input
@@ -43,6 +51,8 @@ func NewEncodedText(e Encoding) *EncodedText {
 		enc = unicode.UTF16(unicode.LittleEndian, unicode.UseBOM)
 	case UTF16BE:
 		enc = unicode.UTF16(unicode.BigEndian, unicode.UseBOM)
+	case SHIFTJIS:
+		enc = japanese.ShiftJIS
 	}
 	p.decoder = enc.NewDecoder()
 	return p

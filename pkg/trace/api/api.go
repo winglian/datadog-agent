@@ -46,6 +46,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/trace/pb"
 	"github.com/DataDog/datadog-agent/pkg/trace/sampler"
 	"github.com/DataDog/datadog-agent/pkg/trace/watchdog"
+	"github.com/DataDog/datadog-agent/pkg/util/grpc"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
@@ -71,13 +72,13 @@ type HTTPReceiver struct {
 	Stats       *info.ReceiverStats
 	RateLimiter *rateLimiter
 
-	out              chan *Payload
-	conf             *config.AgentConfig
-	dynConf          *sampler.DynamicConfig
-	server           *http.Server
-	statsProcessor   StatsProcessor
-	appsecHandler    http.Handler
-	configSubscriber *config.Subscriber
+	out            chan *Payload
+	conf           *config.AgentConfig
+	dynConf        *sampler.DynamicConfig
+	server         *http.Server
+	statsProcessor StatsProcessor
+	appsecHandler  http.Handler
+	coreClient     pbgo.AgentSecureClient // gRPC client to core agent process
 
 	debug               bool
 	rateLimiterResponse int // HTTP status code when refusing
@@ -96,16 +97,23 @@ func NewHTTPReceiver(conf *config.AgentConfig, dynConf *sampler.DynamicConfig, o
 	if err != nil {
 		log.Errorf("Could not instantiate AppSec: %v", err)
 	}
+	var grpcClient pbgo.AgentSecureClient
+	if features.Has("config_endpoint") {
+		grpcClient, err = grpc.GetDDAgentSecureClient(context.Background())
+		if err != nil {
+			log.Errorf("could not instantiate the tracer remote config endpoint: %v", err)
+		}
+	}
 	return &HTTPReceiver{
 		Stats:       info.NewReceiverStats(),
 		RateLimiter: newRateLimiter(),
 
-		out:              out,
-		statsProcessor:   statsProcessor,
-		configSubscriber: config.NewSubscriber(),
-		conf:             conf,
-		dynConf:          dynConf,
-		appsecHandler:    appsecHandler,
+		out:            out,
+		statsProcessor: statsProcessor,
+		coreClient:     grpcClient,
+		conf:           conf,
+		dynConf:        dynConf,
+		appsecHandler:  appsecHandler,
 
 		debug:               strings.ToLower(conf.LogLevel) == "debug",
 		rateLimiterResponse: rateLimiterResponse,
@@ -120,7 +128,7 @@ func (r *HTTPReceiver) buildMux() *http.ServeMux {
 	hash, infoHandler := r.makeInfoHandler()
 	r.attachDebugHandlers(mux)
 	for _, e := range endpoints {
-		if e.IsEnabled != nil && !e.IsEnabled() {
+		if e.IsEnabled != nil && !e.IsEnabled(r.conf) {
 			continue
 		}
 		mux.Handle(e.Pattern, replyWithVersion(hash, e.Handler(r)))
@@ -420,7 +428,7 @@ func decodeTracerPayload(v Version, req *http.Request, ts *info.TagStats) (tp *p
 			Chunks:          traceChunksFromTraces(traces),
 			TracerVersion:   ts.TracerVersion,
 		}, true, err
-	case v06:
+	case v07:
 		buf := getBuffer()
 		defer putBuffer(buf)
 		if _, err = io.Copy(buf, req.Body); err != nil {
@@ -479,7 +487,7 @@ type StatsProcessor interface {
 func (r *HTTPReceiver) handleStats(w http.ResponseWriter, req *http.Request) {
 	defer timing.Since("datadog.trace_agent.receiver.stats_process_ms", time.Now())
 
-	ts := r.tagStats(v06, req.Header)
+	ts := r.tagStats(v07, req.Header)
 	rd := apiutil.NewLimitedReader(req.Body, r.conf.MaxRequestBytes)
 	req.Header.Set("Accept", "application/msgpack")
 	var in pb.ClientStatsPayload
@@ -495,10 +503,10 @@ func (r *HTTPReceiver) handleStats(w http.ResponseWriter, req *http.Request) {
 	r.statsProcessor.ProcessStats(in, req.Header.Get(headerLang), req.Header.Get(headerTracerVersion))
 }
 
-// handleConfig handles config request.
-func (r *HTTPReceiver) handleConfig(w http.ResponseWriter, req *http.Request) {
+// handleGetConfig handles config request.
+func (r *HTTPReceiver) handleGetConfig(w http.ResponseWriter, req *http.Request) {
 	defer timing.Since("datadog.trace_agent.receiver.config_process_ms", time.Now())
-	tags := r.tagStats(v06, req.Header).AsTags()
+	tags := r.tagStats(v07, req.Header).AsTags()
 	statusCode := http.StatusOK
 	defer func() {
 		tags = append(tags, fmt.Sprintf("status_code:%d", statusCode))
@@ -512,15 +520,14 @@ func (r *HTTPReceiver) handleConfig(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 
 	}
-	var configsRequest pbgo.GetConfigsRequest
+	var configsRequest pbgo.ClientGetConfigsRequest
 	err = json.Unmarshal(buf.Bytes(), &configsRequest)
 	if err != nil {
 		statusCode = http.StatusBadRequest
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	cfg, err := r.configSubscriber.Get(&configsRequest)
+	cfg, err := r.coreClient.ClientGetConfigs(req.Context(), &configsRequest)
 	if err != nil {
 		statusCode = http.StatusInternalServerError
 		http.Error(w, err.Error(), statusCode)

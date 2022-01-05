@@ -7,7 +7,7 @@ import tempfile
 from invoke import task
 
 from .build_tags import get_default_build_tags
-from .go import generate, golangci_lint, staticcheck, vet
+from .go import golangci_lint, staticcheck, vet
 from .utils import (
     REPO_PATH,
     bin_name,
@@ -97,9 +97,6 @@ def build(
                 if env_var in line:
                     goenv[env_var] = line[line.find(env_var) + len(env_var) + 1 : -1].strip('\'\"')
         ld_vars["GoVersion"] = go_version
-
-    # Generating go source from templates by running go generate on ./pkg/status
-    generate(ctx)
 
     # extend PATH from gimme with the one from get_build_flags
     if "PATH" in os.environ and "PATH" in goenv:
@@ -306,6 +303,7 @@ def stress_tests(
     output='pkg/security/tests/stresssuite',
     bundle_ebpf=True,
     testflags='',
+    skip_linters=False,
 ):
     build_stress_tests(
         ctx,
@@ -314,6 +312,7 @@ def stress_tests(
         major_version=major_version,
         output=output,
         bundle_ebpf=bundle_ebpf,
+        skip_linters=skip_linters,
     )
 
     run_functional_tests(
@@ -401,6 +400,7 @@ def docker_functional_tests(
     arch="x64",
     major_version='7',
     testflags='',
+    static=False,
     skip_linters=False,
 ):
     build_functional_tests(
@@ -410,6 +410,7 @@ def docker_functional_tests(
         major_version=major_version,
         output="pkg/security/tests/testsuite",
         bundle_ebpf=True,
+        static=static,
         skip_linters=skip_linters,
     )
 
@@ -440,6 +441,8 @@ RUN apt-get update -y \
     cmd = 'docker run --name {container_name} {caps} --privileged -d --pid=host '
     cmd += '-v /dev:/dev '
     cmd += '-v /proc:/host/proc -e HOST_PROC=/host/proc '
+    cmd += '-v /:/host/root -e HOST_ROOT=/host/root '
+    cmd += '-v /etc:/host/etc -e HOST_ETC=/host/etc '
     cmd += '-v {GOPATH}/src/{REPO_PATH}/pkg/security/tests:/tests {image_tag} sleep 3600'
 
     args = {

@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/DataDog/datadog-agent/pkg/util/scrubber"
 )
 
 var allowedEnvvarNames = []string{
@@ -23,6 +22,11 @@ var allowedEnvvarNames = []string{
 	"DOCKER_CERT_PATH",
 	"DOCKER_HOST",
 	"DOCKER_TLS_VERIFY",
+
+	// HOST vars used in containerized agent
+	"HOST_ETC",
+	"HOST_PROC",
+	"HOST_ROOT",
 
 	// Proxy settings
 	"HTTP_PROXY",
@@ -56,6 +60,7 @@ var allowedEnvvarNames = []string{
 	"DD_APM_MAX_TPS",
 	"DD_APM_ERROR_TPS",
 	"DD_APM_DISABLE_RARE_SAMPLER",
+	"DD_APM_MAX_REMOTE_TPS",
 	"DD_APM_MAX_MEMORY",
 	"DD_APM_MAX_CPU_PERCENT",
 	"DD_APM_FEATURES",
@@ -125,12 +130,5 @@ func zipEnvvars(tempDir, hostname string) error {
 	}
 
 	f := filepath.Join(tempDir, hostname, "envvars.log")
-	w, err := scrubber.NewWriter(f, os.ModePerm)
-	if err != nil {
-		return err
-	}
-	defer w.Close()
-
-	_, err = w.Write(b.Bytes())
-	return err
+	return writeScrubbedFile(f, b.Bytes())
 }

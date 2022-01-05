@@ -118,7 +118,7 @@ func (s *serverSecure) DogstatsdSetTaggerState(ctx context.Context, req *pb.Tagg
 	return &pb.TaggerStateResponse{Loaded: true}, nil
 }
 
-// StreamTags subscribes to added, removed, or changed entities in the Tagger
+// TaggerStreamEntities subscribes to added, removed, or changed entities in the Tagger
 // and streams them to clients as pb.StreamTagsResponse events. Filtering is as
 // of yet not implemented.
 func (s *serverSecure) TaggerStreamEntities(in *pb.StreamTagsRequest, out pb.AgentSecure_TaggerStreamEntitiesServer) error {
@@ -168,7 +168,7 @@ func (s *serverSecure) TaggerStreamEntities(in *pb.StreamTagsRequest, out pb.Age
 	}
 }
 
-// FetchEntity fetches an entity from the Tagger with the desired cardinality tags.
+// TaggerFetchEntity fetches an entity from the Tagger with the desired cardinality tags.
 func (s *serverSecure) TaggerFetchEntity(ctx context.Context, in *pb.FetchEntityRequest) (*pb.FetchEntityResponse, error) {
 	if in.Id == nil {
 		return nil, status.Errorf(codes.InvalidArgument, `missing "id" parameter`)
@@ -192,61 +192,12 @@ func (s *serverSecure) TaggerFetchEntity(ctx context.Context, in *pb.FetchEntity
 	}, nil
 }
 
-func (s *serverSecure) GetConfigs(ctx context.Context, in *pb.GetConfigsRequest) (*pb.GetConfigsResponse, error) {
+func (s *serverSecure) ClientGetConfigs(ctx context.Context, in *pb.ClientGetConfigsRequest) (*pb.ClientGetConfigsResponse, error) {
 	if s.configService == nil {
 		log.Debug("Remote configuration service not initialized")
 		return nil, errors.New("remote configuration service not initialized")
 	}
-
-	configs, err := s.configService.GetConfigs(in.Product.String())
-	if err != nil {
-		return nil, err
-	}
-
-	return &pb.GetConfigsResponse{
-		ConfigResponses: configs,
-	}, nil
-}
-
-func (s *serverSecure) GetConfigUpdates(in *pb.SubscribeConfigRequest, out pb.AgentSecure_GetConfigUpdatesServer) error {
-	if s.configService == nil {
-		log.Debug("Remote configuration service not initialized")
-		return errors.New("remote config service not initialized")
-	}
-
-	ctx := out.Context()
-	configs := make(chan *pb.ConfigResponse, 1)
-
-	log.Debugf("New remote configuration subscriber request for product %s", in.Product)
-	subscriber := remoteconfig.NewSubscriber(in.Product, time.Second, func(config *pb.ConfigResponse) error {
-		log.Debug("Pushing configuration for gRPC client")
-		select {
-		case configs <- config:
-			log.Debug("Pushed configuration to gRPC client")
-			return nil
-		default:
-			return errors.New("failed to notify gRPC subscriber")
-		}
-	})
-
-	log.Debugf("New remote configuration subscriber for product %s", in.Product)
-	s.configService.RegisterSubscriber(subscriber)
-	defer s.configService.UnregisterSubscriber(subscriber)
-
-	for {
-		log.Debug("Streaming config to gRPC client")
-		select {
-		case config := <-configs:
-			log.Debugf("Sending configuration for product %s", in.Product)
-			if err := out.Send(config); err != nil {
-				log.Errorf("error sending config event: %s", err)
-				return nil
-			}
-		case <-ctx.Done():
-			log.Infof("Unsubscribing gRPC client for product %s", in.Product)
-			return nil
-		}
-	}
+	return s.configService.ClientGetConfigs(in)
 }
 
 func init() {

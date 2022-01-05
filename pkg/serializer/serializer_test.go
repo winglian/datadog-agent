@@ -208,7 +208,7 @@ func TestSendV1Events(t *testing.T) {
 	f := &forwarder.MockedForwarder{}
 	f.On("SubmitV1Intake", jsonPayloads, jsonExtraHeadersWithCompression).Return(nil).Times(1)
 
-	s := NewSerializer(f, nil)
+	s := NewSerializer(f, nil, nil)
 
 	payload := createTestEventsPayload(&testPayload{})
 	err := s.SendEvents(payload)
@@ -232,7 +232,7 @@ func TestSendV1EventsCreateMarshalersBySourceType(t *testing.T) {
 	defer config.Datadog.Set("enable_events_stream_payload_serialization", nil)
 	f := &forwarder.MockedForwarder{}
 	f.On("SubmitV1Intake", mock.Anything, jsonExtraHeadersWithCompression).Return(nil)
-	s := NewSerializer(f, nil)
+	s := NewSerializer(f, nil, nil)
 
 	payload := &testPayloadMutipleValues{count: 1}
 
@@ -257,33 +257,13 @@ func TestSendV1EventsCreateMarshalersBySourceType(t *testing.T) {
 	eventPayload.AssertNumberOfCalls(t, "CreateMarshalersBySourceType", 1)
 }
 
-func TestSendEvents(t *testing.T) {
-	mockConfig := config.Mock()
-
-	f := &forwarder.MockedForwarder{}
-	f.On("SubmitEvents", protobufPayloads, protobufExtraHeadersWithCompression).Return(nil).Times(1)
-	mockConfig.Set("use_v2_api.events", true)
-	defer mockConfig.Set("use_v2_api.events", nil)
-
-	s := NewSerializer(f, nil)
-
-	payload := createTestEventsPayload(&testPayload{})
-	err := s.SendEvents(payload)
-	require.Nil(t, err)
-	f.AssertExpectations(t)
-
-	errPayload := createTestEventsPayload(&testErrorPayload{})
-	err = s.SendEvents(errPayload)
-	require.NotNil(t, err)
-}
-
 func TestSendV1ServiceChecks(t *testing.T) {
 	f := &forwarder.MockedForwarder{}
 	f.On("SubmitV1CheckRuns", jsonPayloads, jsonExtraHeadersWithCompression).Return(nil).Times(1)
 	config.Datadog.Set("enable_service_checks_stream_payload_serialization", false)
 	defer config.Datadog.Set("enable_service_checks_stream_payload_serialization", nil)
 
-	s := NewSerializer(f, nil)
+	s := NewSerializer(f, nil, nil)
 	payload := &testPayload{}
 	err := s.SendServiceChecks(payload)
 	require.Nil(t, err)
@@ -300,7 +280,7 @@ func TestSendV1Series(t *testing.T) {
 	config.Datadog.Set("enable_stream_payload_serialization", false)
 	defer config.Datadog.Set("enable_stream_payload_serialization", nil)
 
-	s := NewSerializer(f, nil)
+	s := NewSerializer(f, nil, nil)
 
 	payload := &testPayload{}
 	err := s.SendSeries(payload)
@@ -318,7 +298,7 @@ func TestSendSeries(t *testing.T) {
 	config.Datadog.Set("use_v2_api.series", true)
 	defer config.Datadog.Set("use_v2_api.series", false)
 
-	s := NewSerializer(f, nil)
+	s := NewSerializer(f, nil, nil)
 
 	payload := &testPayload{}
 	err := s.SendSeries(payload)
@@ -335,7 +315,7 @@ func TestSendSketch(t *testing.T) {
 	payloads, _ := mkPayloads(protobufString, true)
 	f.On("SubmitSketchSeries", payloads, protobufExtraHeadersWithCompression).Return(nil).Times(1)
 
-	s := NewSerializer(f, nil)
+	s := NewSerializer(f, nil, nil)
 
 	payload := &testPayload{}
 	err := s.SendSketch(payload)
@@ -351,7 +331,7 @@ func TestSendMetadata(t *testing.T) {
 	f := &forwarder.MockedForwarder{}
 	f.On("SubmitMetadata", jsonPayloads, jsonExtraHeadersWithCompression).Return(nil).Times(1)
 
-	s := NewSerializer(f, nil)
+	s := NewSerializer(f, nil, nil)
 
 	payload := &testPayload{}
 	err := s.SendMetadata(payload)
@@ -374,7 +354,7 @@ func TestSendProcessesMetadata(t *testing.T) {
 	payloads, _ := mkPayloads(payload, true)
 	f.On("SubmitV1Intake", payloads, jsonExtraHeadersWithCompression).Return(nil).Times(1)
 
-	s := NewSerializer(f, nil)
+	s := NewSerializer(f, nil, nil)
 
 	err := s.SendProcessesMetadata("test")
 	require.Nil(t, err)
@@ -409,7 +389,7 @@ func TestSendWithDisabledKind(t *testing.T) {
 	}()
 
 	f := &forwarder.MockedForwarder{}
-	s := NewSerializer(f, nil)
+	s := NewSerializer(f, nil, nil)
 
 	payload := &testPayload{}
 	payloadEvents := createTestEventsPayload(payload)
@@ -421,9 +401,7 @@ func TestSendWithDisabledKind(t *testing.T) {
 	s.SendProcessesMetadata("test")
 
 	f.AssertNotCalled(t, "SubmitMetadata")
-	f.AssertNotCalled(t, "SubmitEvents")
 	f.AssertNotCalled(t, "SubmitV1CheckRuns")
-	f.AssertNotCalled(t, "SubmitServiceChecks")
 	f.AssertNotCalled(t, "SubmitV1Series")
 	f.AssertNotCalled(t, "SubmitSketchSeries")
 

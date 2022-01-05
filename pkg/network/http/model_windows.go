@@ -92,6 +92,11 @@ func (tx *httpTX) SetLastSeen(ts uint64) {
 	tx.ResponseLastSeen = ts
 }
 
+// Tags are not part of windows http transactions
+func (tx *httpTX) Tags() uint64 {
+	return 0
+}
+
 // below is copied from pkg/trace/stats/statsraw.go
 // 10 bits precision (any value will be +/- 1/1024)
 const roundMask uint64 = 1 << 10
