@@ -183,8 +183,10 @@ func (t *Tracer) DebugEBPFMaps(maps ...string) (string, error) {
 
 func newHttpMonitor(c *config.Config) http.Monitor {
 	if !c.EnableHTTPMonitoring {
+		log.Infof("http monitoring has been disabled")
 		return http.NewNoOpMonitor()
 	}
+	log.Infof("http monitoring has been enabled")
 
 	monitor, err := http.NewDriverMonitor(c)
 	if err != nil {
