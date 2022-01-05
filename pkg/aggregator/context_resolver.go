@@ -81,7 +81,7 @@ func (cr *contextResolver) trackContext(metricSampleContext metrics.MetricSample
 		// per context instead of one per sample.
 		cr.contextsByKey[contextKey] = &Context{
 			Name: metricSampleContext.GetName(),
-			Tags: metrics.NewCompositeTags(append(cr.tagsBuffer1.Copy(), tags2...), nil),
+			Tags: metrics.NewCompositeTags(cr.tagsBuffer1.Copy(), tags2),
 			Host: metricSampleContext.GetHost(),
 		}
 	}
