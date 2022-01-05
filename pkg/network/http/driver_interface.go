@@ -5,11 +5,6 @@ package http
 /*
 #include <stdlib.h>
 #include <memory.h>
-#include "../driver/ddnpmapi.h"
-
-int size_of_http_transaction_type() {
-    return sizeof(HTTP_TRANSACTION_TYPE);
-}
 */
 import "C"
 import (
@@ -140,7 +135,6 @@ func (di *httpDriverInterface) startReadingBuffers() {
 	go func() {
 		defer di.eventLoopWG.Done()
 
-		transactionSize := uint32(C.size_of_http_transaction_type())
 		for {
 			buf, bytesRead, err := driver.GetReadBufferWhenReady(di.iocp)
 			if iocpIsClosedError(err) {
@@ -152,6 +146,7 @@ func (di *httpDriverInterface) startReadingBuffers() {
 				continue
 			}
 
+			transactionSize := uint32(driver.HttpTransactionTypeSize)
 			batchSize := bytesRead / transactionSize
 			transactionBatch := make([]driver.HttpTransactionType, batchSize)
 

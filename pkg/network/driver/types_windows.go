@@ -172,6 +172,7 @@ type ConnTupleType struct {
 type HttpMethodType uint32
 
 const (
-	HttpBatchSize  = 0xf
-	HttpBufferSize = 0x19
+	HttpBatchSize           = 0xf
+	HttpBufferSize          = 0x19
+	HttpTransactionTypeSize = 0x5f
 )
