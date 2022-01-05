@@ -6,6 +6,8 @@
 package agent
 
 import (
+	"math"
+
 	"github.com/DataDog/datadog-agent/pkg/trace/pb"
 	"github.com/DataDog/datadog-agent/pkg/trace/traceutil"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
@@ -49,6 +51,9 @@ func Truncate(s *pb.Span) {
 			k = traceutil.TruncateUTF8(k, traceutil.MaxMetricsKeyLen) + "..."
 
 			s.Metrics[k] = v
+		}
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			log.Debugf("using unsupported value (%f) for `Metrics` key: %s", v, k)
 		}
 	}
 }
