@@ -1528,6 +1528,20 @@ func TestHTTPStats(t *testing.T) {
 	assert.Equal(t, 0, httpReqStats[4].Count, "500s") // 500
 }
 
+func TestHTTPLoadTracer(t *testing.T) {
+	if !httpSupported(t) {
+		t.Skip("HTTPS feature not available on pre 4.1.0 kernels")
+	}
+
+	// Start tracer with HTTPS support
+	cfg := testConfig()
+	cfg.EnableHTTPMonitoring = true
+	cfg.EnableHTTPSMonitoring = true
+	tr, err := NewTracer(cfg)
+	require.NoError(t, err)
+	defer tr.Stop()
+}
+
 var regexSSL = regexp.MustCompile(`/[^\ ]+libssl.so[^\ ]*`)
 
 func TestHTTPSViaOpenSSLIntegration(t *testing.T) {
