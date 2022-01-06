@@ -23,7 +23,7 @@ func NewCompositeTags(tags1 []string, tags2 []string) *CompositeTags {
 
 // ToSliceString TODO
 func (t *CompositeTags) ToSliceString() []string {
-	return append(t.tags1, t.tags2...)
+	return append(append([]string{}, t.tags1...), t.tags2...)
 }
 
 // ForEachErr TODO
