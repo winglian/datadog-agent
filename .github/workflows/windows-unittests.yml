@@ -48,7 +48,4 @@ jobs:
           inv -e rtloader.make
           inv -e rtloader.format --raise-if-changed
           inv -e rtloader.install
-          # FIXME: skipping rtloader tests because they fail
-          # inv -e rtloader.test
-          inv -e test --rerun-fails=2 --python-runtimes 3 --coverage --profile --fail-on-fmt --python-home-3=$pythonLocation
-          codecov -f profile.cov -F windows
+          inv -e rtloader.test
