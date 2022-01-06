@@ -429,6 +429,7 @@ def get_ebpf_build_flags():
     c_dir = os.path.join(bpf_dir, "c")
 
     flags = [
+        '$CFLAGS',
         '-D__KERNEL__',
         '-DCONFIG_64BIT',
         '-D__BPF_TRACING__',
@@ -490,6 +491,19 @@ def build_network_ebpf_link_file(ctx, parallel_build, build_dir, p, debug, netwo
             asynchronous=parallel_build,
         )
 
+def build_network_ebpf_strip_file(ctx, parallel_build, build_dir, p, debug, network_flags):
+    if not debug:
+        bc_file = os.path.join(build_dir, f"{p}.bc")
+        obj_file = os.path.join(build_dir, f"{p}.o")
+        return ctx.run("llvm-strip {obj_file} --no-strip-all -R .BTF".format(obj_file=obj_file),
+            asynchronous=parallel_build,
+        )
+    else:
+        debug_bc_file = os.path.join(build_dir, f"{p}-debug.bc")
+        debug_obj_file = os.path.join(build_dir, f"{p}-debug.o")
+        return ctx.run("llvm-strip {obj_file} --no-strip-all -R .BTF".format(obj_file=debug_obj_file),
+            asynchronous=parallel_build,
+        )
 
 def build_network_ebpf_files(ctx, build_dir, parallel_build=True):
     network_bpf_dir = os.path.join(".", "pkg", "network", "ebpf")
@@ -527,6 +541,14 @@ def build_network_ebpf_files(ctx, build_dir, parallel_build=True):
 
     for promise in promises_link:
         promise.join()
+
+#    promises_link = []
+#    for i, promise in enumerate(promises):
+#        (p, debug) = flavor[i]
+#        promises_link.append(build_network_ebpf_strip_file(ctx, parallel_build, build_dir, p, debug, network_flags))
+#
+#    for promise in promises_link:
+#        promise.join()
 
 
 def build_security_ebpf_files(ctx, build_dir, parallel_build=True):

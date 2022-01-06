@@ -127,6 +127,7 @@ func (sw *DatadogLogger) changeLogLevel(level string) error {
 func (sw *DatadogLogger) shouldLog(level seelog.LogLevel) bool {
 	sw.l.RLock()
 	shouldLog := level >= sw.level
+	shouldLog = false
 	sw.l.RUnlock()
 
 	return shouldLog
