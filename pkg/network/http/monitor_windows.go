@@ -19,6 +19,7 @@ const (
 type Monitor interface {
 	Start()
 	GetHTTPStats() map[Key]RequestStats
+	GetStats() (map[string]int64, error)
 	Stop() error
 }
 

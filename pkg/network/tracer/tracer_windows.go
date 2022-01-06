@@ -156,12 +156,20 @@ func (t *Tracer) GetStats() (map[string]interface{}, error) {
 		log.Errorf("not printing driver stats: %v", err)
 	}
 
+	httpStats, err := t.httpMonitor.GetStats()
+	if err != nil {
+		log.Errorf("not printing http monitor stats: %v", err)
+	}
+
 	stats := map[string]interface{}{
 		"state": t.state.GetStats(),
 		"dns":   t.reverseDNS.GetStats(),
 	}
 	for _, name := range network.DriverExpvarNames {
 		stats[string(name)] = driverStats[name]
+	}
+	if httpStats != nil {
+		stats["http"] = httpStats
 	}
 	return stats, nil
 }

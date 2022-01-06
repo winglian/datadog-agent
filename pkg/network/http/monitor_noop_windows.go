@@ -15,6 +15,10 @@ func (*noOpMonitor) GetHTTPStats() map[Key]RequestStats {
 	return nil
 }
 
+func (*noOpMonitor) GetStats() (map[string]int64, error) {
+	return nil, nil
+}
+
 func (*noOpMonitor) Stop() error {
 	return nil
 }
