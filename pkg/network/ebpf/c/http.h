@@ -302,6 +302,42 @@ static __always_inline void http_parse_data(char *p, http_packet_t *packet_type,
         *method = HTTP_PATCH;
     }
 }
+#elif BUILTINMEMCMPARRAY == 1
+static __always_inline void http_parse_data(char *p, http_packet_t *packet_type, http_method_t *method) {
+    static const char string_http[] = {'H','T','T','P'};
+    static const char string_get[] = {'G','E','T'};
+    static const char string_post[] = {'P','O','S','T'};
+    static const char string_put[] = {'P','U','T'};
+    static const char string_delete[] = {'D','E','L','E','T','E'};
+    static const char string_head[] = {'H','E','A','D'};
+    static const char string_options[] = {'O','P','T','I','O','N','S'};
+    static const char string_patch[] = {'P','A','T','C','H'};
+    if (!__builtin_memcmp(p, string_http, sizeof(string_http))) {
+        *packet_type = HTTP_RESPONSE;
+    }
+    else if (!__builtin_memcmp(p, string_get, sizeof(string_get))) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_GET;
+    } else if (!__builtin_memcmp(p, string_post, sizeof(string_post))) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_POST;
+    } else if (!__builtin_memcmp(p, string_put, sizeof(string_put))) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_PUT;
+    } else if (!__builtin_memcmp(p, string_delete, sizeof(string_delete))) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_DELETE;
+    } else if (!__builtin_memcmp(p, string_head, sizeof(string_head))) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_HEAD;
+    } else if (!__builtin_memcmp(p, string_options, sizeof(string_options))) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_OPTIONS;
+    } else if (!__builtin_memcmp(p, string_patch, sizeof(string_patch))) {
+        *packet_type = HTTP_REQUEST;
+        *method = HTTP_PATCH;
+    }
+}
 #elif ORIG == 1
 static __always_inline void http_parse_data(char *p, http_packet_t *packet_type, http_method_t *method) {
     if ((p[0] == 'H') && (p[1] == 'T') && (p[2] == 'T') && (p[3] == 'P')) {
