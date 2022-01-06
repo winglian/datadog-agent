@@ -16,6 +16,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/network/driver"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
+	"golang.org/x/sys/windows"
 )
 
 const HTTPBufferSize = driver.HttpBufferSize
@@ -54,12 +55,24 @@ func partsCanBeJoined(request, response httpTX) bool {
 	return request.RequestStarted != 0 && response.ResponseStatusCode != 0 && request.RequestStarted <= response.ResponseLastSeen
 }
 
+func (tx *httpTX) isIPV4() bool {
+	return tx.Tup.Family == windows.AF_INET
+}
+
 func (tx *httpTX) SrcIPLow() uint64 {
-	return binary.BigEndian.Uint64(tx.Tup.Saddr[:8])
+	// Source & dest IP are given to us as a 16-byte slices in network byte order (BE). To convert to
+	// low/high representation, we must convert to host byte order (LE).
+	if tx.isIPV4() {
+		return uint64(binary.LittleEndian.Uint32(tx.Tup.Saddr[:4]))
+	}
+	return binary.LittleEndian.Uint64(tx.Tup.Saddr[8:])
 }
 
 func (tx *httpTX) SrcIPHigh() uint64 {
-	return binary.BigEndian.Uint64(tx.Tup.Saddr[8:16])
+	if tx.isIPV4() {
+		return uint64(0)
+	}
+	return binary.LittleEndian.Uint64(tx.Tup.Saddr[:8])
 }
 
 func (tx *httpTX) SrcPort() uint16 {
@@ -67,11 +80,17 @@ func (tx *httpTX) SrcPort() uint16 {
 }
 
 func (tx *httpTX) DstIPLow() uint64 {
-	return binary.BigEndian.Uint64(tx.Tup.Daddr[:8])
+	if tx.isIPV4() {
+		return uint64(binary.LittleEndian.Uint32(tx.Tup.Daddr[:4]))
+	}
+	return binary.LittleEndian.Uint64(tx.Tup.Daddr[8:])
 }
 
 func (tx *httpTX) DstIPHigh() uint64 {
-	return binary.BigEndian.Uint64(tx.Tup.Daddr[8:16])
+	if tx.isIPV4() {
+		return uint64(0)
+	}
+	return binary.LittleEndian.Uint64(tx.Tup.Daddr[:8])
 }
 
 func (tx *httpTX) DstPort() uint16 {
