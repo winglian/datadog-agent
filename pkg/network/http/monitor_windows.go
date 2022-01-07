@@ -4,7 +4,6 @@ package http
 
 import (
 	"sync"
-	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/network/config"
 	"github.com/DataDog/datadog-agent/pkg/network/driver"
@@ -65,8 +64,6 @@ func (m *DriverMonitor) Start() {
 	m.eventLoopWG.Add(1)
 	go func() {
 		defer m.eventLoopWG.Done()
-		report := time.NewTicker(30 * time.Second)
-		defer report.Stop()
 		for {
 			select {
 			case transactionBatch, ok := <-m.di.dataChannel:
@@ -74,11 +71,6 @@ func (m *DriverMonitor) Start() {
 					return
 				}
 				m.process(transactionBatch)
-			case <-report.C:
-				err := m.di.flushPendingTransactions()
-				if err != nil {
-					log.Warnf("Failed to flush pending http transactions: %v", err)
-				}
 			}
 		}
 	}()
@@ -103,6 +95,13 @@ func (m *DriverMonitor) process(transactionBatch []driver.HttpTransactionType) {
 // GetHTTPStats returns a map of HTTP stats stored in the following format:
 // [source, dest tuple, request path] -> RequestStats object
 func (m *DriverMonitor) GetHTTPStats() map[Key]RequestStats {
+	transactions, err := m.di.flushPendingTransactions()
+	if err != nil {
+		log.Warnf("Failed to flush pending http transactions: %v", err)
+	}
+
+	m.process(transactions)
+
 	m.mux.Lock()
 	defer m.mux.Unlock()
 

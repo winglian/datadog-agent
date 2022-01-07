@@ -176,11 +176,32 @@ func iocpIsClosedError(err error) bool {
 		errors.Is(err, windows.ERROR_INVALID_HANDLE)
 }
 
-func (di *httpDriverInterface) flushPendingTransactions() error {
+func (di *httpDriverInterface) flushPendingTransactions() ([]driver.HttpTransactionType, error) {
+	var (
+		bytesRead uint32
+		buf       = make([]byte, driver.HttpTransactionTypeSize * driver.HttpBatchSize)
+	)
+
 	err := windows.DeviceIoControl(di.driverHTTPHandle.Handle,
 		driver.FlushPendingHttpTxnsIOCTL,
-		nil, uint32(0), nil, uint32(0), nil, nil)
-	return err
+		&driver.DdAPIVersionBuf[0], uint32(len(driver.DdAPIVersionBuf)),
+		&buf[0], uint32(len(buf)),
+		&bytesRead,
+		nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	transactionSize := uint32(driver.HttpTransactionTypeSize)
+	batchSize := bytesRead / transactionSize
+	transactionBatch := make([]driver.HttpTransactionType, batchSize)
+
+	for i := uint32(0); i < batchSize; i++ {
+		transactionBatch[i] = *(*driver.HttpTransactionType)(unsafe.Pointer(&buf[i*transactionSize]))
+	}
+
+	return transactionBatch, nil
 }
 
 func (di *httpDriverInterface) getStats() (map[string]int64, error) {

@@ -50,10 +50,8 @@ func testHTTPMonitor(t *testing.T, targetAddr, serverAddr string, numReqs int) {
 		requests = append(requests, requestFn())
 	}
 
-	// Ensure all captured transactions get sent to user-space
-	time.Sleep(5 * time.Second)
-	monitor.di.flushPendingTransactions()
-	time.Sleep(1 * time.Second)
+	// Give the driver a moment to process the transactions
+	time.Sleep(3 * time.Second)
 
 	stats := monitor.GetHTTPStats()
 
