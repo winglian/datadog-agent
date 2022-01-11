@@ -543,7 +543,7 @@ func NewModule(cfg *sconfig.Config) (module.Module, error) {
 	}
 	m.apiServer.module = m
 
-	seclog.SetPatterns(cfg.LogPatterns)
+	seclog.SetPatterns(cfg.LogPatterns...)
 
 	sapi.RegisterSecurityModuleServer(m.grpcServer, m.apiServer)
 
