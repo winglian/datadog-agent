@@ -180,19 +180,19 @@ func FormatHTTPStats(httpData map[http.Key]http.RequestStats) (map[http.Key]*mod
 	return aggregationsByKey, tagsByKey
 }
 
-// Build the key for the http map based on whether the local or remote side is http.
-func httpKeyFromConn(c network.ConnectionStats) http.Key {
+// Build possible keys for the http map
+func httpKeysFromConn(c network.ConnectionStats) []http.Key {
 	// Retrieve translated addresses
 	laddr, lport := network.GetNATLocalAddress(c)
 	raddr, rport := network.GetNATRemoteAddress(c)
 
-	// HTTP data is always indexed as (client, server), so we flip
-	// the lookup key if necessary using the port range heuristic
-	if network.IsEphemeralPort(int(lport)) {
-		return http.NewKey(laddr, raddr, lport, rport, "", http.MethodUnknown)
+	// HTTP data is always indexed as (client, server), but we don't know which is the remote
+	// and which is the local address. To account for this, we'll construct 2 possible
+	// http keys and check for both of them in our http aggregations map.
+	return []http.Key{
+		http.NewKey(laddr, raddr, lport, rport, "", http.MethodUnknown),
+		http.NewKey(raddr, laddr, rport, lport, "", http.MethodUnknown),
 	}
-
-	return http.NewKey(raddr, laddr, rport, lport, "", http.MethodUnknown)
 }
 
 func returnToPool(c *model.Connections) {
