@@ -108,6 +108,8 @@ func (c *WorkloadMetaCollector) processEvents(evBundle workloadmeta.EventBundle)
 		entity := ev.Entity
 		entityID := entity.GetID()
 
+		log.Infof("DEADBEEF: event %s kind %q id %q source %s", ev.Type, entityID.Kind, entityID.ID, ev.Sources)
+
 		switch ev.Type {
 		case workloadmeta.EventTypeSet:
 			taggerEntityID := buildTaggerEntityID(entityID)

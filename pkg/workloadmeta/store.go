@@ -482,7 +482,7 @@ func (s *store) handleEvents(evs []CollectorEvent) {
 			}
 
 			filteredEvents = append(filteredEvents, Event{
-				Type:    EventTypeUnset,
+				Type:    EventTypeSet,
 				Sources: evSources,
 				Entity:  ev.Entity,
 			})

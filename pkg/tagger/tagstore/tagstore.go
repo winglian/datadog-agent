@@ -110,6 +110,8 @@ func (s *TagStore) ProcessTagInfo(tagInfos []*collectors.TagInfo) {
 			continue
 		}
 
+		log.Infof("DEADBEEF: %+v", info)
+
 		storedTags, exist := s.store[info.Entity]
 
 		if info.DeleteEntity {
@@ -229,6 +231,7 @@ func (s *TagStore) Prune() {
 		// remove any sourceTags that have expired
 		for source, st := range storedTags.sourceTags {
 			if st.isExpired(now) {
+				log.Infof("DEADBEEF: expired source %q: %+v", source, storedTags)
 				delete(storedTags.sourceTags, source)
 				changed = true
 			}
@@ -245,6 +248,7 @@ func (s *TagStore) Prune() {
 		}
 
 		if len(storedTags.sourceTags) == 0 {
+			log.Infof("DEADBEEF: pruned %+v", storedTags)
 			telemetry.PrunedEntities.Inc()
 			delete(s.store, entity)
 			events = append(events, types.EntityEvent{

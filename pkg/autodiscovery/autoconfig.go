@@ -276,6 +276,7 @@ func (ac *AutoConfig) GetAllConfigs() []integration.Config {
 // schedule takes a slice of configs and schedule them
 func (ac *AutoConfig) schedule(configs []integration.Config) {
 	for _, conf := range configs {
+		log.Infof("AD scheduled a new config %q: %+v", conf.Entity, conf)
 		telemetry.ScheduledConfigs.Inc(conf.Provider, conf.Type())
 	}
 
@@ -285,6 +286,7 @@ func (ac *AutoConfig) schedule(configs []integration.Config) {
 // unschedule takes a slice of configs and unschedule them
 func (ac *AutoConfig) unschedule(configs []integration.Config) {
 	for _, conf := range configs {
+		log.Infof("AD unscheduled a config %q: %+v", conf.Entity, conf)
 		telemetry.ScheduledConfigs.Dec(conf.Provider, conf.Type())
 	}
 

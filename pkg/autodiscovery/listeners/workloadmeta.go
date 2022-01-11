@@ -3,6 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2017-present Datadog, Inc.
 
+//go:build !serverless
 // +build !serverless
 
 package listeners
@@ -113,11 +114,13 @@ func (l *workloadmetaListenerImpl) AddService(svcID string, svc Service, parentS
 		log.Tracef("%s received an updated service '%s', removing the old one", l.name, svc.GetEntity())
 		l.delService <- old
 		telemetry.WatchedResources.Dec(l.name, kind)
+		log.Infof("%s removed a service %q", l.name, svc.GetEntity())
 	}
 
 	l.services[svcID] = svc
 	l.newService <- svc
 	telemetry.WatchedResources.Inc(l.name, kind)
+	log.Infof("%s added a new service %q", l.name, svc.GetEntity())
 }
 
 func (l *workloadmetaListenerImpl) IsExcluded(ft containers.FilterType, name, image, ns string) bool {
@@ -232,6 +235,7 @@ func (l *workloadmetaListenerImpl) removeService(svcID string) {
 	delete(l.services, svcID)
 	l.delService <- svc
 	telemetry.WatchedResources.Dec(l.name, kindFromSvcID(svcID))
+	log.Infof("%s removed a service %q", l.name, svc.GetEntity())
 }
 
 func buildSvcID(entityID workloadmeta.EntityID) string {
