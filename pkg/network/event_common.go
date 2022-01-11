@@ -169,8 +169,13 @@ type ConnectionStats struct {
 	Source util.Address
 	Dest   util.Address
 
+	IPTranslation *IPTranslation
+	Via           *Via
+
 	Monotonic StatCounters
 	Last      StatCounters
+
+	Tags uint64
 
 	// Last time the stats for this connection were updated
 	LastUpdateEpoch uint64
@@ -187,11 +192,8 @@ type ConnectionStats struct {
 	Family           ConnectionFamily
 	Direction        ConnectionDirection
 	SPortIsEphemeral EphemeralPortType
-	IPTranslation    *IPTranslation
-	IntraHost        bool
-	Via              *Via
-	Tags             uint64
 
+	IntraHost bool
 	IsAssured bool
 }
 
