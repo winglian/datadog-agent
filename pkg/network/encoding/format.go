@@ -181,7 +181,7 @@ func FormatHTTPStats(httpData map[http.Key]http.RequestStats) (map[http.Key]*mod
 }
 
 // Build possible keys for the http map
-func httpKeysFromConn(c network.ConnectionStats) []http.Key {
+func httpKeysFromConn(c network.ConnectionStats) [2]http.Key {
 	// Retrieve translated addresses
 	laddr, lport := network.GetNATLocalAddress(c)
 	raddr, rport := network.GetNATRemoteAddress(c)
@@ -189,7 +189,7 @@ func httpKeysFromConn(c network.ConnectionStats) []http.Key {
 	// HTTP data is always indexed as (client, server), but we don't know which is the remote
 	// and which is the local address. To account for this, we'll construct 2 possible
 	// http keys and check for both of them in our http aggregations map.
-	return []http.Key{
+	return [2]http.Key{
 		http.NewKey(laddr, raddr, lport, rport, "", http.MethodUnknown),
 		http.NewKey(raddr, laddr, rport, lport, "", http.MethodUnknown),
 	}
