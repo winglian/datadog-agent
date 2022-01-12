@@ -90,6 +90,17 @@ func NewKey(saddr, daddr util.Address, sport, dport uint16, path string, method 
 	}
 }
 
+func (k *Key) isLocalhost() bool {
+	var sAddr util.Address
+	if k.SrcIPHigh == 0 {
+		sAddr = util.V4Address(uint32(k.SrcIPLow))
+	} else {
+		sAddr = util.V6Address(k.SrcIPLow, k.SrcIPHigh)
+	}
+
+	return sAddr.IsLoopback()
+}
+
 // NumStatusClasses represents the number of HTTP status classes (1XX, 2XX, 3XX, 4XX, 5XX)
 const NumStatusClasses = 5
 

@@ -106,11 +106,28 @@ func (m *DriverMonitor) GetHTTPStats() map[Key]RequestStats {
 	defer m.mux.Unlock()
 
 	stats := m.statkeeper.GetAndResetAllStats()
+	removeDuplicates(stats)
 
 	delta := m.telemetry.reset()
 	delta.report()
 
 	return stats
+}
+
+func removeDuplicates(stats map[Key]RequestStats) {
+	// With localhost traffic, the driver will create a flow for both endpoints. Both
+	// these flows will be normalized so that source=client and dest=server, which
+	// results in 2 identical http transactions being sent up to userspace & processed.
+	// To fix this, we'll find all localhost keys and half their transaction counts.
+
+	for k, v := range stats {
+		if k.isLocalhost() {
+			for i:=0; i<NumStatusClasses; i++ {
+				v[i].Count = v[i].Count / 2
+				stats[k] = v
+			}
+		}
+	}
 }
 
 // GetStats gets driver stats related to the HTTP handle
