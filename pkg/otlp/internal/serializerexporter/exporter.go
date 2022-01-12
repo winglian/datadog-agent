@@ -1,3 +1,8 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2016-present Datadog, Inc.
+
 package serializerexporter
 
 import (
@@ -6,6 +11,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/otlp/model/translator"
 	"github.com/DataDog/datadog-agent/pkg/serializer"
+	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
 	"github.com/DataDog/datadog-agent/pkg/util"
 	"go.opentelemetry.io/collector/config"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
@@ -31,6 +37,7 @@ func newDefaultConfig() config.Exporter {
 				ResourceAttributesAsTags:             false,
 				InstrumentationLibraryMetadataAsTags: false,
 			},
+			TagCardinality: collectors.LowCardinalityString,
 			HistConfig: histogramConfig{
 				Mode:         "distributions",
 				SendCountSum: false,
@@ -52,8 +59,10 @@ func (f hostnameProviderFunc) Hostname(ctx context.Context) (string, error) {
 // exporter translate OTLP metrics into the Datadog format and sends
 // them to the agent serializer.
 type exporter struct {
-	tr *translator.Translator
-	s  serializer.MetricSerializer
+	tr          *translator.Translator
+	s           serializer.MetricSerializer
+	hostname    string
+	cardinality string
 }
 
 func translatorFromConfig(logger *zap.Logger, cfg *exporterConfig) (*translator.Translator, error) {
@@ -104,7 +113,17 @@ func newExporter(logger *zap.Logger, s serializer.MetricSerializer, cfg *exporte
 		return nil, fmt.Errorf("incorrect OTLP metrics configuration: %w", err)
 	}
 
-	return &exporter{tr, s}, nil
+	hostname, err := util.GetHostname(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+
+	return &exporter{
+		tr:          tr,
+		s:           s,
+		hostname:    hostname,
+		cardinality: cfg.Metrics.TagCardinality,
+	}, nil
 }
 
 func (e *exporter) ConsumeMetrics(ctx context.Context, ld pdata.Metrics) error {
@@ -114,6 +133,8 @@ func (e *exporter) ConsumeMetrics(ctx context.Context, ld pdata.Metrics) error {
 		return err
 	}
 
+	consumer.enrichTags(e.cardinality)
+	consumer.addTelemetryMetric(e.hostname)
 	if err := consumer.flush(e.s); err != nil {
 		return fmt.Errorf("failed to flush metrics: %w", err)
 	}

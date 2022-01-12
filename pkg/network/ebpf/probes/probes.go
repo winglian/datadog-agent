@@ -1,3 +1,9 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2016-present Datadog, Inc.
+
+//go:build linux_bpf
 // +build linux_bpf
 
 package probes
@@ -86,11 +92,6 @@ const (
 	// SockMapFdReturn maps a file descriptor to a kernel sock
 	SockMapFdReturn ProbeName = "kretprobe/sockfd_lookup_light"
 
-	// IPRouteOutputFlow is the kprobe of an ip_route_output_flow call
-	IPRouteOutputFlow ProbeName = "kprobe/ip_route_output_flow"
-	// IPRouteOutputFlow is the kretprobe of an ip_route_output_flow call
-	IPRouteOutputFlowReturn ProbeName = "kretprobe/ip_route_output_flow"
-
 	// ConntrackHashInsert is the probe for new conntrack entries
 	ConntrackHashInsert ProbeName = "kprobe/__nf_conntrack_hash_insert"
 
@@ -125,6 +126,7 @@ const (
 	DoSendfileArgsMap     BPFMapName = "do_sendfile_args"
 	SockByPidFDMap        BPFMapName = "sock_by_pid_fd"
 	PidFDBySockMap        BPFMapName = "pid_fd_by_sock"
+	TagsMap               BPFMapName = "conn_tags"
 )
 
 // SectionName returns the SectionName for the given BPF map

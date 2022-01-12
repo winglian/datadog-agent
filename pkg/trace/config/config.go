@@ -73,6 +73,7 @@ type AgentConfig struct {
 	ErrorTPS           float64
 	DisableRareSampler bool
 	MaxEPS             float64
+	MaxRemoteTPS       float64
 
 	// Receiver
 	ReceiverHost    string
@@ -137,6 +138,9 @@ type AgentConfig struct {
 
 	// Profiling settings, or nil if profiling is disabled
 	ProfilingSettings *profiling.Settings
+
+	// Telemetry settings
+	TelemetryConfig *TelemetryConfig
 }
 
 // Tag represents a key/value pair.
@@ -164,6 +168,7 @@ func New() *AgentConfig {
 		TargetTPS:       10,
 		ErrorTPS:        10,
 		MaxEPS:          200,
+		MaxRemoteTPS:    100,
 
 		ReceiverHost:    "localhost",
 		ReceiverPort:    8126,
@@ -193,6 +198,9 @@ func New() *AgentConfig {
 
 		DDAgentBin:   defaultDDAgentBin,
 		OTLPReceiver: &OTLP{},
+		TelemetryConfig: &TelemetryConfig{
+			Endpoints: []*Endpoint{{Host: telemetryEndpointPrefix + coreconfig.DefaultSite}},
+		},
 	}
 }
 

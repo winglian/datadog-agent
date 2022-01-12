@@ -32,10 +32,8 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/collector"
 	"github.com/DataDog/datadog-agent/pkg/collector/check"
 	"github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/DataDog/datadog-agent/pkg/epforwarder"
 	"github.com/DataDog/datadog-agent/pkg/logs/message"
 	"github.com/DataDog/datadog-agent/pkg/metadata"
-	"github.com/DataDog/datadog-agent/pkg/serializer"
 	"github.com/DataDog/datadog-agent/pkg/status"
 	"github.com/DataDog/datadog-agent/pkg/util"
 	"github.com/DataDog/datadog-agent/pkg/util/flavor"
@@ -67,6 +65,7 @@ var (
 	profileMemoryVerbose   string
 	discoveryTimeout       uint
 	discoveryRetryInterval uint
+	discoveryMinInstances  uint
 )
 
 func setupCmd(cmd *cobra.Command) {
@@ -83,6 +82,7 @@ func setupCmd(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&saveFlare, "flare", "", false, "save check results to the log dir so it may be reported in a flare")
 	cmd.Flags().UintVarP(&discoveryTimeout, "discovery-timeout", "", 5, "max retry duration until Autodiscovery resolves the check template (in seconds)")
 	cmd.Flags().UintVarP(&discoveryRetryInterval, "discovery-retry-interval", "", 1, "duration between retries until Autodiscovery resolves the check template (in seconds)")
+	cmd.Flags().UintVarP(&discoveryMinInstances, "discovery-min-instances", "", 1, "minimum number of config instances to be discovered before running the check(s)")
 	config.Datadog.BindPFlag("cmd.check.fullsketches", cmd.Flags().Lookup("full-sketches")) //nolint:errcheck
 
 	// Power user flags - mark as hidden
@@ -135,13 +135,13 @@ func Check(loggerName config.LoggerName, confFilePath *string, flagNoColor *bool
 				return err
 			}
 
-			// use the "noop" forwarder because we want the events to be buffered in memory instead of being flushed to the intake
-			eventPlatformForwarder := epforwarder.NewNoopEventPlatformForwarder()
-			eventPlatformForwarder.Start()
-
-			s := serializer.NewSerializer(common.Forwarder, nil)
 			// Initializing the aggregator with a flush interval of 0 (which disable the flush goroutine)
-			agg := aggregator.InitAggregatorWithFlushInterval(s, eventPlatformForwarder, hostname, 0)
+			opts := aggregator.DefaultDemultiplexerOptions(nil)
+			opts.FlushInterval = 0
+			opts.UseNoopEventPlatformForwarder = true
+			opts.UseOrchestratorForwarder = false
+			demux := aggregator.InitAndStartAgentDemultiplexer(opts, hostname)
+
 			common.LoadComponents(config.Datadog.GetString("confd_path"))
 
 			if config.Datadog.GetBool("inventories_enabled") {
@@ -154,7 +154,7 @@ func Check(loggerName config.LoggerName, confFilePath *string, flagNoColor *bool
 				discoveryRetryInterval = discoveryTimeout
 			}
 
-			allConfigs := waitForConfigs(checkName, time.Duration(discoveryRetryInterval)*time.Second, time.Duration(discoveryTimeout)*time.Second)
+			allConfigs := waitForConfigs(checkName, time.Duration(discoveryRetryInterval)*time.Second, time.Duration(discoveryTimeout)*time.Second, discoveryMinInstances)
 
 			// make sure the checks in cs are not JMX checks
 			for idx := range allConfigs {
@@ -309,13 +309,13 @@ func Check(loggerName config.LoggerName, confFilePath *string, flagNoColor *bool
 			var checkFileOutput bytes.Buffer
 			var instancesData []interface{}
 			for _, c := range cs {
-				s := runCheck(c, agg)
+				s := runCheck(c, demux)
 
 				// Sleep for a while to allow the aggregator to finish ingesting all the metrics/events/sc
 				time.Sleep(time.Duration(checkDelay) * time.Millisecond)
 
 				if formatJSON {
-					aggregatorData := getMetricsData(agg)
+					aggregatorData := getMetricsData(demux)
 					var collectorData map[string]interface{}
 
 					collectorJSON, _ := status.GetCheckStatusJSON(c, s)
@@ -393,7 +393,7 @@ func Check(loggerName config.LoggerName, confFilePath *string, flagNoColor *bool
 						return fmt.Errorf("no diff data found in %s", profileDataDir)
 					}
 				} else {
-					printMetrics(agg, &checkFileOutput)
+					printMetrics(demux, &checkFileOutput)
 					checkStatus, _ := status.GetCheckStatus(c, s)
 					statusString := string(checkStatus)
 					fmt.Println(statusString)
@@ -437,7 +437,7 @@ func Check(loggerName config.LoggerName, confFilePath *string, flagNoColor *bool
 	return cmd
 }
 
-func runCheck(c check.Check, agg *aggregator.BufferedAggregator) *check.Stats {
+func runCheck(c check.Check, demux aggregator.Demultiplexer) *check.Stats {
 	s := check.NewStats(c)
 	times := checkTimes
 	pause := checkPause
@@ -465,7 +465,8 @@ func runCheck(c check.Check, agg *aggregator.BufferedAggregator) *check.Stats {
 	return s
 }
 
-func printMetrics(agg *aggregator.BufferedAggregator, checkFileOutput *bytes.Buffer) {
+func printMetrics(demux aggregator.Demultiplexer, checkFileOutput *bytes.Buffer) {
+	agg := demux.Aggregator()
 	series, sketches := agg.GetSeriesAndSketches(time.Now())
 	if len(series) != 0 {
 		fmt.Fprintln(color.Output, fmt.Sprintf("=== %s ===", color.BlueString("Series")))
@@ -568,14 +569,11 @@ func writeCheckToFile(checkName string, checkFileOutput *bytes.Buffer) {
 	filenameSafeTimeStamp := strings.ReplaceAll(time.Now().UTC().Format(time.RFC3339), ":", "-")
 	flarePath := filepath.Join(common.DefaultCheckFlareDirectory, "check_"+checkName+"_"+filenameSafeTimeStamp+".log")
 
-	w, err := scrubber.NewWriter(flarePath, os.ModePerm)
+	scrubbed, err := scrubber.ScrubBytes(checkFileOutput.Bytes())
 	if err != nil {
-		fmt.Println("Error while writing the check file:", err)
-		return
+		fmt.Println("Error while scrubbing the check file:", err)
 	}
-	defer w.Close()
-
-	_, err = w.Write(checkFileOutput.Bytes())
+	err = ioutil.WriteFile(flarePath, scrubbed, os.ModePerm)
 
 	if err != nil {
 		fmt.Println("Error while writing the check file (is the location writable by the dd-agent user?):", err)
@@ -608,8 +606,10 @@ func toDebugEpEvents(events map[string][]*message.Message) map[string][]eventPla
 	return result
 }
 
-func getMetricsData(agg *aggregator.BufferedAggregator) map[string]interface{} {
+func getMetricsData(demux aggregator.Demultiplexer) map[string]interface{} {
 	aggData := make(map[string]interface{})
+
+	agg := demux.Aggregator()
 
 	series, sketches := agg.GetSeriesAndSketches(time.Now())
 	if len(series) != 0 {
@@ -723,25 +723,26 @@ func populateMemoryProfileConfig(initConfig map[string]interface{}) error {
 	return nil
 }
 
-// containsCheck returns true if at least one config corresponds to the check name.
-func containsCheck(checkName string, configs []integration.Config) bool {
+// checkReady returns true if the number of configs found for the check name is more or equal to min instances
+func checkReady(checkName string, minInstances uint, configs []integration.Config) bool {
+	var matchedConfigsCount uint
 	for _, cfg := range configs {
 		if cfg.Name == checkName {
-			return true
+			matchedConfigsCount++
 		}
 	}
-
-	return false
+	return matchedConfigsCount >= minInstances
 }
 
-// waitForConfigs retries the collection of Autodiscovery configs until the check is found or the timeout is reached.
+// waitForConfigs retries the collection of Autodiscovery configs until a minimum number of config instances
+// for the check are discovered or the timeout is reached.
 // Autodiscovery listeners run asynchronously, AC.GetAllConfigs() can fail at the beginning to resolve templated configs
 // depending on non-deterministic factors (system load, network latency, active Autodiscovery listeners and their configurations).
 // This function improves the resiliency of the check command.
 // Note: If the check corresponds to a non-template configuration it should be found on the first try and fast-returned.
-func waitForConfigs(checkName string, retryInterval, timeout time.Duration) []integration.Config {
+func waitForConfigs(checkName string, retryInterval, timeout time.Duration, minInstances uint) []integration.Config {
 	allConfigs := common.AC.GetAllConfigs()
-	if containsCheck(checkName, allConfigs) {
+	if checkReady(checkName, minInstances, allConfigs) {
 		return allConfigs
 	}
 
@@ -757,7 +758,7 @@ func waitForConfigs(checkName string, retryInterval, timeout time.Duration) []in
 			return allConfigs
 		case <-retryTicker.C:
 			allConfigs = common.AC.GetAllConfigs()
-			if containsCheck(checkName, allConfigs) {
+			if checkReady(checkName, minInstances, allConfigs) {
 				return allConfigs
 			}
 		}

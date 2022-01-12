@@ -1,3 +1,8 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2016-present Datadog, Inc.
+
 package serializerexporter
 
 import (
@@ -30,6 +35,9 @@ type metricsConfig struct {
 	DeltaTTL int64 `mapstructure:"delta_ttl"`
 
 	ExporterConfig metricsExporterConfig `mapstructure:",squash"`
+
+	// TagCardinality is the level of granularity of tags to send for OTLP metrics.
+	TagCardinality string `mapstructure:"tag_cardinality"`
 
 	// HistConfig defines the export of OTLP Histograms.
 	HistConfig histogramConfig `mapstructure:"histograms"`

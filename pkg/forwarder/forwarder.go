@@ -61,8 +61,6 @@ type Forwarder interface {
 	SubmitV1Series(payload Payloads, extra http.Header) error
 	SubmitV1Intake(payload Payloads, extra http.Header) error
 	SubmitV1CheckRuns(payload Payloads, extra http.Header) error
-	SubmitEvents(payload Payloads, extra http.Header) error
-	SubmitServiceChecks(payload Payloads, extra http.Header) error
 	SubmitSeries(payload Payloads, extra http.Header) error
 	SubmitSketchSeries(payload Payloads, extra http.Header) error
 	SubmitHostMetadata(payload Payloads, extra http.Header) error
@@ -75,6 +73,7 @@ type Forwarder interface {
 	SubmitRTContainerChecks(payload Payloads, extra http.Header) (chan Response, error)
 	SubmitConnectionChecks(payload Payloads, extra http.Header) (chan Response, error)
 	SubmitOrchestratorChecks(payload Payloads, extra http.Header, payloadType int) (chan Response, error)
+	SubmitContainerLifecycleEvents(payload Payloads, extra http.Header) error
 }
 
 // Compile-time check to ensure that DefaultForwarder implements the Forwarder interface
@@ -198,7 +197,7 @@ type DefaultForwarder struct {
 	domainForwarders map[string]*domainForwarder
 	domainResolvers  map[string]resolver.DomainResolver
 	healthChecker    *forwarderHealth
-	internalState    uint32
+	internalState    uint32     // atomic
 	m                sync.Mutex // To control Start/Stop races
 
 	completionHandler transaction.HTTPCompletionHandler
@@ -312,7 +311,7 @@ func (f *DefaultForwarder) Start() error {
 	f.m.Lock()
 	defer f.m.Unlock()
 
-	if f.internalState == Started {
+	if atomic.LoadUint32(&f.internalState) == Started {
 		return fmt.Errorf("the forwarder is already started")
 	}
 
@@ -330,7 +329,7 @@ func (f *DefaultForwarder) Start() error {
 		len(endpointLogs), f.NumberOfWorkers, strings.Join(endpointLogs, " ; "))
 
 	f.healthChecker.Start()
-	f.internalState = Started
+	atomic.StoreUint32(&f.internalState, Started)
 	return nil
 }
 
@@ -341,12 +340,12 @@ func (f *DefaultForwarder) Stop() {
 	f.m.Lock()
 	defer f.m.Unlock()
 
-	if f.internalState == Stopped {
+	if atomic.LoadUint32(&f.internalState) == Stopped {
 		log.Warnf("the forwarder is already stopped")
 		return
 	}
 
-	f.internalState = Stopped
+	atomic.StoreUint32(&f.internalState, Stopped)
 
 	purgeTimeout := config.Datadog.GetDuration("forwarder_stop_timeout") * time.Second
 	if purgeTimeout > 0 {
@@ -390,7 +389,7 @@ func (f *DefaultForwarder) State() uint32 {
 	f.m.Lock()
 	defer f.m.Unlock()
 
-	return f.internalState
+	return atomic.LoadUint32(&f.internalState)
 }
 func (f *DefaultForwarder) createHTTPTransactions(endpoint transaction.Endpoint, payloads Payloads, apiKeyInQueryString bool, extra http.Header) []*transaction.HTTPTransaction {
 	return f.createAdvancedHTTPTransactions(endpoint, payloads, apiKeyInQueryString, extra, transaction.TransactionPriorityNormal, true)
@@ -447,18 +446,6 @@ func (f *DefaultForwarder) sendHTTPTransactions(transactions []*transaction.HTTP
 		f.domainForwarders[t.Domain].sendHTTPTransactions(t)
 	}
 	return nil
-}
-
-// SubmitEvents will send an event type payload to Datadog backend.
-func (f *DefaultForwarder) SubmitEvents(payload Payloads, extra http.Header) error {
-	transactions := f.createHTTPTransactions(endpoints.EventsEndpoint, payload, false, extra)
-	return f.sendHTTPTransactions(transactions)
-}
-
-// SubmitServiceChecks will send a service check type payload to Datadog backend.
-func (f *DefaultForwarder) SubmitServiceChecks(payload Payloads, extra http.Header) error {
-	transactions := f.createHTTPTransactions(endpoints.ServiceChecksEndpoint, payload, false, extra)
-	return f.sendHTTPTransactions(transactions)
 }
 
 // SubmitSketchSeries will send payloads to Datadog backend - PROTOTYPE FOR PERCENTILE
@@ -567,6 +554,12 @@ func (f *DefaultForwarder) SubmitOrchestratorChecks(payload Payloads, extra http
 	bumpOrchestratorPayload(payloadType)
 
 	return f.submitProcessLikePayload(endpoints.OrchestratorEndpoint, payload, extra, true)
+}
+
+// SubmitContainerLifecycleEvents sends container lifecycle events
+func (f *DefaultForwarder) SubmitContainerLifecycleEvents(payload Payloads, extra http.Header) error {
+	transactions := f.createHTTPTransactions(endpoints.ContainerLifecycleEndpoint, payload, false, extra)
+	return f.sendHTTPTransactions(transactions)
 }
 
 func (f *DefaultForwarder) submitProcessLikePayload(ep transaction.Endpoint, payload Payloads, extra http.Header, retryable bool) (chan Response, error) {

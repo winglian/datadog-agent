@@ -1,6 +1,12 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2016-present Datadog, Inc.
+
 package checkconfig
 
 import (
+	"context"
 	"fmt"
 	"hash/fnv"
 	"net"
@@ -14,7 +20,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/autodiscovery/integration"
 	"github.com/DataDog/datadog-agent/pkg/collector/check/defaults"
-	"github.com/DataDog/datadog-agent/pkg/util"
+	coreutil "github.com/DataDog/datadog-agent/pkg/util"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
 	"github.com/DataDog/datadog-agent/pkg/collector/corechecks/snmp/common"
@@ -186,7 +192,7 @@ func (c *CheckConfig) RefreshWithProfile(profile string) error {
 
 // UpdateDeviceIDAndTags updates DeviceID and DeviceIDTags
 func (c *CheckConfig) UpdateDeviceIDAndTags() {
-	c.DeviceIDTags = util.SortUniqInPlace(c.getDeviceIDTags())
+	c.DeviceIDTags = coreutil.SortUniqInPlace(c.getDeviceIDTags())
 	c.DeviceID = c.Namespace + ":" + c.IPAddress
 }
 
@@ -200,6 +206,15 @@ func (c *CheckConfig) GetStaticTags() []string {
 	tags = append(tags, deviceNamespaceTagKey+":"+c.Namespace)
 	if c.IPAddress != "" {
 		tags = append(tags, deviceIPTagKey+":"+c.IPAddress)
+	}
+
+	if c.UseDeviceIDAsHostname {
+		hostname, err := coreutil.GetHostname(context.TODO())
+		if err != nil {
+			log.Warnf("Error getting the hostname: %v", err)
+		} else {
+			tags = append(tags, "agent_host:"+hostname)
+		}
 	}
 	return tags
 }
@@ -600,6 +615,9 @@ func (c *CheckConfig) parseScalarOids(metrics []MetricsConfig, metricTags []Metr
 			}
 			for _, field := range metadataConfig.Fields {
 				oids = append(oids, field.Symbol.OID)
+				for _, symbol := range field.Symbols {
+					oids = append(oids, symbol.OID)
+				}
 			}
 			// we don't support tags for now for resource (e.g. device) based on scalar OIDs
 			// profile root level `metric_tags` (tags used for both metadata, metrics, service checks)
@@ -626,6 +644,9 @@ func (c *CheckConfig) parseColumnOids(metrics []MetricsConfig, metadataConfigs M
 			}
 			for _, field := range metadataConfig.Fields {
 				oids = append(oids, field.Symbol.OID)
+				for _, symbol := range field.Symbols {
+					oids = append(oids, symbol.OID)
+				}
 			}
 			for _, tagConfig := range metadataConfig.IDTags {
 				oids = append(oids, tagConfig.Column.OID)

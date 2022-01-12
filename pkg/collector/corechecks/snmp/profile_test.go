@@ -8,32 +8,37 @@ package snmp
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/gosnmp/gosnmp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/DataDog/datadog-agent/pkg/aggregator"
 	"github.com/DataDog/datadog-agent/pkg/aggregator/mocksender"
+	"github.com/DataDog/datadog-agent/pkg/config"
+	"github.com/DataDog/datadog-agent/pkg/version"
+
 	"github.com/DataDog/datadog-agent/pkg/collector/corechecks/snmp/checkconfig"
 	"github.com/DataDog/datadog-agent/pkg/collector/corechecks/snmp/common"
 	"github.com/DataDog/datadog-agent/pkg/collector/corechecks/snmp/gosnmplib"
 	"github.com/DataDog/datadog-agent/pkg/collector/corechecks/snmp/session"
-	"github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/gosnmp/gosnmp"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"path/filepath"
-	"testing"
-	"time"
 )
 
-func TestProfileMetadata(t *testing.T) {
+func TestProfileMetadata_f5(t *testing.T) {
 	timeNow = common.MockTimeNow
 	aggregator.InitAggregatorWithFlushInterval(nil, nil, "", 1*time.Hour)
 	invalidPath, _ := filepath.Abs(filepath.Join("test", "metadata_conf.d"))
 	config.Datadog.Set("confd_path", invalidPath)
 
 	sess := session.CreateMockSession()
-	session.NewSession = func(*checkconfig.CheckConfig) (session.Session, error) {
+	sessionFactory := func(*checkconfig.CheckConfig) (session.Session, error) {
 		return sess, nil
 	}
-	chk := Check{}
+	chk := Check{sessionFactory: sessionFactory}
 	// language=yaml
 	rawInstanceConfig := []byte(`
 ip_address: 1.2.3.4
@@ -64,7 +69,7 @@ profiles:
 			{
 				Name:  "1.3.6.1.2.1.1.1.0",
 				Type:  gosnmp.OctetString,
-				Value: []byte("my_desc"),
+				Value: []byte("BIG-IP Virtual Edition : Linux 3.10.0-862.14.4.el7.ve.x86_64 : BIG-IP software release 15.0.1, build 0.0.11"),
 			},
 			{
 				Name:  "1.3.6.1.2.1.1.2.0",
@@ -107,6 +112,10 @@ profiles:
 				Value: []byte("Final"),
 			},
 			{
+				Name: "1.3.6.1.4.1.3375.2.1.4.999999.0",
+				Type: gosnmp.NoSuchObject,
+			},
+			{
 				Name:  "1.3.6.1.4.1.3375.2.1.6.1.0",
 				Type:  gosnmp.OctetString,
 				Value: []byte("Linux"),
@@ -119,7 +128,7 @@ profiles:
 			{
 				Name:  "1.3.6.1.4.1.3375.2.1.6.4.0",
 				Type:  gosnmp.OctetString,
-				Value: []byte("3.0.0"),
+				Value: []byte("3.10.0-862.14.4.el7.ve.x86_64"),
 			},
 		},
 	}
@@ -265,6 +274,7 @@ profiles:
 		"1.3.6.1.4.1.3375.2.1.4.1.0",
 		"1.3.6.1.4.1.3375.2.1.4.2.0",
 		"1.3.6.1.4.1.3375.2.1.4.4.0",
+		"1.3.6.1.4.1.3375.2.1.4.999999.0",
 		"1.3.6.1.4.1.3375.2.1.6.1.0",
 		"1.3.6.1.4.1.3375.2.1.6.2.0",
 		"1.3.6.1.4.1.3375.2.1.6.4.0",
@@ -284,7 +294,7 @@ profiles:
 	assert.Nil(t, err)
 
 	// language=json
-	event := []byte(`
+	event := []byte(fmt.Sprintf(`
 {
   "subnet": "",
   "namespace":"profile-metadata",
@@ -296,6 +306,7 @@ profiles:
         "snmp_device:1.2.3.4"
       ],
       "tags": [
+        "agent_version:%s",
         "device_namespace:profile-metadata",
         "device_vendor:f5",
         "snmp_device:1.2.3.4",
@@ -305,7 +316,7 @@ profiles:
       "ip_address": "1.2.3.4",
       "status": 1,
       "name": "foo_sys_name",
-      "description": "my_desc",
+      "description": "BIG-IP Virtual Edition : Linux 3.10.0-862.14.4.el7.ve.x86_64 : BIG-IP software release 15.0.1, build 0.0.11",
       "sys_object_id": "1.2.3.4",
       "location": "paris",
       "profile": "f5-big-ip",
@@ -314,8 +325,8 @@ profiles:
       "version":"15.0.1",
       "product_name":"BIG-IP",
       "model":"Final",
-      "os_name":"Linux",
-      "os_version":"3.0.0",
+      "os_name":"LINUX (3.10.0-862.14.4.el7.ve.x86_64)",
+      "os_version":"3.10.0-862.14.4.el7.ve.x86_64",
       "os_hostname":"my-linux-f5-server"
     }
   ],
@@ -345,7 +356,7 @@ profiles:
   ],
   "collect_timestamp":946684800
 }
-`)
+`, version.AgentVersion))
 	compactEvent := new(bytes.Buffer)
 	err = json.Compact(compactEvent, event)
 	assert.NoError(t, err)

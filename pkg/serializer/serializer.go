@@ -22,6 +22,8 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/serializer/stream"
 	"github.com/DataDog/datadog-agent/pkg/util/compression"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+
+	"github.com/gogo/protobuf/proto"
 )
 
 const (
@@ -94,17 +96,22 @@ type MetricSerializer interface {
 	SendEvents(e EventsStreamJSONMarshaler) error
 	SendServiceChecks(sc marshaler.StreamJSONMarshaler) error
 	SendSeries(series marshaler.StreamJSONMarshaler) error
+	SendIterableSeries(series marshaler.IterableMarshaler) error
+	IsIterableSeriesSupported() bool
 	SendSketch(sketches marshaler.Marshaler) error
 	SendMetadata(m marshaler.JSONMarshaler) error
 	SendHostMetadata(m marshaler.JSONMarshaler) error
 	SendProcessesMetadata(data interface{}) error
+	SendAgentchecksMetadata(m marshaler.JSONMarshaler) error
 	SendOrchestratorMetadata(msgs []ProcessMessageBody, hostName, clusterID string, payloadType int) error
+	SendContainerLifecycleEvent(msgs []ContainerLifecycleMessage, hostName string) error
 }
 
 // Serializer serializes metrics to the correct format and routes the payloads to the correct endpoint in the Forwarder
 type Serializer struct {
 	Forwarder             forwarder.Forwarder
 	orchestratorForwarder forwarder.Forwarder
+	contlcycleForwarder   forwarder.Forwarder
 
 	seriesJSONPayloadBuilder *stream.JSONPayloadBuilder
 
@@ -126,10 +133,11 @@ type Serializer struct {
 }
 
 // NewSerializer returns a new Serializer initialized
-func NewSerializer(forwarder forwarder.Forwarder, orchestratorForwarder forwarder.Forwarder) *Serializer {
+func NewSerializer(forwarder forwarder.Forwarder, orchestratorForwarder, contlcycleForwarder forwarder.Forwarder) *Serializer {
 	s := &Serializer{
 		Forwarder:                     forwarder,
 		orchestratorForwarder:         orchestratorForwarder,
+		contlcycleForwarder:           contlcycleForwarder,
 		seriesJSONPayloadBuilder:      stream.NewJSONPayloadBuilder(config.Datadog.GetBool("enable_json_stream_shared_compressor_buffers")),
 		enableEvents:                  config.Datadog.GetBool("enable_payloads.events"),
 		enableSeries:                  config.Datadog.GetBool("enable_payloads.series"),
@@ -201,6 +209,11 @@ func (s Serializer) serializePayloadInternal(payload marshaler.AbstractMarshaler
 }
 
 func (s Serializer) serializeStreamablePayload(payload marshaler.StreamJSONMarshaler, policy stream.OnErrItemTooBigPolicy) (forwarder.Payloads, http.Header, error) {
+	adapter := marshaler.NewIterableStreamJSONMarshalerAdapter(payload)
+	return s.serializeIterableStreamablePayload(adapter, policy)
+}
+
+func (s Serializer) serializeIterableStreamablePayload(payload marshaler.IterableStreamJSONMarshaler, policy stream.OnErrItemTooBigPolicy) (forwarder.Payloads, http.Header, error) {
 	payloads, err := s.seriesJSONPayloadBuilder.BuildWithOnErrItemTooBigPolicy(payload, policy)
 	return payloads, jsonExtraHeadersWithCompression, err
 }
@@ -248,24 +261,20 @@ func (s *Serializer) SendEvents(e EventsStreamJSONMarshaler) error {
 		return nil
 	}
 
-	useV1API := !config.Datadog.GetBool("use_v2_api.events")
 	var eventPayloads forwarder.Payloads
 	var extraHeaders http.Header
 	var err error
 
-	if useV1API && s.enableEventsJSONStream {
-		eventPayloads, extraHeaders, err = s.serializeEventsStreamJSONMarshalerPayload(e, useV1API)
+	if s.enableEventsJSONStream {
+		eventPayloads, extraHeaders, err = s.serializeEventsStreamJSONMarshalerPayload(e, true)
 	} else {
-		eventPayloads, extraHeaders, err = s.serializePayload(e, true, useV1API)
+		eventPayloads, extraHeaders, err = s.serializePayload(e, true, true)
 	}
 	if err != nil {
 		return fmt.Errorf("dropping event payload: %s", err)
 	}
 
-	if useV1API {
-		return s.Forwarder.SubmitV1Intake(eventPayloads, extraHeaders)
-	}
-	return s.Forwarder.SubmitEvents(eventPayloads, extraHeaders)
+	return s.Forwarder.SubmitV1Intake(eventPayloads, extraHeaders)
 }
 
 // SendServiceChecks serializes a list of serviceChecks and sends the payload to the forwarder
@@ -275,13 +284,11 @@ func (s *Serializer) SendServiceChecks(sc marshaler.StreamJSONMarshaler) error {
 		return nil
 	}
 
-	useV1API := true
-
 	var serviceCheckPayloads forwarder.Payloads
 	var extraHeaders http.Header
 	var err error
 
-	if useV1API && s.enableServiceChecksJSONStream {
+	if s.enableServiceChecksJSONStream {
 		serviceCheckPayloads, extraHeaders, err = s.serializeStreamablePayload(sc, stream.DropItemOnErrItemTooBig)
 	} else {
 		serviceCheckPayloads, extraHeaders, err = s.serializePayloadJSON(sc, true)
@@ -290,10 +297,43 @@ func (s *Serializer) SendServiceChecks(sc marshaler.StreamJSONMarshaler) error {
 		return fmt.Errorf("dropping service check payload: %s", err)
 	}
 
-	if useV1API {
-		return s.Forwarder.SubmitV1CheckRuns(serviceCheckPayloads, extraHeaders)
+	return s.Forwarder.SubmitV1CheckRuns(serviceCheckPayloads, extraHeaders)
+}
+
+// SendIterableSeries serializes a list of series and sends the payload to the forwarder
+func (s *Serializer) SendIterableSeries(series marshaler.IterableMarshaler) error {
+	if !s.enableSeries {
+		log.Debug("series payloads are disabled: dropping it")
+		return nil
 	}
-	return s.Forwarder.SubmitServiceChecks(serviceCheckPayloads, extraHeaders)
+
+	useV1API := !config.Datadog.GetBool("use_v2_api.series")
+
+	var seriesPayloads forwarder.Payloads
+	var extraHeaders http.Header
+	var err error
+
+	if useV1API {
+		seriesPayloads, extraHeaders, err = s.serializeIterableStreamablePayload(series, stream.DropItemOnErrItemTooBig)
+	} else {
+		seriesPayloads, err = series.MarshalSplitCompress(marshaler.DefaultBufferContext())
+		extraHeaders = protobufExtraHeadersWithCompression
+	}
+
+	if err != nil {
+		return fmt.Errorf("dropping series payload: %s", err)
+	}
+
+	if useV1API {
+		return s.Forwarder.SubmitV1Series(seriesPayloads, extraHeaders)
+	}
+	return s.Forwarder.SubmitSeries(seriesPayloads, extraHeaders)
+}
+
+// IsIterableSeriesSupported returns whether `SendIterableSeries` is supported.
+// Should be removed when `serializePayloadJSON` (useV1API && !s.enableJSONStream) will be removed
+func (s *Serializer) IsIterableSeriesSupported() bool {
+	return config.Datadog.GetBool("use_v2_api.series") || s.enableJSONStream
 }
 
 // SendSeries serializes a list of serviceChecks and sends the payload to the forwarder
@@ -441,5 +481,29 @@ func (s *Serializer) SendOrchestratorMetadata(msgs []ProcessMessageBody, hostNam
 
 		}
 	}
+	return nil
+}
+
+// SendContainerLifecycleEvent serializes & sends container lifecycle event payloads
+func (s *Serializer) SendContainerLifecycleEvent(msgs []ContainerLifecycleMessage, hostname string) error {
+	if s.contlcycleForwarder == nil {
+		return errors.New("container lifecycle forwarder is not setup")
+	}
+
+	for _, msg := range msgs {
+		extraHeaders := make(http.Header)
+		extraHeaders.Set("Content-Type", protobufContentType)
+		msg.Host = hostname
+		encoded, err := proto.Marshal(&msg)
+		if err != nil {
+			return log.Errorf("Unable to encode message: %w", err)
+		}
+
+		payloads := forwarder.Payloads{&encoded}
+		if err := s.contlcycleForwarder.SubmitContainerLifecycleEvents(payloads, extraHeaders); err != nil {
+			return log.Errorf("Unable to submit container lifecycle payload: %w", err)
+		}
+	}
+
 	return nil
 }

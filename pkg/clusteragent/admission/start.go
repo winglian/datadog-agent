@@ -62,7 +62,7 @@ func StartControllers(ctx ControllerContext) error {
 		return err
 	}
 
-	v1Enabled, err := useAdmissionV1(ctx.DiscoveryClient)
+	v1Enabled, err := useAdmissionV1(ctx)
 	if err != nil {
 		return err
 	}
@@ -93,5 +93,5 @@ func StartControllers(ctx ControllerContext) error {
 		informers[apiserver.WebhooksInformer] = ctx.WebhookInformers.Admissionregistration().V1beta1().MutatingWebhookConfigurations().Informer()
 	}
 
-	return apiserver.SyncInformers(informers)
+	return apiserver.SyncInformers(informers, 0)
 }

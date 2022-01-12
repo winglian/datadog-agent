@@ -77,35 +77,6 @@ func getCGroupWriteConstants() manager.ConstantEditor {
 	}
 }
 
-// TTYConstants returns the tty constants
-func TTYConstants(probe *Probe) []manager.ConstantEditor {
-	ttyOffset, nameOffset := uint64(400), uint64(368)
-
-	switch {
-	case probe.kernelVersion.IsRH7Kernel():
-		ttyOffset, nameOffset = 416, 312
-	case probe.kernelVersion.IsRH8Kernel():
-		ttyOffset, nameOffset = 392, 368
-	case probe.kernelVersion.IsSLES12Kernel():
-		ttyOffset, nameOffset = 376, 368
-	case probe.kernelVersion.IsSLES15Kernel():
-		ttyOffset, nameOffset = 408, 368
-	case probe.kernelVersion.Code != 0 && probe.kernelVersion.Code < kernel.Kernel5_3:
-		ttyOffset, nameOffset = 368, 368
-	}
-
-	return []manager.ConstantEditor{
-		{
-			Name:  "tty_offset",
-			Value: ttyOffset,
-		},
-		{
-			Name:  "tty_name_offset",
-			Value: nameOffset,
-		},
-	}
-}
-
 // ProcessResolverOpts options of resolver
 type ProcessResolverOpts struct{}
 
@@ -677,6 +648,33 @@ func (p *ProcessResolver) GetProcessArgv(pr *model.Process) ([]string, bool) {
 	argv, truncated := pr.ArgsEntry.ToArray()
 
 	return argv, pr.ArgsTruncated || truncated
+}
+
+// GetScrubbedProcessArgv returns the scrubbed args of the event as an array
+func (p *ProcessResolver) GetScrubbedProcessArgv(pr *model.Process) ([]string, bool) {
+	if pr.ArgsEntry == nil {
+		return nil, false
+	}
+
+	if len(pr.Args) != 0 {
+		return pr.Argv, pr.ArgsTruncated
+	}
+
+	argv, truncated := pr.ArgsEntry.ToArray()
+
+	pr.ArgsTruncated = pr.ArgsTruncated || truncated
+
+	if p.probe.scrubber != nil {
+		if newArgv, changed := p.probe.scrubber.ScrubCommand(argv); changed {
+			pr.Argv = newArgv
+		} else {
+			pr.Argv = argv
+		}
+	} else {
+		pr.Argv = argv
+	}
+
+	return pr.Argv, pr.ArgsTruncated
 }
 
 // SetProcessEnvs set envs to cache entry

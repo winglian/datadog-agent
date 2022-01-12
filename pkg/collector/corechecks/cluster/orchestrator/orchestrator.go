@@ -60,6 +60,8 @@ var (
 		"cronjobs",
 		"daemonsets",
 		"statefulsets",
+		"persistentvolumes",
+		"persistentvolumeclaims",
 	}
 )
 
@@ -75,7 +77,8 @@ type OrchestratorInstance struct {
 	// collectors:
 	//   - nodes
 	//   - services
-	Collectors []string `yaml:"collectors"`
+	Collectors              []string `yaml:"collectors"`
+	ExtraSyncTimeoutSeconds int      `yaml:"extra_sync_timeout_seconds"`
 }
 
 func (c *OrchestratorInstance) parse(data []byte) error {
@@ -149,6 +152,9 @@ func (o *OrchestratorCheck) Configure(config, initConfig integration.Data, sourc
 		return errors.New("orchestrator check is configured but the feature is disabled")
 	}
 	o.orchestratorConfig.IsScrubbingEnabled = corecfg.Datadog.GetBool("orchestrator_explorer.container_scrubbing.enabled")
+	if corecfg.Datadog.IsSet("orchestrator_explorer.custom_sensitive_words") {
+		o.orchestratorConfig.Scrubber.AddCustomSensitiveWords(corecfg.Datadog.GetStringSlice("orchestrator_explorer.custom_sensitive_words"))
+	}
 	o.orchestratorConfig.ExtraTags = corecfg.Datadog.GetStringSlice("orchestrator_explorer.extra_tags")
 
 	// check if cluster name is set
@@ -180,6 +186,14 @@ func (o *OrchestratorCheck) Configure(config, initConfig integration.Data, sourc
 	o.apiClient = apiCl
 	if err != nil {
 		return err
+	}
+
+	// Get the extra time we can wait for the informer cache sync
+	var extraTimeout time.Duration
+	if o.instance.ExtraSyncTimeoutSeconds == 0 {
+		extraTimeout = 60 * time.Second
+	} else {
+		extraTimeout = time.Duration(o.instance.ExtraSyncTimeoutSeconds) * time.Second
 	}
 
 	// Prepare the collectors for the resources specified in the configuration file.
@@ -270,7 +284,7 @@ func (o *OrchestratorCheck) Configure(config, initConfig integration.Data, sourc
 		go informer.Run(o.stopCh)
 	}
 
-	return apiserver.SyncInformers(informersToSync)
+	return apiserver.SyncInformers(informersToSync, extraTimeout)
 }
 
 // Run runs the orchestrator check
@@ -341,14 +355,6 @@ func (o *OrchestratorCheck) processDeploys(sender aggregator.Sender) {
 		return
 	}
 
-	stats := orchestrator.CheckStats{
-		CacheHits: len(deployList) - len(messages),
-		CacheMiss: len(messages),
-		NodeType:  orchestrator.K8sDeployment,
-	}
-
-	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sDeployment), stats, orchestrator.NoExpiration)
-
 	sender.OrchestratorMetadata(messages, o.clusterID, int(orchestrator.K8sDeployment))
 }
 
@@ -367,14 +373,6 @@ func (o *OrchestratorCheck) processReplicaSets(sender aggregator.Sender) {
 		_ = log.Errorf("Unable to process replica set list: %v", err)
 		return
 	}
-
-	stats := orchestrator.CheckStats{
-		CacheHits: len(rsList) - len(messages),
-		CacheMiss: len(messages),
-		NodeType:  orchestrator.K8sReplicaSet,
-	}
-
-	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sReplicaSet), stats, orchestrator.NoExpiration)
 
 	sender.OrchestratorMetadata(messages, o.clusterID, int(orchestrator.K8sReplicaSet))
 }
@@ -395,14 +393,6 @@ func (o *OrchestratorCheck) processServices(sender aggregator.Sender) {
 		_ = o.Warnf("Unable to process service list: %s", err)
 		return
 	}
-
-	stats := orchestrator.CheckStats{
-		CacheHits: len(serviceList) - len(messages),
-		CacheMiss: len(messages),
-		NodeType:  orchestrator.K8sService,
-	}
-
-	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sService), stats, orchestrator.NoExpiration)
 
 	sender.OrchestratorMetadata(messages, o.clusterID, int(orchestrator.K8sService))
 }
@@ -451,14 +441,6 @@ func (o *OrchestratorCheck) processJobs(sender aggregator.Sender) {
 		_ = o.Warnf("Unable to process job list: %s", err)
 	}
 
-	stats := orchestrator.CheckStats{
-		CacheHits: len(jobList) - len(messages),
-		CacheMiss: len(messages),
-		NodeType:  orchestrator.K8sJob,
-	}
-
-	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sJob), stats, orchestrator.NoExpiration)
-
 	sender.OrchestratorMetadata(messages, o.clusterID, int(orchestrator.K8sJob))
 }
 
@@ -478,14 +460,6 @@ func (o *OrchestratorCheck) processCronJobs(sender aggregator.Sender) {
 		_ = o.Warnf("Unable to process cron job list: %s", err)
 	}
 
-	stats := orchestrator.CheckStats{
-		CacheHits: len(cronJobList) - len(messages),
-		CacheMiss: len(messages),
-		NodeType:  orchestrator.K8sCronJob,
-	}
-
-	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sCronJob), stats, orchestrator.NoExpiration)
-
 	sender.OrchestratorMetadata(messages, o.clusterID, int(orchestrator.K8sCronJob))
 }
 
@@ -504,14 +478,6 @@ func (o *OrchestratorCheck) processDaemonSets(sender aggregator.Sender) {
 	if err != nil {
 		_ = o.Warnf("Unable to process daemonSets list: %s", err)
 	}
-
-	stats := orchestrator.CheckStats{
-		CacheHits: len(daemonSetLists) - len(messages),
-		CacheMiss: len(messages),
-		NodeType:  orchestrator.K8sDaemonSet,
-	}
-
-	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sDaemonSet), stats, orchestrator.NoExpiration)
 
 	sender.OrchestratorMetadata(messages, o.clusterID, int(orchestrator.K8sDaemonSet))
 }
@@ -544,25 +510,13 @@ func (o *OrchestratorCheck) processStatefulSets(sender aggregator.Sender) {
 }
 
 func sendNodesMetadata(sender aggregator.Sender, nodesList []*v1.Node, nodesMessages []model.MessageBody, clusterID string) {
-	stats := orchestrator.CheckStats{
-		CacheHits: len(nodesList) - len(nodesMessages),
-		CacheMiss: len(nodesMessages),
-		NodeType:  orchestrator.K8sNode,
-	}
-
-	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sNode), stats, orchestrator.NoExpiration)
-
 	sender.OrchestratorMetadata(nodesMessages, clusterID, int(orchestrator.K8sNode))
 }
 
 func sendClusterMetadata(sender aggregator.Sender, clusterMessage model.MessageBody, clusterID string) {
-	stats := orchestrator.CheckStats{
-		CacheHits: 0,
-		CacheMiss: 1,
-		NodeType:  orchestrator.K8sCluster,
-	}
+	orchestrator.SetCacheStats(1, 1, orchestrator.K8sCluster)
+
 	sender.OrchestratorMetadata([]serializer.ProcessMessageBody{clusterMessage}, clusterID, int(orchestrator.K8sCluster))
-	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sCluster), stats, orchestrator.NoExpiration)
 }
 
 func (o *OrchestratorCheck) processPods(sender aggregator.Sender) {
@@ -581,14 +535,6 @@ func (o *OrchestratorCheck) processPods(sender aggregator.Sender) {
 		_ = o.Warnf("Unable to process pod list: %v", err)
 		return
 	}
-
-	stats := orchestrator.CheckStats{
-		CacheHits: len(podList) - len(messages),
-		CacheMiss: len(messages),
-		NodeType:  orchestrator.K8sPod,
-	}
-
-	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sPod), stats, orchestrator.NoExpiration)
 
 	sender.OrchestratorMetadata(messages, o.clusterID, int(orchestrator.K8sPod))
 }
@@ -609,14 +555,6 @@ func (o *OrchestratorCheck) processPersistentVolumes(sender aggregator.Sender) {
 		_ = o.Warnf("Unable to process pv list: %s", err)
 	}
 
-	stats := orchestrator.CheckStats{
-		CacheHits: len(pvList) - len(messages),
-		CacheMiss: len(messages),
-		NodeType:  orchestrator.K8sPersistentVolume,
-	}
-
-	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sPersistentVolume), stats, orchestrator.NoExpiration)
-
 	sender.OrchestratorMetadata(messages, o.clusterID, int(orchestrator.K8sPersistentVolume))
 }
 
@@ -635,13 +573,6 @@ func (o *OrchestratorCheck) processPersistentVolumeClaims(sender aggregator.Send
 	if err != nil {
 		_ = o.Warnf("Unable to process pvc list: %s", err)
 	}
-
-	stats := orchestrator.CheckStats{
-		CacheHits: len(pvcList) - len(messages),
-		CacheMiss: len(messages),
-		NodeType:  orchestrator.K8sPersistentVolumeClaim,
-	}
-	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sPersistentVolumeClaim), stats, orchestrator.NoExpiration)
 
 	sender.OrchestratorMetadata(messages, o.clusterID, int(orchestrator.K8sPersistentVolumeClaim))
 }
@@ -662,13 +593,6 @@ func (o *OrchestratorCheck) processRoles(sender aggregator.Sender) {
 		_ = o.Warnf("Unable to process role list: %s", err)
 	}
 
-	stats := orchestrator.CheckStats{
-		CacheHits: len(roleList) - len(messages),
-		CacheMiss: len(messages),
-		NodeType:  orchestrator.K8sRole,
-	}
-	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sRole), stats, orchestrator.NoExpiration)
-
 	sender.OrchestratorMetadata(messages, o.clusterID, int(orchestrator.K8sRole))
 }
 
@@ -687,13 +611,6 @@ func (o *OrchestratorCheck) processRoleBindings(sender aggregator.Sender) {
 	if err != nil {
 		_ = o.Warnf("Unable to process role binding list: %s", err)
 	}
-
-	stats := orchestrator.CheckStats{
-		CacheHits: len(roleBindingList) - len(messages),
-		CacheMiss: len(messages),
-		NodeType:  orchestrator.K8sRoleBinding,
-	}
-	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sRoleBinding), stats, orchestrator.NoExpiration)
 
 	sender.OrchestratorMetadata(messages, o.clusterID, int(orchestrator.K8sRoleBinding))
 }
@@ -714,13 +631,6 @@ func (o *OrchestratorCheck) processClusterRoles(sender aggregator.Sender) {
 		_ = o.Warnf("Unable to process cluster role list: %s", err)
 	}
 
-	stats := orchestrator.CheckStats{
-		CacheHits: len(clusterRoleList) - len(messages),
-		CacheMiss: len(messages),
-		NodeType:  orchestrator.K8sClusterRole,
-	}
-	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sClusterRole), stats, orchestrator.NoExpiration)
-
 	sender.OrchestratorMetadata(messages, o.clusterID, int(orchestrator.K8sClusterRole))
 }
 
@@ -740,13 +650,6 @@ func (o *OrchestratorCheck) processClusterRoleBindings(sender aggregator.Sender)
 		_ = o.Warnf("Unable to process cluster role binding list: %s", err)
 	}
 
-	stats := orchestrator.CheckStats{
-		CacheHits: len(clusterRoleBindingList) - len(messages),
-		CacheMiss: len(messages),
-		NodeType:  orchestrator.K8sClusterRoleBinding,
-	}
-	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sClusterRoleBinding), stats, orchestrator.NoExpiration)
-
 	sender.OrchestratorMetadata(messages, o.clusterID, int(orchestrator.K8sClusterRoleBinding))
 }
 
@@ -765,13 +668,6 @@ func (o *OrchestratorCheck) processServiceAccounts(sender aggregator.Sender) {
 	if err != nil {
 		_ = o.Warnf("Unable to process service account list: %s", err)
 	}
-
-	stats := orchestrator.CheckStats{
-		CacheHits: len(serviceAccountList) - len(messages),
-		CacheMiss: len(messages),
-		NodeType:  orchestrator.K8sServiceAccount,
-	}
-	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sServiceAccount), stats, orchestrator.NoExpiration)
 
 	sender.OrchestratorMetadata(messages, o.clusterID, int(orchestrator.K8sServiceAccount))
 }

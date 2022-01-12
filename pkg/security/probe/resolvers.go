@@ -10,7 +10,6 @@ package probe
 import (
 	"context"
 	"os"
-	"path"
 	"sort"
 	"strings"
 
@@ -52,10 +51,15 @@ func NewResolvers(config *config.Config, probe *Probe) (*Resolvers, error) {
 		return nil, err
 	}
 
+	mountResolver, err := NewMountResolver(probe)
+	if err != nil {
+		return nil, err
+	}
+
 	resolvers := &Resolvers{
 		probe:             probe,
 		DentryResolver:    dentryResolver,
-		MountResolver:     NewMountResolver(probe),
+		MountResolver:     mountResolver,
 		TimeResolver:      timeResolver,
 		ContainerResolver: &ContainerResolver{},
 		UserGroupResolver: userGroupResolver,
@@ -92,7 +96,10 @@ func (r *Resolvers) resolveFileFieldsPath(e *model.FileFields) (string, error) {
 	if strings.HasPrefix(pathStr, rootPath) && rootPath != "/" {
 		pathStr = strings.Replace(pathStr, rootPath, "", 1)
 	}
-	pathStr = path.Join(mountPath, pathStr)
+
+	if mountPath != "/" {
+		pathStr = mountPath + pathStr
+	}
 
 	return pathStr, err
 }

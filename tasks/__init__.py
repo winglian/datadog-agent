@@ -38,7 +38,6 @@ from .go import (
     deps,
     deps_vendored,
     fmt,
-    generate,
     generate_licenses,
     generate_protobuf,
     golangci_lint,
@@ -49,11 +48,13 @@ from .go import (
     vet,
 )
 from .test import (
+    download_tools,
     e2e_tests,
     install_shellcheck,
     install_tools,
     integration_tests,
     junit_upload,
+    lint_copyrights,
     lint_filenames,
     lint_milestone,
     lint_python,
@@ -79,6 +80,7 @@ ns.add_task(lint_licenses)
 ns.add_task(generate_licenses)
 ns.add_task(generate_protobuf)
 ns.add_task(reset)
+ns.add_task(lint_copyrights),
 ns.add_task(lint_teamassignment)
 ns.add_task(lint_releasenote)
 ns.add_task(lint_milestone)
@@ -86,8 +88,8 @@ ns.add_task(lint_filenames)
 ns.add_task(lint_python)
 ns.add_task(audit_tag_impact)
 ns.add_task(e2e_tests)
-ns.add_task(generate)
 ns.add_task(install_shellcheck)
+ns.add_task(download_tools)
 ns.add_task(install_tools)
 ns.add_task(check_mod_tidy)
 ns.add_task(tidy_all)

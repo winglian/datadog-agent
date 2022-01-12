@@ -1,7 +1,14 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2016-present Datadog, Inc.
+
 package common
 
 import (
 	"fmt"
+
+	"github.com/DataDog/datadog-agent/pkg/version"
 )
 
 // CreateStringBatches batches strings into chunks with specific size
@@ -29,4 +36,9 @@ func CopyStrings(tags []string) []string {
 	newTags := make([]string, len(tags))
 	copy(newTags, tags)
 	return newTags
+}
+
+// GetAgentVersionTag returns agent version tag
+func GetAgentVersionTag() string {
+	return "agent_version:" + version.AgentVersion
 }

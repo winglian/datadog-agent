@@ -7,7 +7,7 @@ import tempfile
 from invoke import task
 
 from .build_tags import get_default_build_tags
-from .go import generate, golangci_lint, staticcheck, vet
+from .go import golangci_lint, staticcheck, vet
 from .utils import (
     REPO_PATH,
     bin_name,
@@ -25,7 +25,7 @@ from .utils import (
 BIN_DIR = os.path.join(".", "bin")
 BIN_PATH = os.path.join(BIN_DIR, "security-agent", bin_name("security-agent", android=False))
 GIMME_ENV_VARS = ['GOROOT', 'PATH']
-CLANG_EXE_CMD = "clang {flags} '{c_file}' -o '{out_file}'"
+CLANG_EXE_CMD = "clang {flags} '{c_file}' -o '{out_file}' {libs}"
 
 
 def get_go_env(ctx, go_version):
@@ -97,9 +97,6 @@ def build(
                 if env_var in line:
                     goenv[env_var] = line[line.find(env_var) + len(env_var) + 1 : -1].strip('\'\"')
         ld_vars["GoVersion"] = go_version
-
-    # Generating go source from templates by running go generate on ./pkg/status
-    generate(ctx)
 
     # extend PATH from gimme with the one from get_build_flags
     if "PATH" in os.environ and "PATH" in goenv:
@@ -192,7 +189,7 @@ def build_syscall_x86_tester(ctx, build_dir, static=True):
     flags = '-m32'
     if static:
         flags += ' -static'
-    ctx.run(CLANG_EXE_CMD.format(flags=flags, c_file=syscall_tester_c_file, out_file=syscall_tester_exe_file))
+    ctx.run(CLANG_EXE_CMD.format(flags=flags, libs='', c_file=syscall_tester_c_file, out_file=syscall_tester_exe_file))
     return syscall_tester_exe_file
 
 
@@ -204,7 +201,10 @@ def build_syscall_tester(ctx, build_dir, static=True):
     flags = ''
     if static:
         flags += ' -static'
-    ctx.run(CLANG_EXE_CMD.format(flags=flags, c_file=syscall_tester_c_file, out_file=syscall_tester_exe_file))
+    libs = '-lpthread'
+    ctx.run(
+        CLANG_EXE_CMD.format(flags=flags, libs=libs, c_file=syscall_tester_c_file, out_file=syscall_tester_exe_file)
+    )
     return syscall_tester_exe_file
 
 
@@ -233,6 +233,7 @@ def build_functional_tests(
     major_version='7',
     build_tags='functionaltests',
     build_flags='',
+    nikos_embedded_path=None,
     bundle_ebpf=True,
     static=False,
     skip_linters=False,
@@ -243,7 +244,7 @@ def build_functional_tests(
         golangci_lint(ctx, targets=targets, build_tags=[build_tags], arch=arch)
         staticcheck(ctx, targets=targets, build_tags=[build_tags], arch=arch)
 
-    ldflags, gcflags, env = get_build_flags(ctx, major_version=major_version)
+    ldflags, _, env = get_build_flags(ctx, major_version=major_version, nikos_embedded_path=nikos_embedded_path)
 
     goenv = get_go_env(ctx, go_version)
     env.update(goenv)
@@ -259,6 +260,9 @@ def build_functional_tests(
     if static:
         ldflags += '-extldflags "-static"'
         build_tags += ',osusergo,netgo'
+
+    if nikos_embedded_path:
+        build_tags += ",dnf"
 
     cmd = 'go test -mod=mod -tags {build_tags} -ldflags="{ldflags}" -c -o {output} '
     cmd += '{build_flags} {repo_path}/pkg/security/tests'
@@ -306,6 +310,7 @@ def stress_tests(
     output='pkg/security/tests/stresssuite',
     bundle_ebpf=True,
     testflags='',
+    skip_linters=False,
 ):
     build_stress_tests(
         ctx,
@@ -314,6 +319,7 @@ def stress_tests(
         major_version=major_version,
         output=output,
         bundle_ebpf=bundle_ebpf,
+        skip_linters=skip_linters,
     )
 
     run_functional_tests(
@@ -401,6 +407,7 @@ def docker_functional_tests(
     arch="x64",
     major_version='7',
     testflags='',
+    static=False,
     skip_linters=False,
 ):
     build_functional_tests(
@@ -410,6 +417,7 @@ def docker_functional_tests(
         major_version=major_version,
         output="pkg/security/tests/testsuite",
         bundle_ebpf=True,
+        static=static,
         skip_linters=skip_linters,
     )
 
@@ -440,6 +448,8 @@ RUN apt-get update -y \
     cmd = 'docker run --name {container_name} {caps} --privileged -d --pid=host '
     cmd += '-v /dev:/dev '
     cmd += '-v /proc:/host/proc -e HOST_PROC=/host/proc '
+    cmd += '-v /:/host/root -e HOST_ROOT=/host/root '
+    cmd += '-v /etc:/host/etc -e HOST_ETC=/host/etc '
     cmd += '-v {GOPATH}/src/{REPO_PATH}/pkg/security/tests:/tests {image_tag} sleep 3600'
 
     args = {

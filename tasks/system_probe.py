@@ -11,7 +11,7 @@ from invoke import task
 from invoke.exceptions import Exit
 
 from .build_tags import get_default_build_tags
-from .utils import REPO_PATH, bin_name, bundle_files, get_build_flags, get_version_numeric_only
+from .utils import REPO_PATH, bin_name, get_build_flags, get_version_numeric_only
 
 BIN_DIR = os.path.join(".", "bin", "system-probe")
 BIN_PATH = os.path.join(BIN_DIR, bin_name("system-probe", android=False))
@@ -201,6 +201,9 @@ def kitchen_prepare(ctx, windows=is_windows):
     for i, pkg in enumerate(target_packages):
         relative_path = os.path.relpath(pkg)
         target_path = os.path.join(KITCHEN_ARTIFACT_DIR, relative_path)
+        target_bin = "testsuite"
+        if windows:
+            target_bin = "testsuite.exe"
 
         test(
             ctx,
@@ -208,7 +211,7 @@ def kitchen_prepare(ctx, windows=is_windows):
             skip_object_files=(i != 0),
             skip_linters=True,
             bundle_ebpf=False,
-            output_path=os.path.join(target_path, "testsuite"),
+            output_path=os.path.join(target_path, target_bin),
         )
 
         # copy ancillary data, if applicable
@@ -424,9 +427,11 @@ def get_linux_header_dirs():
     return dirs
 
 
-def get_ebpf_build_flags():
+def get_ebpf_build_flags(target=None):
     bpf_dir = os.path.join(".", "pkg", "ebpf")
     c_dir = os.path.join(bpf_dir, "c")
+    if not target:
+        target = ['-emit-llvm']
 
     flags = [
         '-D__KERNEL__',
@@ -439,17 +444,21 @@ def get_ebpf_build_flags():
         '-Wunused',
         '-Wall',
         '-Werror',
-        f"-include {os.path.join(c_dir, 'asm_goto_workaround.h')}",
-        '-O2',
-        '-emit-llvm',
-        # Some linux distributions enable stack protector by default which is not available on eBPF
-        '-fno-stack-protector',
-        '-fno-color-diagnostics',
-        '-fno-unwind-tables',
-        '-fno-asynchronous-unwind-tables',
-        '-fno-jump-tables',
-        f"-I{c_dir}",
     ]
+    flags.extend(target)
+    flags.extend(
+        [
+            f"-include {os.path.join(c_dir, 'asm_goto_workaround.h')}",
+            '-O2',
+            # Some linux distributions enable stack protector by default which is not available on eBPF
+            '-fno-stack-protector',
+            '-fno-color-diagnostics',
+            '-fno-unwind-tables',
+            '-fno-asynchronous-unwind-tables',
+            '-fno-jump-tables',
+            f"-I{c_dir}",
+        ]
+    )
 
     header_dirs = get_linux_header_dirs()
     for d in header_dirs:
@@ -458,16 +467,18 @@ def get_ebpf_build_flags():
     return flags
 
 
-def build_network_ebpf_compile_file(ctx, parallel_build, build_dir, p, debug, network_prebuilt_dir, network_flags):
+def build_network_ebpf_compile_file(
+    ctx, parallel_build, build_dir, p, debug, network_prebuilt_dir, network_flags, extension=".bc"
+):
     src_file = os.path.join(network_prebuilt_dir, f"{p}.c")
     if not debug:
-        bc_file = os.path.join(build_dir, f"{p}.bc")
+        bc_file = os.path.join(build_dir, f"{p}{extension}")
         return ctx.run(
             CLANG_CMD.format(flags=" ".join(network_flags), bc_file=bc_file, c_file=src_file),
             asynchronous=parallel_build,
         )
     else:
-        debug_bc_file = os.path.join(build_dir, f"{p}-debug.bc")
+        debug_bc_file = os.path.join(build_dir, f"{p}-debug{extension}")
         return ctx.run(
             CLANG_CMD.format(flags=" ".join(network_flags + ["-DDEBUG=1"]), bc_file=debug_bc_file, c_file=src_file),
             asynchronous=parallel_build,
@@ -491,12 +502,32 @@ def build_network_ebpf_link_file(ctx, parallel_build, build_dir, p, debug, netwo
         )
 
 
+def build_http_ebpf_files(ctx, build_dir):
+    network_bpf_dir = os.path.join(".", "pkg", "network", "ebpf")
+    network_c_dir = os.path.join(network_bpf_dir, "c")
+    network_prebuilt_dir = os.path.join(network_c_dir, "prebuilt")
+
+    uname_m = check_output("uname -m", shell=True).decode('utf-8').strip()
+    network_flags = get_ebpf_build_flags(target=["-target", "bpf"])
+    network_flags.append(f"-I{network_c_dir}")
+    network_flags.append(f"-D__{uname_m}__")
+
+    network_flags.append(f"-isystem /usr/include/{uname_m}-linux-gnu")
+
+    build_network_ebpf_compile_file(
+        ctx, False, build_dir, "http", True, network_prebuilt_dir, network_flags, extension=".o"
+    )
+    build_network_ebpf_compile_file(
+        ctx, False, build_dir, "http", False, network_prebuilt_dir, network_flags, extension=".o"
+    )
+
+
 def build_network_ebpf_files(ctx, build_dir, parallel_build=True):
     network_bpf_dir = os.path.join(".", "pkg", "network", "ebpf")
     network_c_dir = os.path.join(network_bpf_dir, "c")
     network_prebuilt_dir = os.path.join(network_c_dir, "prebuilt")
 
-    compiled_programs = ["dns", "http", "offset-guess", "tracer"]
+    compiled_programs = ["dns", "offset-guess", "tracer"]
 
     network_flags = get_ebpf_build_flags()
     network_flags.append(f"-I{network_c_dir}")
@@ -592,8 +623,6 @@ def build_security_ebpf_files(ctx, build_dir, parallel_build=True):
         for p in promises:
             p.join()
 
-    return [security_agent_obj_file, security_agent_syscall_wrapper_obj_file]
-
 
 def build_object_files(ctx, parallel_build):
     """build_object_files builds only the eBPF object"""
@@ -609,14 +638,11 @@ def build_object_files(ctx, parallel_build):
     ctx.run(f"mkdir -p {build_dir}")
     ctx.run(f"mkdir -p {build_runtime_dir}")
 
-    bindata_files = []
     build_network_ebpf_files(ctx, build_dir=build_dir, parallel_build=parallel_build)
-    bindata_files.extend(build_security_ebpf_files(ctx, build_dir=build_dir, parallel_build=parallel_build))
+    build_http_ebpf_files(ctx, build_dir=build_dir)
+    build_security_ebpf_files(ctx, build_dir=build_dir, parallel_build=parallel_build)
 
     generate_runtime_files(ctx)
-
-    go_dir = os.path.join(bpf_dir, "bytecode", "bindata")
-    bundle_files(ctx, bindata_files, "pkg/.*/", go_dir, "bindata", BUNDLE_TAG)
 
 
 @task
@@ -633,15 +659,18 @@ def generate_runtime_files(ctx):
         ctx.run(f"go generate -mod=mod -tags {BPF_TAG} {f}")
 
 
-def replace_cgo_tag_absolute_path(file_path, absolute_path, relative_path):
+def replace_cgo_tag_absolute_path(file_path):
     # read
     f = open(file_path)
     lines = []
     for line in f:
         if line.startswith("// cgo -godefs"):
-            lines.append(line.replace(absolute_path, relative_path))
-        else:
-            lines.append(line)
+            path = line.split()[-1]
+            if path.startswith("/"):
+                _, filename = os.path.split(path)
+                lines.append(line.replace(path, filename))
+                continue
+        lines.append(line)
     f.close()
 
     # write
@@ -667,7 +696,6 @@ def generate_cgo_types(ctx, windows=is_windows, replace_absolutes=True):
 
     for f in def_files:
         fdir, file = os.path.split(f)
-        absolute_input_file = os.path.abspath(f)
         base, _ = os.path.splitext(file)
         with ctx.cd(fdir):
             output_file = f"{base}_{platform}.go"
@@ -675,7 +703,7 @@ def generate_cgo_types(ctx, windows=is_windows, replace_absolutes=True):
             ctx.run(f"gofmt -w -s {output_file}")
             if replace_absolutes:
                 # replace absolute path with relative ones in generated file
-                replace_cgo_tag_absolute_path(os.path.join(fdir, output_file), absolute_input_file, file)
+                replace_cgo_tag_absolute_path(os.path.join(fdir, output_file))
 
 
 def is_root():

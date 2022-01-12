@@ -3,8 +3,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
-// +build linux
-
 package model
 
 import "github.com/DataDog/datadog-agent/pkg/security/secl/compiler/eval"
@@ -36,7 +34,7 @@ func GetEventTypeCategory(eventType eval.EventType) EventCategory {
 	switch eventType {
 	case "exec":
 		return ProcessCategory
-	case "bpf", "selinux":
+	case "bpf", "selinux", "mmap", "mprotect", "ptrace":
 		return KernelCategory
 	}
 

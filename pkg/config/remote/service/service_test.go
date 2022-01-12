@@ -1,177 +1,161 @@
-// Unless explicitly stated otherwise all files in this repository are licensed
-// under the Apache License Version 2.0.
-// This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2016-present Datadog, Inc.
-
 package service
 
 import (
 	"context"
-	"encoding/json"
-	"io/ioutil"
+	"encoding/base32"
 	"os"
 	"testing"
-	"time"
-
-	cjson "github.com/tent/canonical-json-go"
-	"github.com/theupdateframework/go-tuf/data"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
+	rdata "github.com/DataDog/datadog-agent/pkg/config/remote/data"
+	"github.com/DataDog/datadog-agent/pkg/config/remote/uptane"
+	"github.com/DataDog/datadog-agent/pkg/proto/msgpgo"
 	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
+	"github.com/DataDog/datadog-agent/pkg/version"
+	"github.com/benbjohnson/clock"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/theupdateframework/go-tuf/data"
 )
 
+type mockAPI struct {
+	mock.Mock
+}
+
+func (m *mockAPI) Fetch(ctx context.Context, request *pbgo.LatestConfigsRequest) (*pbgo.LatestConfigsResponse, error) {
+	args := m.Called(ctx, request)
+	return args.Get(0).(*pbgo.LatestConfigsResponse), args.Error(1)
+}
+
+type mockUptane struct {
+	mock.Mock
+}
+
+func (m *mockUptane) Update(response *pbgo.LatestConfigsResponse) error {
+	args := m.Called(response)
+	return args.Error(0)
+}
+
+func (m *mockUptane) State() (uptane.State, error) {
+	args := m.Called()
+	return args.Get(0).(uptane.State), args.Error(1)
+}
+
+func (m *mockUptane) DirectorRoot(version uint64) ([]byte, error) {
+	args := m.Called(version)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (m *mockUptane) Targets() (data.TargetFiles, error) {
+	args := m.Called()
+	return args.Get(0).(data.TargetFiles), args.Error(1)
+}
+
+func (m *mockUptane) TargetFile(path string) ([]byte, error) {
+	args := m.Called(path)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (m *mockUptane) TargetsMeta() ([]byte, error) {
+	args := m.Called()
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+var (
+	testRCKey = msgpgo.RemoteConfigKey{
+		AppKey:     "fake_key",
+		OrgID:      2,
+		Datacenter: "dd.com",
+	}
+)
+
+func newTestService(t *testing.T, api *mockAPI, uptane *mockUptane, clock clock.Clock) *Service {
+	dir, err := os.MkdirTemp("", "testdbdir")
+	assert.NoError(t, err)
+	config.Datadog.Set("run_path", dir)
+	serializedKey, _ := testRCKey.MarshalMsg(nil)
+	config.Datadog.Set("remote_configuration.key", base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(serializedKey))
+	service, err := NewService()
+	assert.NoError(t, err)
+	service.api = api
+	service.clock = clock
+	service.uptane = uptane
+	assert.NoError(t, err)
+	return service
+}
+
 func TestService(t *testing.T) {
-	tmpFile, err := ioutil.TempFile("", "store")
-	if err != nil {
-		t.Fatal(err)
+	api := &mockAPI{}
+	uptaneClient := &mockUptane{}
+	clock := clock.NewMock()
+	service := newTestService(t, api, uptaneClient, clock)
+
+	lastConfigResponse := &pbgo.LatestConfigsResponse{
+		TargetFiles: []*pbgo.File{{Path: "test"}},
 	}
-	tmpFile.Close()
+	api.On("Fetch", mock.Anything, &pbgo.LatestConfigsRequest{
+		Hostname:                     service.hostname,
+		AgentVersion:                 version.AgentVersion,
+		CurrentConfigSnapshotVersion: 0,
+		CurrentConfigRootVersion:     0,
+		CurrentDirectorRootVersion:   0,
+		Products:                     []string{},
+		NewProducts:                  []string{},
+	}).Return(lastConfigResponse, nil)
+	uptaneClient.On("State").Return(uptane.State{}, nil)
+	uptaneClient.On("Update", lastConfigResponse).Return(nil)
 
-	defer os.Remove(tmpFile.Name())
+	err := service.refresh()
+	assert.NoError(t, err)
 
-	config.DetectFeatures()
+	api.AssertExpectations(t)
+	uptaneClient.AssertExpectations(t)
 
-	service, err := NewService(Opts{
-		DBPath:                 tmpFile.Name(),
-		RemoteConfigurationKey: "test.com/1/1234",
-		RefreshInterval:        time.Second,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	*uptaneClient = mockUptane{}
+	*api = mockAPI{}
 
-	// override client with test client
-	service.client = &testClient{}
-
-	configChan := make(chan *pbgo.ConfigResponse)
-	callback := func(config *pbgo.ConfigResponse) error {
-		configChan <- config
-		return nil
-	}
-
-	subscriber := NewSubscriber(pbgo.Product_APPSEC, time.Second*10, callback)
-	service.RegisterSubscriber(subscriber)
-
-	if err := service.Start(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-
-	timeout := 5 * time.Second
-	select {
-	case <-configChan:
-	case <-time.After(timeout):
-		// TODO(lebauce): update root, use fixtures and do not skip test
-		t.Skipf("did not receive any config in %s", timeout)
-	}
-}
-
-type testClient struct {
-}
-
-func (c *testClient) Fetch(_ context.Context, configStates *pbgo.ClientLatestConfigsRequest) (*pbgo.LatestConfigsResponse, error) {
-	return newTestConfig(1)
-}
-
-func newTestConfig(version uint64) (*pbgo.LatestConfigsResponse, error) {
-	timestampRaw := []byte(`{
- "signatures": [
-  {
-   "keyid": "701f7e8d4451d55f834606807ee782e9f508ef6f2400bc111b0532c6817b0a0d",
-   "sig": "fb13749afeecad4fcd79d18bc573cfb9fe320f5b740ad53cb61576b1fef6e0a83e18c3e1d7036b679af2651f1e0539f6c70c439c874f25ca5b6a040b806af802"
-  }
- ],
- "signed": {
-  "_type": "timestamp",
-  "expires": "2021-07-27T12:39:09Z",
-  "meta": {
-   "snapshot.json": {
-    "hashes": {
-     "sha256": "f174a84f5cac393a90f7c97706c4b819138a15b15959663e217f2f55cf139a50",
-     "sha512": "9e7d17f0ba11c1f4b1273637a427a35bbe4e805a9cf4c26a081365328d9734f11a20a66d75034f812b4f8fb21cb4a8cce9bd6d5a217fdc37d240779f16a6b2de"
-    },
-    "length": 431,
-    "version": 1
-   }
-  },
-  "spec_version": "1.0.0",
-  "version": 1
- }
-}`)
-
-	s := &data.Signed{}
-	if err := json.Unmarshal(timestampRaw, s); err != nil {
-		return nil, err
-	}
-
-	var timestamp data.Timestamp
-	if err := json.Unmarshal(s.Signed, &timestamp); err != nil {
-		return nil, err
-	}
-
-	var err error
-	timestampRaw, err = cjson.Marshal(s)
-	if err != nil {
-		return nil, err
-	}
-
-	snapshotRaw := []byte(`{
- "signatures": [
-  {
-   "keyid": "c3a7fa32c0417e270b6c1450005369c94bfad6aa761b623a8ef859df65846b71",
-   "sig": "95e304aa6f2f2a97eae42ea937f8e51a20fbdedeba4e71d7b2117f22200b7f1bd908f9fb55b6fbcd2fdd002125a6f683a2e8c3248f3409ef4d18e2075cc3f902"
-  }
- ],
- "signed": {
-  "_type": "snapshot",
-  "expires": "2021-08-02T12:39:09Z",
-  "meta": {
-   "targets.json": {
-    "version": 1
-   }
-  },
-  "spec_version": "1.0.0",
-  "version": 1
- }
-}`)
-
-	targetsRaw := []byte(`{
- "signatures": [
-  {
-   "keyid": "c72f27ac9d5e5169d18f4f5ecab24bc659abb86374e8e696603c64e5ff0fdd13",
-   "sig": "aaf0f994a833c7b03b3b5481c8bdc0f9d15e7227f4087084fc5e3178f48faac575acebc03a995ac69c67fbdf3564ba803f26cd9d11c56101f6ca598081efdb03"
-  }
- ],
- "signed": {
-  "_type": "targets",
-  "delegations": {
-   "keys": {},
-   "roles": []
-  },
-  "expires": "2021-10-25T20:06:19Z",
-  "spec_version": "1.0.0",
-  "targets": {},
-  "version": 1
- }
-}`)
-
-	return &pbgo.LatestConfigsResponse{
-		DirectorMetas: &pbgo.DirectorMetas{
-			Timestamp: &pbgo.TopMeta{
-				Version: 1,
-				Raw:     timestampRaw,
-			},
-			Snapshot: &pbgo.TopMeta{
-				Version: 1,
-				Raw:     snapshotRaw,
-			},
-			Targets: &pbgo.TopMeta{
-				Version: 1,
-				Raw:     targetsRaw,
-			},
+	root3 := []byte(`testroot3`)
+	root4 := []byte(`testroot4`)
+	targets := []byte(`testtargets`)
+	client := &pbgo.Client{
+		State: &pbgo.ClientState{
+			RootVersion: 2,
 		},
-		TargetFiles: []*pbgo.File{{
-			Path: "APPSEC",
-			Raw:  []byte("test"),
-		}},
-	}, nil
+		Products: []string{
+			string(rdata.ProductAPMSampling),
+		},
+	}
+	fileAPM1 := []byte(`testapm1`)
+	fileAPM2 := []byte(`testapm2`)
+	uptaneClient.On("TargetsMeta").Return(targets, nil)
+	uptaneClient.On("Targets").Return(data.TargetFiles{"datadog/2/APM_SAMPLING/id/1": {}, "datadog/2/TESTING1/id/1": {}, "datadog/2/APM_SAMPLING/id/2": {}, "datadog/2/APPSEC/id/1": {}}, nil)
+	uptaneClient.On("State").Return(uptane.State{ConfigRootVersion: 1, ConfigSnapshotVersion: 2, DirectorRootVersion: 4, DirectorTargetsVersion: 5}, nil)
+	uptaneClient.On("DirectorRoot", uint64(3)).Return(root3, nil)
+	uptaneClient.On("DirectorRoot", uint64(4)).Return(root4, nil)
+	uptaneClient.On("TargetFile", "datadog/2/APM_SAMPLING/id/1").Return(fileAPM1, nil)
+	uptaneClient.On("TargetFile", "datadog/2/APM_SAMPLING/id/2").Return(fileAPM2, nil)
+	uptaneClient.On("Update", lastConfigResponse).Return(nil)
+	api.On("Fetch", mock.Anything, &pbgo.LatestConfigsRequest{
+		Hostname:                     service.hostname,
+		AgentVersion:                 version.AgentVersion,
+		CurrentConfigRootVersion:     1,
+		CurrentConfigSnapshotVersion: 2,
+		CurrentDirectorRootVersion:   4,
+		Products:                     []string{},
+		NewProducts: []string{
+			string(rdata.ProductAPMSampling),
+		},
+		ActiveClients: []*pbgo.Client{client},
+	}).Return(lastConfigResponse, nil)
+
+	configResponse, err := service.ClientGetConfigs(&pbgo.ClientGetConfigsRequest{Client: client})
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, []*pbgo.TopMeta{{Version: 3, Raw: root3}, {Version: 4, Raw: root4}}, configResponse.Roots)
+	assert.ElementsMatch(t, []*pbgo.File{{Path: "datadog/2/APM_SAMPLING/id/1", Raw: fileAPM1}, {Path: "datadog/2/APM_SAMPLING/id/2", Raw: fileAPM2}}, configResponse.TargetFiles)
+	assert.Equal(t, &pbgo.TopMeta{Version: 5, Raw: targets}, configResponse.Targets)
+	err = service.refresh()
+	assert.NoError(t, err)
+
+	api.AssertExpectations(t)
+	uptaneClient.AssertExpectations(t)
 }

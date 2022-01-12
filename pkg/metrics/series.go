@@ -221,6 +221,41 @@ func (a APIMetricType) seriesAPIV2Enum() int32 {
 // If a compressed payload is larger than the max, a new payload will be generated. This method returns a slice of
 // compressed protobuf marshaled MetricPayload objects.
 func (series Series) MarshalSplitCompress(bufferContext *marshaler.BufferContext) ([]*[]byte, error) {
+	return marshalSplitCompress(newSerieSliceIterator(series), bufferContext)
+}
+
+type serieIterator interface {
+	MoveNext() bool
+	Current() *Serie
+}
+
+var _ serieIterator = (*serieSliceIterator)(nil)
+
+// serieSliceIterator implements serieIterator interface for `[]*Serie`.
+type serieSliceIterator struct {
+	series []*Serie
+	index  int
+}
+
+func newSerieSliceIterator(series []*Serie) *serieSliceIterator {
+	return &serieSliceIterator{
+		series: series,
+		index:  -1,
+	}
+}
+func (s *serieSliceIterator) MoveNext() bool {
+	s.index++
+	return s.index < len(s.series)
+}
+
+func (s *serieSliceIterator) Current() *Serie {
+	return s.series[s.index]
+}
+
+// MarshalSplitCompress uses the stream compressor to marshal and compress series payloads.
+// If a compressed payload is larger than the max, a new payload will be generated. This method returns a slice of
+// compressed protobuf marshaled MetricPayload objects.
+func marshalSplitCompress(iterator serieIterator, bufferContext *marshaler.BufferContext) ([]*[]byte, error) {
 	var err error
 	var compressor *stream.Compressor
 	buf := bufferContext.PrecompressionBuf
@@ -276,7 +311,8 @@ func (series Series) MarshalSplitCompress(bufferContext *marshaler.BufferContext
 		return nil, err
 	}
 
-	for _, serie := range series {
+	for iterator.MoveNext() {
+		serie := iterator.Current()
 		buf.Reset()
 		err = ps.Embedded(payloadSeries, func(ps *molecule.ProtoStream) error {
 			var err error
@@ -427,46 +463,27 @@ func (e Serie) String() string {
 	return string(s)
 }
 
-//// The following methods implement the StreamJSONMarshaler interface
-//// for support of the enable_stream_payload_serialization option.
-
-// WriteHeader writes the payload header for this type
-func (series Series) WriteHeader(stream *jsoniter.Stream) error {
+func writeHeader(stream *jsoniter.Stream) error {
 	stream.WriteObjectStart()
 	stream.WriteObjectField("series")
 	stream.WriteArrayStart()
 	return stream.Flush()
 }
 
-// WriteFooter prints the payload footer for this type
-func (series Series) WriteFooter(stream *jsoniter.Stream) error {
+func writeFooter(stream *jsoniter.Stream) error {
 	stream.WriteArrayEnd()
 	stream.WriteObjectEnd()
 	return stream.Flush()
 }
 
-// WriteItem prints the json representation of an item
-func (series Series) WriteItem(stream *jsoniter.Stream, i int) error {
-	if i < 0 || i > len(series)-1 {
-		return errors.New("out of range")
-	}
-	serie := series[i]
+func writeItem(stream *jsoniter.Stream, serie *Serie) error {
 	populateDeviceField(serie)
 	encodeSerie(serie, stream)
 	return stream.Flush()
 }
 
-// Len returns the number of items to marshal
-func (series Series) Len() int {
-	return len(series)
-}
-
-// DescribeItem returns a text description for logs
-func (series Series) DescribeItem(i int) string {
-	if i < 0 || i > len(series)-1 {
-		return "out of range"
-	}
-	return fmt.Sprintf("name %q, %d points", series[i].Name, len(series[i].Points))
+func describeItem(serie *Serie) string {
+	return fmt.Sprintf("name %q, %d points", serie.Name, len(serie.Points))
 }
 
 func encodeSerie(serie *Serie, stream *jsoniter.Stream) {
@@ -536,4 +553,49 @@ func encodePoints(points []Point, stream *jsoniter.Stream) {
 		stream.WriteArrayEnd()
 	}
 	stream.WriteArrayEnd()
+}
+
+//// The following methods implement the StreamJSONMarshaler interface
+//// for support of the enable_stream_payload_serialization option.
+
+// WriteHeader writes the payload header for this type
+func (series Series) WriteHeader(stream *jsoniter.Stream) error {
+	return writeHeader(stream)
+}
+
+// WriteFooter writes the payload footer for this type
+func (series Series) WriteFooter(stream *jsoniter.Stream) error {
+	return writeFooter(stream)
+}
+
+// WriteItem writes the json representation of an item
+func (series Series) WriteItem(stream *jsoniter.Stream, i int) error {
+	if i < 0 || i > len(series)-1 {
+		return errors.New("out of range")
+	}
+	return writeItem(stream, series[i])
+}
+
+// Len returns the number of items to marshal
+func (series Series) Len() int {
+	return len(series)
+}
+
+// DescribeItem returns a text description for logs
+func (series Series) DescribeItem(i int) string {
+	if i < 0 || i > len(series)-1 {
+		return "out of range"
+	}
+	return describeItem(series[i])
+}
+
+// SerieSink is a sink for series.
+// It provides a way to append a serie into `Series` or `IterableSerie`
+type SerieSink interface {
+	Append(*Serie)
+}
+
+// Append appends a serie into series. Implement `SerieSink` interface.
+func (series *Series) Append(serie *Serie) {
+	*series = append(*series, serie)
 }

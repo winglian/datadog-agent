@@ -59,6 +59,9 @@ type Daemon struct {
 	// stopped represents whether the Daemon has been stopped
 	stopped bool
 
+	// LambdaLibraryDetected represents whether the Datadog Lambda Library was detected in the environment
+	LambdaLibraryDetected bool
+
 	// RuntimeWg is used to keep track of whether the runtime is currently handling an invocation.
 	// It should be reset when we start a new invocation, as we may start a new invocation before hearing that the last one finished.
 	RuntimeWg *sync.WaitGroup
@@ -70,9 +73,11 @@ type Daemon struct {
 
 	ExecutionContext *serverlessLog.ExecutionContext
 
-	// TellDaemonRuntimeDoneOnce asserts that TellDaemonRuntimeDone will be called at most once per invocation (at the end of the function OR after a timeout)
-	// this should be reset before each invocation
-	TellDaemonRuntimeDoneOnce sync.Once
+	// TellDaemonRuntimeDoneOnce asserts that TellDaemonRuntimeDone will be called at most once per invocation (at the end of the function OR after a timeout).
+	// We store a pointer to a sync.Once, which should be reset to a new pointer at the beginning of each invocation.
+	// Note that overwriting the actual underlying sync.Once is not thread safe,
+	// so we must use a pointer here to create a new sync.Once without overwriting the old one when resetting.
+	TellDaemonRuntimeDoneOnce *sync.Once
 
 	// metricsFlushMutex ensures that only one metrics flush can be underway at a given time
 	metricsFlushMutex sync.Mutex
@@ -118,8 +123,8 @@ func StartDaemon(addr string) *Daemon {
 	return daemon
 }
 
-// Hello is a route called by the Lambda Library when it starts.
-// It is no longer used, but the route is maintained for backwards compatibility.
+// Hello is a route called by the Datadog Lambda Library when it starts.
+// It is used to detect the Datadog Lambda Library in the environment.
 type Hello struct {
 	daemon *Daemon
 }
@@ -127,9 +132,10 @@ type Hello struct {
 // ServeHTTP - see type Hello comment.
 func (h *Hello) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Debug("Hit on the serverless.Hello route.")
+	h.daemon.LambdaLibraryDetected = true
 }
 
-// Flush is a route called by the Lambda Library when the runtime is done handling an invocation.
+// Flush is a route called by the Datadog Lambda Library when the runtime is done handling an invocation.
 // It is no longer used, but the route is maintained for backwards compatibility.
 type Flush struct {
 	daemon *Daemon
@@ -324,7 +330,7 @@ func (d *Daemon) TellDaemonRuntimeStarted() {
 	// Reset the RuntimeWg on every new invocation.
 	// We might receive a new invocation before we learn that the previous invocation has finished.
 	d.RuntimeWg = &sync.WaitGroup{}
-	d.TellDaemonRuntimeDoneOnce = sync.Once{}
+	d.TellDaemonRuntimeDoneOnce = &sync.Once{}
 	d.RuntimeWg.Add(1)
 }
 
@@ -369,7 +375,7 @@ func (d *Daemon) ComputeGlobalTags(configTags []string) {
 // setTraceTags returns a boolean which indicate whether or not the operation succeed for testing purpose.
 func (d *Daemon) setTraceTags(tagMap map[string]string) bool {
 	if d.TraceAgent != nil && d.TraceAgent.Get() != nil {
-		d.TraceAgent.Get().SetGlobalTagsUnsafe(tags.BuildTracerTags(tagMap))
+		d.TraceAgent.SetTags(tags.BuildTracerTags(tagMap))
 		return true
 	}
 	return false
