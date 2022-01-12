@@ -41,7 +41,7 @@ func TestEncodePayloadNode(t *testing.T) {
 	}
 	payload, err := EncodePayload(mb)
 	assert.NoError(t, err)
-	file, err := os.Create("node.bin")
+	file, err := os.Create("node-1.0.x.bin")
 	defer file.Close()
 	_, err = file.Write(payload)
 	assert.NoError(t, err)
