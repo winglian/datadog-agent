@@ -8,6 +8,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/network/config"
 	"github.com/DataDog/datadog-agent/pkg/network/driver"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+	"github.com/DataDog/datadog-agent/pkg/process/util"
 )
 
 const (
@@ -88,6 +89,28 @@ func (m *DriverMonitor) process(transactionBatch []driver.HttpTransactionType) {
 	defer m.mux.Unlock()
 
 	m.telemetry.aggregate(transactions, nil)
+
+	log.Infof("****** Received http txn batch: *******")
+	b := make([]byte, HTTPBufferSize)
+	for _, tx := range transactions {
+		var saddr, daddr util.Address
+		if tx.SrcIPHigh() == 0 && tx.DstIPHigh() == 0 {
+			saddr = util.V4Address(uint32(tx.SrcIPLow()))
+			daddr = util.V4Address(uint32(tx.DstIPLow()))
+		} else {
+			saddr = util.V6Address(tx.SrcIPLow(), tx.SrcIPHigh())
+			daddr = util.V6Address(tx.DstIPLow(), tx.DstIPHigh())
+		}
+		log.Infof("  %v:%v -> %v:%v %v %v %v",
+			saddr,
+			tx.SrcPort(),
+			daddr,
+			tx.DstPort(),
+			string(getPath(tx.ReqFragment(), b)),
+			tx.Method(),
+			tx.StatusClass(),
+		)
+	}
 
 	m.statkeeper.Process(transactions)
 }

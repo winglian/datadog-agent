@@ -14,6 +14,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/network"
 	"github.com/DataDog/datadog-agent/pkg/network/http"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+	"github.com/DataDog/datadog-agent/pkg/process/util"
 	"github.com/gogo/protobuf/jsonpb"
 )
 
@@ -83,6 +84,7 @@ func modelConnections(conns *network.Connections) *model.Connections {
 			if httpAggregations != nil {
 				httpMatches[httpKey] = struct{}{}
 				conn.Tags |= tagsIndex[httpKey]
+				delete(httpIndex, httpKey);
 				break
 			}
 		}
@@ -90,11 +92,25 @@ func modelConnections(conns *network.Connections) *model.Connections {
 		agentConns[i] = FormatConnection(conn, routeIndex, httpAggregations, dnsFormatter, ipc, tagsSet)
 	}
 
-	if orphans := len(httpIndex) - len(httpMatches); orphans > 0 {
-		log.Debugf(
-			"detected orphan http aggreggations. this can be either caused by conntrack sampling or missed tcp close events. count=%d",
-			orphans,
-		)
+	if len(httpIndex) > 0 {
+		log.Infof("***** Printing orphans ******")
+		for k, v := range httpIndex {
+			var saddr, daddr util.Address
+			if k.SrcIPHigh == 0 && k.DstIPHigh == 0 {
+				saddr = util.V4Address(uint32(k.SrcIPLow))
+				daddr = util.V4Address(uint32(k.DstIPLow))
+			} else {
+				saddr = util.V6Address(k.SrcIPLow, k.SrcIPHigh)
+				daddr = util.V6Address(k.DstIPLow, k.DstIPHigh)
+			}
+			log.Infof("  %v:%v -> %v:%v, %v aggregations",
+				saddr,
+				k.SrcPort,
+				daddr,
+				k.DstPort,
+				len(v.EndpointAggregations),
+			)
+		}
 	}
 
 	routes := make([]*model.Route, len(routeIndex))
