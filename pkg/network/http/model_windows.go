@@ -51,38 +51,38 @@ func (tx *httpTX) SrcIPLow() uint64 {
 	// Source & dest IP are given to us as a 16-byte slices in network byte order (BE). To convert to
 	// low/high representation, we must convert to host byte order (LE).
 	if tx.isIPV4() {
-		return uint64(binary.LittleEndian.Uint32(tx.Tup.Saddr[:4]))
+		return uint64(binary.LittleEndian.Uint32(tx.Tup.CliAddr[:4]))
 	}
-	return binary.LittleEndian.Uint64(tx.Tup.Saddr[8:])
+	return binary.LittleEndian.Uint64(tx.Tup.CliAddr[8:])
 }
 
 func (tx *httpTX) SrcIPHigh() uint64 {
 	if tx.isIPV4() {
 		return uint64(0)
 	}
-	return binary.LittleEndian.Uint64(tx.Tup.Saddr[:8])
+	return binary.LittleEndian.Uint64(tx.Tup.CliAddr[:8])
 }
 
 func (tx *httpTX) SrcPort() uint16 {
-	return tx.Tup.Sport
+	return tx.Tup.CliPort
 }
 
 func (tx *httpTX) DstIPLow() uint64 {
 	if tx.isIPV4() {
-		return uint64(binary.LittleEndian.Uint32(tx.Tup.Daddr[:4]))
+		return uint64(binary.LittleEndian.Uint32(tx.Tup.SrvAddr[:4]))
 	}
-	return binary.LittleEndian.Uint64(tx.Tup.Daddr[8:])
+	return binary.LittleEndian.Uint64(tx.Tup.SrvAddr[8:])
 }
 
 func (tx *httpTX) DstIPHigh() uint64 {
 	if tx.isIPV4() {
 		return uint64(0)
 	}
-	return binary.LittleEndian.Uint64(tx.Tup.Daddr[:8])
+	return binary.LittleEndian.Uint64(tx.Tup.SrvAddr[:8])
 }
 
 func (tx *httpTX) DstPort() uint16 {
-	return tx.Tup.Dport
+	return tx.Tup.SrvPort
 }
 
 func (tx *httpTX) Method() Method {
@@ -118,13 +118,13 @@ func nsTimestampToFloat(ns uint64) float64 {
 }
 
 // generateIPv4HTTPTransaction is a testing helper function required for the http_statkeeper tests
-func generateIPv4HTTPTransaction(source util.Address, dest util.Address, sourcePort int, destPort int, path string, code int, latency time.Duration) httpTX {
+func generateIPv4HTTPTransaction(client util.Address, server util.Address, cliPort int, srvPort int, path string, code int, latency time.Duration) httpTX {
 	var tx httpTX
 
 	reqFragment := fmt.Sprintf("GET %s HTTP/1.1\nHost: example.com\nUser-Agent: example-browser/1.0", path)
 	latencyNS := uint64(uint64(latency))
-	src := source.Bytes()
-	dst := dest.Bytes()
+	cli := client.Bytes()
+	srv := server.Bytes()
 
 	tx.RequestStarted = 1
 	tx.ResponseLastSeen = tx.RequestStarted + latencyNS
@@ -132,14 +132,14 @@ func generateIPv4HTTPTransaction(source util.Address, dest util.Address, sourceP
 	for i := 0; i < len(tx.RequestFragment) && i < len(reqFragment); i++ {
 		tx.RequestFragment[i] = uint8(reqFragment[i])
 	}
-	for i := 0; i < len(tx.Tup.Saddr) && i < len(src); i++ {
-		tx.Tup.Saddr[i] = src[i]
+	for i := 0; i < len(tx.Tup.CliAddr) && i < len(cli); i++ {
+		tx.Tup.CliAddr[i] = cli[i]
 	}
-	for i := 0; i < len(tx.Tup.Daddr) && i < len(dst); i++ {
-		tx.Tup.Daddr[i] = dst[i]
+	for i := 0; i < len(tx.Tup.SrvAddr) && i < len(srv); i++ {
+		tx.Tup.SrvAddr[i] = srv[i]
 	}
-	tx.Tup.Sport = uint16(sourcePort)
-	tx.Tup.Dport = uint16(destPort)
+	tx.Tup.CliPort = uint16(cliPort)
+	tx.Tup.SrvPort = uint16(srvPort)
 
 	return tx
 }

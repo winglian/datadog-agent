@@ -3,7 +3,7 @@
 
 package driver
 
-const Signature = 0xddfd0000000f
+const Signature = 0xddfd00000010
 
 const (
 	GetStatsIOCTL             = 0x122004
@@ -159,20 +159,19 @@ type HttpTransactionType struct {
 	RequestMethod      uint32
 	ResponseStatusCode uint16
 	RequestFragment    [25]uint8
+	Pad_cgo_0          [1]byte
 }
 type ConnTupleType struct {
-	Saddr    [16]uint8
-	Daddr    [16]uint8
-	Sport    uint16
-	Dport    uint16
-	Protocol uint16
-	Family   uint16
-	Pid      uint64
+	CliAddr [16]uint8
+	SrvAddr [16]uint8
+	CliPort uint16
+	SrvPort uint16
+	Family  uint16
 }
 type HttpMethodType uint32
 
 const (
 	HttpBatchSize           = 0xf
 	HttpBufferSize          = 0x19
-	HttpTransactionTypeSize = 0x5f
+	HttpTransactionTypeSize = 0x58
 )

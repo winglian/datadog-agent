@@ -16,7 +16,7 @@ typedef __int64 LONG64;
 typedef unsigned char       uint8_t;
 
 // define a version signature so that the driver won't load out of date structures, etc.
-#define DD_NPMDRIVER_VERSION       0x0f
+#define DD_NPMDRIVER_VERSION       0x10
 #define DD_NPMDRIVER_SIGNATURE     ((uint64_t)0xDDFD << 32 | DD_NPMDRIVER_VERSION)
 
 // for more information on defining control codes, see
@@ -308,14 +308,14 @@ typedef enum _HttpMethodType {
 } HTTP_METHOD_TYPE;
 
 typedef struct _ConnTupleType {
-    uint8_t  saddr[16]; // only first 4 bytes valid for AF_INET, in network byte order
-    uint8_t  daddr[16]; // ditto
-    uint16_t sport;     // host byte order
-    uint16_t dport;     // host byte order
-    uint16_t protocol;
-    uint16_t family;    // AF_INET or AF_INET6
-    uint64_t pid;
-} CONN_TUPLE_TYPE;
+    uint8_t  cliAddr[16]; // only first 4 bytes valid for AF_INET, in network byte order
+    uint8_t  srvAddr[16]; // ditto
+    uint16_t cliPort;     // host byte order
+    uint16_t srvPort;     // host byte order
+    uint16_t family;      // AF_INET or AF_INET6
+} CONN_TUPLE_TYPE, * PCONN_TUPLE_TYPE;
+
+#pragma pack(4)
 
 typedef struct _HttpTransactionType {
     uint64_t         requestStarted;      // in ns
