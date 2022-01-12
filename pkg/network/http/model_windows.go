@@ -43,18 +43,6 @@ func (tx *httpTX) RequestLatency() float64 {
 	return nsTimestampToFloat(uint64(tx.ResponseLastSeen - tx.RequestStarted))
 }
 
-// Incomplete returns true if the transaction contains only the request or response information
-// This happens in the context of localhost with NAT, in which case we join the two parts in userspace
-func (tx *httpTX) Incomplete() bool {
-	return tx.RequestStarted == 0 || tx.ResponseStatusCode == 0
-}
-
-// partsCanBeJoined verifies if the request, response pair belong to the same transaction and can
-// therefore be joined together
-func partsCanBeJoined(request, response httpTX) bool {
-	return request.RequestStarted != 0 && response.ResponseStatusCode != 0 && request.RequestStarted <= response.ResponseLastSeen
-}
-
 func (tx *httpTX) isIPV4() bool {
 	return tx.Tup.Family == windows.AF_INET
 }
@@ -105,21 +93,14 @@ func (tx *httpTX) StatusCode() uint16 {
 	return tx.ResponseStatusCode
 }
 
-func (tx *httpTX) LastSeen() uint64 {
-	return tx.ResponseLastSeen
-}
-
-func (tx *httpTX) SetStatusCode(sc uint16) {
-	tx.ResponseStatusCode = sc
-}
-
-func (tx *httpTX) SetLastSeen(ts uint64) {
-	tx.ResponseLastSeen = ts
-}
-
 // Tags are not part of windows http transactions
 func (tx *httpTX) Tags() uint64 {
 	return 0
+}
+
+// Incomplete transactions does not apply to windows
+func (tx *httpTX) Incomplete() bool {
+	return false
 }
 
 // below is copied from pkg/trace/stats/statsraw.go

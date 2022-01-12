@@ -66,12 +66,6 @@ func (tx *httpTX) Incomplete() bool {
 	return tx.request_started == 0 || tx.response_status_code == 0
 }
 
-// partsCanBeJoined verifies if the request, response pair belong to the same transaction and can
-// therefore be joined together
-func partsCanBeJoined(request, response httpTX) bool {
-	return request.request_started != 0 && response.response_status_code != 0 && request.request_started <= response.response_last_seen
-}
-
 func (tx *httpTX) SrcIPHigh() uint64 {
 	return uint64(tx.tup.saddr_h)
 }
@@ -102,18 +96,6 @@ func (tx *httpTX) Method() Method {
 
 func (tx *httpTX) StatusCode() uint16 {
 	return uint16(tx.response_status_code)
-}
-
-func (tx *httpTX) LastSeen() uint64 {
-	return uint64(tx.response_last_seen)
-}
-
-func (tx *httpTX) SetStatusCode(statusCode uint16) {
-	tx.response_status_code = C.ushort(statusCode)
-}
-
-func (tx *httpTX) SetLastSeen(lastSeen uint64) {
-	tx.response_last_seen = C.ulonglong(lastSeen)
 }
 
 // Tags returns an uint64 representing the tags bitfields
