@@ -9,6 +9,7 @@
 package tracer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -661,6 +662,52 @@ func (t *Tracer) retryConntrack(connections []network.ConnectionStats) {
 			}
 		}
 	}
+}
+
+func (t *Tracer) DebugConntrack(ctx context.Context) (interface{}, error) {
+	rootNSHandle, err := util.GetRootNetNamespace(t.config.ProcRoot)
+	if err != nil {
+		return nil, err
+	}
+	rootNS, err := util.GetInoForNs(rootNSHandle)
+	if err != nil {
+		return nil, err
+	}
+	table, err := t.conntracker.DumpTable(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return struct {
+		RootNS  uint32
+		Entries map[uint32][]netlink.DebugConntrackEntry
+	}{
+		RootNS:  rootNS,
+		Entries: table,
+	}, nil
+}
+
+func (t *Tracer) DebugHostConntrack(ctx context.Context) (interface{}, error) {
+	rootNSHandle, err := util.GetRootNetNamespace(t.config.ProcRoot)
+	if err != nil {
+		return nil, err
+	}
+	rootNS, err := util.GetInoForNs(rootNSHandle)
+	if err != nil {
+		return nil, err
+	}
+	table, err := netlink.DumpHostTable(ctx, t.config.ProcRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	return struct {
+		RootNS  uint32
+		Entries map[uint32][]netlink.DebugConntrackEntry
+	}{
+		RootNS:  rootNS,
+		Entries: table,
+	}, nil
 }
 
 func newHTTPMonitor(supported bool, c *config.Config, tracer connection.Tracer, offsets []manager.ConstantEditor) *http.Monitor {

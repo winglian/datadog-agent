@@ -10,6 +10,7 @@ package netlink
 
 import (
 	"container/list"
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -35,6 +36,7 @@ type Conntracker interface {
 	DeleteTranslation(network.ConnectionStats)
 	IsSampling() bool
 	GetStats() map[string]int64
+	DumpTable(context.Context) (map[uint32][]DebugConntrackEntry, error)
 	Close()
 }
 
