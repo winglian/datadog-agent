@@ -13,6 +13,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// DebugConntrackEntry is a entry in a conntrack table (host or cached).
 type DebugConntrackEntry struct {
 	Proto  string
 	Family string
@@ -20,11 +21,13 @@ type DebugConntrackEntry struct {
 	Reply  DebugConntrackTuple
 }
 
+// DebugConntrackTuple is one side of a conntrack entry
 type DebugConntrackTuple struct {
 	Src DebugConntrackAddress
 	Dst DebugConntrackAddress
 }
 
+// DebugConntrackAddress is an endpoint for one part of a conntrack tuple
 type DebugConntrackAddress struct {
 	IP   string
 	Port uint16
