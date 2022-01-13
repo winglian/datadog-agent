@@ -9,6 +9,7 @@
 package tracer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -170,4 +171,12 @@ func (t *Tracer) DebugNetworkMaps() (*network.Connections, error) {
 // DebugEBPFMaps is not implemented on this OS for Tracer
 func (t *Tracer) DebugEBPFMaps(maps ...string) (string, error) {
 	return "", ebpf.ErrNotImplemented
+}
+
+func (t *Tracer) DebugConntrack(ctx context.Context) (interface{}, error) {
+	return nil, ebpf.ErrNotImplemented
+}
+
+func (t *Tracer) DebugHostConntrack(ctx context.Context) (interface{}, error) {
+	return nil, ebpf.ErrNotImplemented
 }
