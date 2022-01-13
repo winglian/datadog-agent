@@ -664,6 +664,7 @@ func (t *Tracer) retryConntrack(connections []network.ConnectionStats) {
 	}
 }
 
+// DebugConntrack dumps the cached NAT conntrack data
 func (t *Tracer) DebugConntrack(ctx context.Context) (interface{}, error) {
 	rootNSHandle, err := util.GetRootNetNamespace(t.config.ProcRoot)
 	if err != nil {
@@ -687,6 +688,7 @@ func (t *Tracer) DebugConntrack(ctx context.Context) (interface{}, error) {
 	}, nil
 }
 
+// DebugHostConntrack dumps the NAT conntrack data obtained from the host via netlink.
 func (t *Tracer) DebugHostConntrack(ctx context.Context) (interface{}, error) {
 	rootNSHandle, err := util.GetRootNetNamespace(t.config.ProcRoot)
 	if err != nil {
