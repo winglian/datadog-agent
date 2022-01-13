@@ -194,6 +194,15 @@ func httpKeyFromConn(c network.ConnectionStats) http.Key {
 		(network.IsEphemeralPort(int(lport)) == network.IsEphemeralPort(int(rport)) && lport < rport) {
 		return http.NewKey(laddr, raddr, lport, rport, "", http.MethodUnknown)
 	}
+	if lport == rport {
+		laddrl, laddrh := util.ToLowHigh(laddr)
+		raddrl, raddrh := util.ToLowHigh(raddr)
+		if laddrh < raddrh {
+			return http.NewKey(laddr, raddr, lport, rport, "", http.MethodUnknown)
+		} else if laddrl < raddrl {
+			return http.NewKey(laddr, raddr, lport, rport, "", http.MethodUnknown)
+		}
+	}
 
 	return http.NewKey(raddr, laddr, rport, lport, "", http.MethodUnknown)
 }

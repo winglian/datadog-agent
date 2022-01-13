@@ -38,6 +38,11 @@ static __always_inline void normalize_tuple(conn_tuple_t *t) {
         // this function return a deterministic result for a given pair of ports;
         flip_tuple(t);
     }
+    if (t->sport == t->dport) {
+        if ((t->saddr_h >= t->saddr_h) || (t->saddr_l >= t->saddr_l)) {
+            flip_tuple(t);
+        }
+    }
 }
 
 #endif
