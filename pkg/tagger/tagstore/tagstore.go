@@ -98,15 +98,15 @@ func (s *TagStore) ProcessTagInfo(tagInfos []*collectors.TagInfo) {
 
 	for _, info := range tagInfos {
 		if info == nil {
-			log.Tracef("ProcessTagInfo err: skipping nil message")
+			log.Infof("ProcessTagInfo err: skipping nil message")
 			continue
 		}
 		if info.Entity == "" {
-			log.Tracef("ProcessTagInfo err: empty entity name, skipping message")
+			log.Infof("ProcessTagInfo err: empty entity name, skipping message")
 			continue
 		}
 		if info.Source == "" {
-			log.Tracef("ProcessTagInfo err: empty source name, skipping message")
+			log.Infof("ProcessTagInfo err: empty source name, skipping message")
 			continue
 		}
 
@@ -119,6 +119,8 @@ func (s *TagStore) ProcessTagInfo(tagInfos []*collectors.TagInfo) {
 					st.expiryDate = s.clock.Now().Add(deletedTTL)
 					storedTags.sourceTags[info.Source] = st
 				}
+			} else {
+				log.Infof("cannot delete tags for %s: does not exist", info.Entity)
 			}
 
 			continue

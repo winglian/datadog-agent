@@ -195,7 +195,10 @@ func (s *store) Subscribe(name string, filter *Filter) chan EventBundle {
 
 	var events []Event
 
+	log.Infof("%s: asked to subscribe", name)
+
 	s.storeMut.RLock()
+	log.Infof("%s: started snapshot", name)
 	for kind, entitiesOfKind := range s.store {
 		if !sub.filter.MatchKind(kind) {
 			continue
@@ -214,6 +217,7 @@ func (s *store) Subscribe(name string, filter *Filter) chan EventBundle {
 			})
 		}
 	}
+	log.Infof("%s: got %s events in the snapshot", name, len(events))
 	s.storeMut.RUnlock()
 
 	// sort events by kind and ID for deterministic ordering
@@ -228,14 +232,19 @@ func (s *store) Subscribe(name string, filter *Filter) chan EventBundle {
 		return a.ID < b.ID
 	})
 
+	log.Infof("%s: will notify", name)
+
 	// notifyChannel should not wait when doing the first subscription, as
 	// the subscriber is not ready to receive events yet
 	notifyChannel(sub.name, sub.ch, events, false)
+
+	log.Infof("%s: notified", name)
 
 	// From the moment we add the subscriber to the list, the store can try to
 	// send it events, that's why it's important that we do this after the line
 	// above. Otherwise, it can cause a deadlock.
 	s.subscribersMut.Lock()
+	log.Infof("%s: put in the list", name)
 	s.subscribers = append(s.subscribers, sub)
 	s.subscribersMut.Unlock()
 
@@ -424,6 +433,12 @@ func (s *store) handleEvents(evs []CollectorEvent) {
 	subscribers := append([]subscriber{}, s.subscribers...)
 	s.subscribersMut.RUnlock()
 
+	var source Source
+	if len(evs) > 0 {
+		source = evs[0].Source
+	}
+	log.Infof("will notify %d subscribers of %d events from %q", len(subscribers), len(evs), source)
+
 	for _, sub := range subscribers {
 		filter := sub.filter
 		filteredEvents := make([]Event, 0, len(evs))
@@ -462,6 +477,8 @@ func (s *store) handleEvents(evs []CollectorEvent) {
 		}
 
 		notifyChannel(sub.name, sub.ch, filteredEvents, true)
+
+		log.Infof("notified %s of %d events", sub.name, len(filteredEvents))
 	}
 }
 
