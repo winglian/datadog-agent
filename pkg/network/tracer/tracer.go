@@ -664,8 +664,8 @@ func (t *Tracer) retryConntrack(connections []network.ConnectionStats) {
 	}
 }
 
-// DebugConntrack dumps the cached NAT conntrack data
-func (t *Tracer) DebugConntrack(ctx context.Context) (interface{}, error) {
+// DebugCachedConntrack dumps the cached NAT conntrack data
+func (t *Tracer) DebugCachedConntrack(ctx context.Context) (interface{}, error) {
 	rootNSHandle, err := util.GetRootNetNamespace(t.config.ProcRoot)
 	if err != nil {
 		return nil, err
@@ -674,7 +674,7 @@ func (t *Tracer) DebugConntrack(ctx context.Context) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	table, err := t.conntracker.DumpTable(ctx)
+	table, err := t.conntracker.DumpCachedTable(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -33,7 +33,8 @@ type DebugConntrackAddress struct {
 	Port uint16
 }
 
-func (ctr *realConntracker) DumpTable(ctx context.Context) (map[uint32][]DebugConntrackEntry, error) {
+// DumpCachedTable dumps the cached conntrack NAT entries grouped by network namespace
+func (ctr *realConntracker) DumpCachedTable(ctx context.Context) (map[uint32][]DebugConntrackEntry, error) {
 	table := make(map[uint32][]DebugConntrackEntry)
 	keys := ctr.cache.cache.Keys()
 	if len(keys) == 0 {
@@ -89,6 +90,7 @@ func (ctr *realConntracker) DumpTable(ctx context.Context) (map[uint32][]DebugCo
 	return table, nil
 }
 
+// DumpHostTable dumps the host conntrack NAT entries grouped by network namespace
 func DumpHostTable(ctx context.Context, procRoot string) (map[uint32][]DebugConntrackEntry, error) {
 	consumer := NewConsumer(procRoot, -1, true)
 	decoder := NewDecoder()

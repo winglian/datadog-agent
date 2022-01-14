@@ -353,7 +353,8 @@ func (e *ebpfConntracker) Close() {
 	}
 }
 
-func (e *ebpfConntracker) DumpTable(ctx context.Context) (map[uint32][]netlink.DebugConntrackEntry, error) {
+// DumpCachedTable dumps the cached conntrack NAT entries grouped by network namespace
+func (e *ebpfConntracker) DumpCachedTable(ctx context.Context) (map[uint32][]netlink.DebugConntrackEntry, error) {
 	src := tuplePool.Get().(*netebpf.ConntrackTuple)
 	defer tuplePool.Put(src)
 	dst := tuplePool.Get().(*netebpf.ConntrackTuple)

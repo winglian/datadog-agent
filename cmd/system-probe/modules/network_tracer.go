@@ -148,7 +148,7 @@ func (nt *networkTracer) Register(httpMux *module.Router) error {
 	httpMux.HandleFunc("/debug/conntrack/cached", func(w http.ResponseWriter, req *http.Request) {
 		ctx, cancelFunc := context.WithTimeout(req.Context(), 30*time.Second)
 		defer cancelFunc()
-		table, err := nt.tracer.DebugConntrack(ctx)
+		table, err := nt.tracer.DebugCachedConntrack(ctx)
 		if err != nil {
 			log.Errorf("unable to retrieve cached conntrack table: %s", err)
 			w.WriteHeader(500)

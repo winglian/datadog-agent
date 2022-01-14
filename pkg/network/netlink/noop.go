@@ -41,6 +41,6 @@ func (*noOpConntracker) GetStats() map[string]int64 {
 	}
 }
 
-func (c *noOpConntracker) DumpTable(ctx context.Context) (map[uint32][]DebugConntrackEntry, error) {
+func (c *noOpConntracker) DumpCachedTable(ctx context.Context) (map[uint32][]DebugConntrackEntry, error) {
 	return nil, nil
 }
