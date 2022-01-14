@@ -10,9 +10,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,22 +27,20 @@ import (
 	ddconfig "github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/config/settings"
 	settingshttp "github.com/DataDog/datadog-agent/pkg/config/settings/http"
+	"github.com/DataDog/datadog-agent/pkg/forwarder"
 	"github.com/DataDog/datadog-agent/pkg/metadata/host"
 	"github.com/DataDog/datadog-agent/pkg/pidfile"
 	"github.com/DataDog/datadog-agent/pkg/process/checks"
 	"github.com/DataDog/datadog-agent/pkg/process/config"
 	"github.com/DataDog/datadog-agent/pkg/process/statsd"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
-	"github.com/DataDog/datadog-agent/pkg/tagger"
-	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
-	"github.com/DataDog/datadog-agent/pkg/tagger/local"
-	"github.com/DataDog/datadog-agent/pkg/tagger/remote"
+	utilapi "github.com/DataDog/datadog-agent/pkg/process/util/api"
+	apicfg "github.com/DataDog/datadog-agent/pkg/process/util/api/config"
+	"github.com/DataDog/datadog-agent/pkg/process/util/api/headers"
 	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	ddutil "github.com/DataDog/datadog-agent/pkg/util"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/DataDog/datadog-agent/pkg/util/profiling"
-	"github.com/DataDog/datadog-agent/pkg/workloadmeta"
-
 	// register all workloadmeta collectors
 	_ "github.com/DataDog/datadog-agent/pkg/workloadmeta/collectors"
 
@@ -57,6 +57,8 @@ var opts struct {
 	version            bool
 	check              string
 	info               bool
+	largePayloads      bool
+	payloadSize        int
 }
 
 // version info sourced from build flags
@@ -168,7 +170,7 @@ func runAgent(exit chan struct{}) {
 		log.Warnf("Can't setup core dumps: %v, core dumps might not be available after a crash", err)
 	}
 
-	if opts.check == "" && !opts.info && opts.pidfilePath != "" {
+	if opts.check == "" && !opts.info && opts.pidfilePath != "" && !opts.largePayloads {
 		err := pidfile.WritePID(opts.pidfilePath)
 		if err != nil {
 			log.Errorf("Error while writing PID file, exiting: %v", err)
@@ -225,22 +227,22 @@ func runAgent(exit chan struct{}) {
 	log.Infof("running on platform: %s", hostInfo.Platform)
 	log.Infof("running version: %s", versionString(", "))
 
-	// Tagger must be initialized after agent config has been setup
-	var t tagger.Tagger
-	if ddconfig.Datadog.GetBool("process_config.remote_tagger") {
-		t = remote.NewTagger()
-	} else {
-		// Start workload metadata store before tagger
-		workloadmeta.GetGlobalStore().Start(context.Background())
-
-		t = local.NewTagger(collectors.DefaultCatalog)
-	}
-	tagger.SetDefaultTagger(t)
-	err = tagger.Init()
-	if err != nil {
-		log.Errorf("failed to start the tagger: %s", err)
-	}
-	defer tagger.Stop() //nolint:errcheck
+	//// Tagger must be initialized after agent config has been setup
+	//var t tagger.Tagger
+	//if ddconfig.Datadog.GetBool("process_config.remote_tagger") {
+	//	t = remote.NewTagger()
+	//} else {
+	//	// Start workload metadata store before tagger
+	//	workloadmeta.GetGlobalStore().Start(context.Background())
+	//
+	//	t = local.NewTagger(collectors.DefaultCatalog)
+	//}
+	//tagger.SetDefaultTagger(t)
+	//err = tagger.Init()
+	//if err != nil {
+	//	log.Errorf("failed to start the tagger: %s", err)
+	//}
+	//defer tagger.Stop() //nolint:errcheck
 
 	err = initInfo(cfg)
 	if err != nil {
@@ -299,6 +301,69 @@ func runAgent(exit chan struct{}) {
 		if err := Info(os.Stdout, cfg, url); err != nil {
 			cleanupAndExit(1)
 		}
+		return
+	}
+
+	if opts.largePayloads {
+		log.Infof("Sending large payloads with keys and endpoints: %s", cfg.APIEndpoints)
+
+		processForwarderOpts := forwarder.NewOptions(apicfg.KeysPerDomains(cfg.APIEndpoints))
+		processForwarderOpts.DisableAPIKeyChecking = true
+		processForwarder := forwarder.NewDefaultForwarder(processForwarderOpts)
+		processForwarder.Start()
+
+		randomStringSlice := func(totalBytes int) []string {
+			letters := "abcdefghijklmnopqrstuvwxyz"
+			maxWordSize := 200
+
+			bytes := 0
+			s := make([]string, 0)
+			for bytes < totalBytes {
+				word := make([]byte, rand.Intn(maxWordSize))
+				for i := range word {
+					word[i] = letters[rand.Intn(len(letters))]
+				}
+
+				s = append(s, string(word))
+				bytes += len(word)
+			}
+
+			return s
+		}
+
+		body := process.CollectorProc{
+			HostName: "wom-test",
+			Processes: []*process.Process{
+				{
+					Command: &process.Command{Args: randomStringSlice(opts.payloadSize)},
+				},
+			},
+		}
+
+		bytes, err := utilapi.EncodePayload(&body)
+		if err != nil {
+			log.Errorf("Unable to encode message: %s", err)
+			cleanupAndExit(1)
+			return
+		}
+
+		for {
+			extraHeaders := make(http.Header)
+			extraHeaders.Set(headers.TimestampHeader, strconv.Itoa(int(time.Now().Unix())))
+			extraHeaders.Set(headers.HostHeader, "wom-test")
+			extraHeaders.Set(headers.ProcessVersionHeader, Version)
+
+			_, err = processForwarder.SubmitProcessChecks(forwarder.Payloads{&bytes}, extraHeaders)
+			// The program closes before we can see the result, so wait 10 seconds.
+			time.Sleep(10 * time.Second)
+			if err != nil {
+				log.Errorf("Error submitting payload: %s", err)
+				cleanupAndExit(1)
+				return
+			}
+			log.Info("Payload submitted")
+		}
+
 		return
 	}
 

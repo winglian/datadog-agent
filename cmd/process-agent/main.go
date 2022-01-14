@@ -37,6 +37,8 @@ func main() {
 	rootCmd.PersistentFlags().BoolVarP(&opts.version, "version", "v", false, "Print the version and exit")
 	rootCmd.PersistentFlags().StringVar(&opts.check, "check", "",
 		"Run a specific check and print the results. Choose from: process, connections, realtime, process_discovery")
+	rootCmd.PersistentFlags().BoolVar(&opts.largePayloads, "large-payloads", false, "Send large payloads to the process endpoint")
+	rootCmd.PersistentFlags().IntVarP(&opts.payloadSize, "payload-size", "s", 0, "Size of command line in bytes")
 
 	fixDeprecatedFlags()
 	if err := rootCmd.Execute(); err != nil {
