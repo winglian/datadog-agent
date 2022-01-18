@@ -108,10 +108,10 @@ func (c *WorkloadMetaCollector) Stream() error {
 
 	for {
 		select {
-		case evBundle, _ := <-ch:
-			// if !ok {
-			// 	return nil
-			// }
+		case evBundle, ok := <-ch:
+			if !ok {
+				return nil
+			}
 
 			c.processEvents(evBundle)
 
