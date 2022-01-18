@@ -3,11 +3,13 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
+//go:build jmx
 // +build jmx
 
 package app
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"runtime"
@@ -168,7 +170,7 @@ func runJmxCommandConsole(command string) error {
 		return fmt.Errorf("Unable to set up JMX logger: %v", err)
 	}
 
-	common.LoadComponents(config.Datadog.GetString("confd_path"))
+	common.LoadComponents(context.Background(), config.Datadog.GetString("confd_path"))
 
 	err = standalone.ExecJMXCommandConsole(command, cliSelectedChecks, logLevel)
 
