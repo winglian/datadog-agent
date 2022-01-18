@@ -18,16 +18,12 @@ func TestNetIPToAddress(t *testing.T) {
 	addr := V4Address(889192575)
 	addrFromIP := AddressFromNetIP(net.ParseIP("127.0.0.53"))
 
-	_, ok := addrFromIP.(v4Address)
-	assert.True(t, ok)
 	assert.Equal(t, addrFromIP, addr)
 
 	// V6
 	addr = V6Address(889192575, 0)
 	addrFromIP = AddressFromNetIP(net.ParseIP("::7f00:35:0:0"))
 
-	_, ok = addrFromIP.(v6Address)
-	assert.True(t, ok)
 	assert.Equal(t, addrFromIP, addr)
 
 	// Mismatch tests
