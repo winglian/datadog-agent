@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -30,7 +29,6 @@ import (
 	manager "github.com/DataDog/ebpf-manager"
 	"github.com/cihub/seelog"
 	"github.com/cilium/ebpf"
-	ct "github.com/florianl/go-conntrack"
 	"golang.org/x/sys/unix"
 )
 
@@ -47,7 +45,6 @@ type ebpfConntracker struct {
 	rootNS       uint32
 	// only kept around for stats purposes from initial dump
 	consumer *netlink.Consumer
-	decoder  *netlink.Decoder
 
 	stats struct {
 		gets                 int64
@@ -115,7 +112,6 @@ func NewEBPFConntracker(cfg *config.Config) (netlink.Conntracker, error) {
 
 func (e *ebpfConntracker) dumpInitialTables(ctx context.Context, cfg *config.Config) error {
 	e.consumer = netlink.NewConsumer(cfg.ProcRoot, cfg.ConntrackRateLimit, true)
-	e.decoder = netlink.NewDecoder()
 	defer e.consumer.Stop()
 
 	for _, family := range []uint8{unix.AF_INET, unix.AF_INET6} {
@@ -123,14 +119,15 @@ func (e *ebpfConntracker) dumpInitialTables(ctx context.Context, cfg *config.Con
 		if err != nil {
 			return err
 		}
-		if err := e.loadInitialState(ctx, events); err != nil {
+
+		if err := e.processEvents(ctx, events); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (e *ebpfConntracker) loadInitialState(ctx context.Context, events <-chan netlink.Event) error {
+func (e *ebpfConntracker) processEvents(ctx context.Context, events <-chan netlink.Event) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -139,73 +136,11 @@ func (e *ebpfConntracker) loadInitialState(ctx context.Context, events <-chan ne
 			if !ok {
 				return nil
 			}
-			e.processEvent(ev)
+			// We don't need to read the messages in the event; we'll just return
+			// the underlying buffers to the pool
+			ev.Done()
 		}
 	}
-}
-
-func (e *ebpfConntracker) processEvent(ev netlink.Event) {
-	conns := e.decoder.DecodeAndReleaseEvent(ev)
-	for _, c := range conns {
-		if netlink.IsNAT(c) {
-			log.Tracef("initial conntrack %s", c)
-			src := formatKey(uint32(c.NetNS), c.Origin)
-			dst := formatKey(uint32(c.NetNS), c.Reply)
-			if src != nil && dst != nil {
-				if err := e.addTranslation(src, dst); err != nil {
-					log.Warnf("error adding initial conntrack entry to ebpf map: %s", err)
-				}
-				if err := e.addTranslation(dst, src); err != nil {
-					log.Warnf("error adding initial conntrack entry to ebpf map: %s", err)
-				}
-			}
-		}
-	}
-}
-
-func (e *ebpfConntracker) addTranslation(src *netebpf.ConntrackTuple, dst *netebpf.ConntrackTuple) error {
-	if err := e.ctMap.Update(unsafe.Pointer(src), unsafe.Pointer(dst), ebpf.UpdateNoExist); err != nil && !errors.Is(err, ebpf.ErrKeyExist) {
-		return err
-	}
-	return nil
-}
-
-func formatKey(netns uint32, tuple *ct.IPTuple) *netebpf.ConntrackTuple {
-	var proto network.ConnectionType
-	switch *tuple.Proto.Number {
-	case unix.IPPROTO_TCP:
-		proto = network.TCP
-	case unix.IPPROTO_UDP:
-		proto = network.UDP
-	default:
-		return nil
-	}
-
-	nct := &netebpf.ConntrackTuple{
-		Netns: netns,
-		Sport: *tuple.Proto.SrcPort,
-		Dport: *tuple.Proto.DstPort,
-	}
-	src := util.AddressFromNetIP(*tuple.Src)
-	nct.Saddr_l, nct.Saddr_h = util.ToLowHigh(src)
-	nct.Daddr_l, nct.Daddr_h = util.ToLowHigh(util.AddressFromNetIP(*tuple.Dst))
-
-	switch len(src.Bytes()) {
-	case net.IPv4len:
-		nct.Metadata |= uint32(netebpf.IPv4)
-	case net.IPv6len:
-		nct.Metadata |= uint32(netebpf.IPv6)
-	default:
-		return nil
-	}
-	switch proto {
-	case network.TCP:
-		nct.Metadata |= uint32(netebpf.TCP)
-	case network.UDP:
-		nct.Metadata |= uint32(netebpf.UDP)
-	}
-
-	return nct
 }
 
 func toConntrackTupleFromStats(src *netebpf.ConntrackTuple, stats *network.ConnectionStats) {
@@ -362,6 +297,7 @@ func getManager(buf io.ReaderAt, maxStateSize int) (*manager.Manager, error) {
 		PerfMaps: []*manager.PerfMap{},
 		Probes: []*manager.Probe{
 			{ProbeIdentificationPair: manager.ProbeIdentificationPair{EBPFSection: string(probes.ConntrackHashInsert), EBPFFuncName: "kprobe___nf_conntrack_hash_insert"}},
+			{ProbeIdentificationPair: manager.ProbeIdentificationPair{EBPFSection: string(probes.ConntrackFillInfo), EBPFFuncName: "kprobe_ctnetlink_fill_info"}},
 		},
 	}
 
