@@ -1591,7 +1591,7 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 			Weight: eval.FunctionWeight,
 		}, nil
 
-	case "mprotect.req_protection":
+	case "mprotect.new_protection":
 		return &eval.IntEvaluator{
 			EvalFnc: func(ctx *eval.Context) int {
 
@@ -6387,7 +6387,7 @@ func (e *Event) GetFields() []eval.Field {
 
 		"mmap.retval",
 
-		"mprotect.req_protection",
+		"mprotect.new_protection",
 
 		"mprotect.retval",
 
@@ -7632,7 +7632,7 @@ func (e *Event) GetFieldValue(field eval.Field) (interface{}, error) {
 
 		return int(e.MMap.SyscallEvent.Retval), nil
 
-	case "mprotect.req_protection":
+	case "mprotect.new_protection":
 
 		return e.MProtect.ReqProtection, nil
 
@@ -10913,7 +10913,7 @@ func (e *Event) GetFieldEventType(field eval.Field) (eval.EventType, error) {
 	case "mmap.retval":
 		return "mmap", nil
 
-	case "mprotect.req_protection":
+	case "mprotect.new_protection":
 		return "mprotect", nil
 
 	case "mprotect.retval":
@@ -12479,7 +12479,7 @@ func (e *Event) GetFieldType(field eval.Field) (reflect.Kind, error) {
 
 		return reflect.Int, nil
 
-	case "mprotect.req_protection":
+	case "mprotect.new_protection":
 
 		return reflect.Int, nil
 
@@ -15393,7 +15393,7 @@ func (e *Event) SetFieldValue(field eval.Field, value interface{}) error {
 
 		return nil
 
-	case "mprotect.req_protection":
+	case "mprotect.new_protection":
 
 		var ok bool
 		v, ok := value.(int)

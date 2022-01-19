@@ -144,9 +144,9 @@ type Event struct {
 
 	SELinux  SELinuxEvent  `field:"selinux" event:"selinux"`   // [7.30] [Kernel] An SELinux operation was run
 	BPF      BPFEvent      `field:"bpf" event:"bpf"`           // [7.33] [Kernel] A BPF command was executed
-	PTrace   PTraceEvent   `field:"ptrace" event:"ptrace"`     // [7.34] [Kernel] [Experimental] A ptrace command was executed
-	MMap     MMapEvent     `field:"mmap" event:"mmap"`         // [7.34] [Kernel] [Experimental] A mmap command was executed
-	MProtect MProtectEvent `field:"mprotect" event:"mprotect"` // [7.34] [Kernel] [Experimental] A mprotect command was executed
+	PTrace   PTraceEvent   `field:"ptrace" event:"ptrace"`     // [7.35] [Kernel] A ptrace command was executed
+	MMap     MMapEvent     `field:"mmap" event:"mmap"`         // [7.35] [Kernel] A mmap command was executed
+	MProtect MProtectEvent `field:"mprotect" event:"mprotect"` // [7.35] [Kernel] A mprotect command was executed
 
 	Mount            MountEvent            `field:"-"`
 	Umount           UmountEvent           `field:"-"`
@@ -604,10 +604,10 @@ type BPFProgram struct {
 type PTraceEvent struct {
 	SyscallEvent
 
-	Request                 uint32             `field:"request"`
+	Request                 uint32             `field:"request"` // Request of the ptrace syscall
 	PID                     uint32             `field:"-"`
 	Address                 uint64             `field:"-"`
-	Tracee                  ProcessContext     `field:"tracee"`
+	Tracee                  ProcessContext     `field:"tracee"` // Traced process
 	TraceeProcessCacheEntry *ProcessCacheEntry `field:"-"`
 }
 
@@ -615,12 +615,12 @@ type PTraceEvent struct {
 type MMapEvent struct {
 	SyscallEvent
 
-	File       FileEvent `field:"file"`
+	File       FileEvent `field:"file"` // File mapped to memory when it exists
 	Addr       uint64    `field:"-"`
 	Offset     uint64    `field:"-"`
 	Len        uint32    `field:"-"`
-	Protection int       `field:"protection"`
-	Flags      int       `field:"flags"`
+	Protection int       `field:"protection"` // Protection given to the memory segment
+	Flags      int       `field:"flags"`      // Flags of the mmap syscall
 }
 
 // MProtectEvent represents a mprotect event
@@ -629,6 +629,6 @@ type MProtectEvent struct {
 
 	VMStart       uint64 `field:"-"`
 	VMEnd         uint64 `field:"-"`
-	VMProtection  int    `field:"vm_protection"`
-	ReqProtection int    `field:"req_protection"`
+	VMProtection  int    `field:"vm_protection"`  // Initial memory protection of the segment
+	ReqProtection int    `field:"new_protection"` // New memory protection of the segment
 }

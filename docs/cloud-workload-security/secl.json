@@ -1176,8 +1176,8 @@
       "name": "mmap",
       "definition": "A mmap command was executed",
       "type": "Kernel",
-      "from_agent_version": "7.34",
-      "experimental": true,
+      "from_agent_version": "7.35",
+      "experimental": false,
       "properties": [
         {
           "name": "mmap.file.change_time",
@@ -1252,12 +1252,12 @@
         {
           "name": "mmap.flags",
           "type": "int",
-          "definition": ""
+          "definition": "Flags of the mmap syscall"
         },
         {
           "name": "mmap.protection",
           "type": "int",
-          "definition": ""
+          "definition": "Protection given to the memory segment"
         },
         {
           "name": "mmap.retval",
@@ -1270,13 +1270,13 @@
       "name": "mprotect",
       "definition": "A mprotect command was executed",
       "type": "Kernel",
-      "from_agent_version": "7.34",
-      "experimental": true,
+      "from_agent_version": "7.35",
+      "experimental": false,
       "properties": [
         {
-          "name": "mprotect.req_protection",
+          "name": "mprotect.new_protection",
           "type": "int",
-          "definition": ""
+          "definition": "New memory protection of the segment"
         },
         {
           "name": "mprotect.retval",
@@ -1286,7 +1286,7 @@
         {
           "name": "mprotect.vm_protection",
           "type": "int",
-          "definition": ""
+          "definition": "Initial memory protection of the segment"
         }
       ]
     },
@@ -1388,13 +1388,13 @@
       "name": "ptrace",
       "definition": "A ptrace command was executed",
       "type": "Kernel",
-      "from_agent_version": "7.34",
-      "experimental": true,
+      "from_agent_version": "7.35",
+      "experimental": false,
       "properties": [
         {
           "name": "ptrace.request",
           "type": "int",
-          "definition": ""
+          "definition": "Request of the ptrace syscall"
         },
         {
           "name": "ptrace.retval",
