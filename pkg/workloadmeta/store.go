@@ -263,11 +263,10 @@ func (s *store) Unsubscribe(ch chan EventBundle) {
 		if sub.ch == ch {
 			s.subscribers = append(s.subscribers[:i], s.subscribers[i+1:]...)
 			telemetry.Subscribers.Dec()
+			close(ch)
 			break
 		}
 	}
-
-	close(ch)
 }
 
 // GetContainer returns metadata about a container.
