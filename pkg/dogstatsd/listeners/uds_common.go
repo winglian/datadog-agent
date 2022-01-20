@@ -140,6 +140,7 @@ func (l *UDSListener) Listen() {
 	t1 := time.Now()
 	var t2 time.Time
 	log.Infof("dogstatsd-uds: starting to listen on %s", l.conn.LocalAddr())
+	t := NewTodo()
 	for {
 		var n int
 		var err error
@@ -166,7 +167,7 @@ func (l *UDSListener) Listen() {
 			tlmListener.Observe(float64(t2.Sub(t1).Nanoseconds()), "uds")
 
 			n, oobn, _, _, err = l.conn.ReadMsgUnix(packet.Buffer, oobS)
-
+			t.OnNewPacket()
 			t1 = time.Now()
 
 			// Extract container id from credentials
@@ -202,6 +203,7 @@ func (l *UDSListener) Listen() {
 
 			// Read only datagram contents with no credentials
 			n, _, err = l.conn.ReadFromUnix(packet.Buffer)
+			t.OnNewPacket()
 
 			t1 = time.Now()
 

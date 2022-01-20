@@ -512,6 +512,11 @@ func InitConfig(config Config) {
 	// Default is 0 - blocking channel
 	config.BindEnvAndSetDefault("dogstatsd_capture_depth", 0)
 
+	config.BindEnvAndSetDefault("memomry_limit1", 1024*1024*200)
+	config.BindEnvAndSetDefault("memomry_limit2", 1024*1024*300)
+	config.BindEnvAndSetDefault("memomry_limit_run_gc", false)
+	config.BindEnvAndSetDefault("memomry_limit1_wait_duration_ms", 1000)
+
 	config.BindEnv("dogstatsd_mapper_profiles")
 	config.SetEnvKeyTransformer("dogstatsd_mapper_profiles", func(in string) interface{} {
 		var mappings []MappingProfile
