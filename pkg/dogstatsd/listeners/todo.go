@@ -8,11 +8,12 @@ package listeners
 import (
 	"os"
 	"runtime"
+	"runtime/debug"
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/DataDog/gopsutil/process"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+	"github.com/DataDog/gopsutil/process"
 )
 
 type Todo struct {
@@ -37,14 +38,15 @@ func (t *Todo) OnNewPacket() {
 			log.Error("", err)
 		}
 
-		// var m runtime.MemStats
-		// runtime.ReadMemStats(&m)
 		log.Info(t.count, " ", stats.RSS/(1024*1024))
 
 		for stats.RSS > uint64(config.Datadog.GetInt("memomry_limit2")) {
-			log.Info("4242 ", t.count, " ", stats.RSS/(1024*1024), " WAIT")
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			log.Info("4242 ", t.count, " ", stats.RSS/(1024*1024), " WAIT", m.HeapInuse)
 			if config.Datadog.GetBool("memomry_limit_run_gc") {
 				runtime.GC()
+				debug.FreeOSMemory()
 			}
 
 			time.Sleep(time.Duration(config.Datadog.GetInt("memomry_limit1_wait_duration_ms")) * time.Millisecond)
@@ -53,6 +55,7 @@ func (t *Todo) OnNewPacket() {
 			log.Info("4242 Wait")
 			time.Sleep(1 * time.Second)
 		}
+		log.Info("READING")
 		t.tick = 0
 	}
 }
