@@ -115,30 +115,25 @@ func (e *ebpfConntracker) dumpInitialTables(ctx context.Context, cfg *config.Con
 	defer e.consumer.Stop()
 
 	for _, family := range []uint8{unix.AF_INET, unix.AF_INET6} {
-		events, err := e.consumer.DumpTable(family)
+		done, err := e.consumer.DumpAndDiscardTable(family)
 		if err != nil {
 			return err
 		}
 
-		if err := e.processEvents(ctx, events); err != nil {
+		if err := e.processEvents(ctx, done); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (e *ebpfConntracker) processEvents(ctx context.Context, events <-chan netlink.Event) error {
+func (e *ebpfConntracker) processEvents(ctx context.Context, done <-chan bool) error {
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case ev, ok := <-events:
-			if !ok {
-				return nil
-			}
-			// We don't need to read the messages in the event; we'll just return
-			// the underlying buffers to the pool
-			ev.Done()
+		case <-done:
+			return nil
 		}
 	}
 }
