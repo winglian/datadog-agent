@@ -8,18 +8,18 @@
 package host
 
 import (
-    "testing"
+	"testing"
 
-    "github.com/DataDog/datadog-agent/pkg/config"
-    "github.com/stretchr/testify/assert"
+	"github.com/DataDog/datadog-agent/pkg/config"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetOtlpMetaWithoutOtlp(t *testing.T) {
-    config.Datadog.Set("experimental.otlp.receiver.protocols.grpc.endpoint", "localhost:9999")
-    meta := getOtlpMeta()
+	config.Datadog.Set("experimental.otlp.receiver.protocols.grpc.endpoint", "localhost:9999")
+	meta := getOtlpMeta()
 	assert.Equal(t, false, meta.Enabled)
 
-    config.Datadog.Set("experimental", nil)
-    meta = getOtlpMeta()
-    assert.Equal(t, false, meta.Enabled)
+	config.Datadog.Set("experimental", nil)
+	meta = getOtlpMeta()
+	assert.Equal(t, false, meta.Enabled)
 }
