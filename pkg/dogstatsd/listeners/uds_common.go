@@ -171,7 +171,7 @@ func (l *UDSListener) Listen() {
 			tlmListener.Observe(float64(t2.Sub(t1).Nanoseconds()), "uds")
 
 			n, oobn, _, _, err = l.conn.ReadMsgUnix(packet.Buffer, oobS)
-			t.ThrottleIfLimitReached()
+			_ = t.ThrottleIfLimitReached()
 			t1 = time.Now()
 
 			// Extract container id from credentials
@@ -207,7 +207,7 @@ func (l *UDSListener) Listen() {
 
 			// Read only datagram contents with no credentials
 			n, _, err = l.conn.ReadFromUnix(packet.Buffer)
-			t.ThrottleIfLimitReached()
+			_ = t.ThrottleIfLimitReached()
 
 			t1 = time.Now()
 

@@ -34,12 +34,12 @@ var ballast sync.Once
 
 // MemThrottle TODO
 type MemThrottle struct {
-	process                *process.Process
-	soft_memory_limit_low  uint64
-	soft_memory_limit_high uint64
-	main                   *RateLimiter
-	os_release             *RateLimiter
-	previous_rss           uint64
+	process             *process.Process
+	softMemoryLimitLow  uint64
+	softMemoryLimitHigh uint64
+	main                *RateLimiter
+	osRelease           *RateLimiter
+	previousRSS         uint64
 }
 
 // NewMemThrottle TODO
@@ -69,20 +69,20 @@ func NewMemThrottle() (*MemThrottle, error) {
 		return nil, err
 	}
 
-	rate_min := config.Datadog.GetFloat64("soft_memory_limit_rate_min")
-	rate_max := config.Datadog.GetFloat64("soft_memory_limit_rate_max")
-	rate_factor := config.Datadog.GetFloat64("soft_memory_limit_rate_factor")
-	release_rate_min := config.Datadog.GetFloat64("soft_memory_limit_release_rate_min")
-	release_rate_max := config.Datadog.GetFloat64("soft_memory_limit_release_rate_max")
-	release_rate_factor := config.Datadog.GetFloat64("soft_memory_limit_release_rate_factor")
-	log.Infof("rate_min:%v rate_max:%v rate_factor:%v release_rate_min:%v release_rate_max:%v release_rate_factor:%v", rate_min, rate_max, rate_factor, release_rate_min, release_rate_max, release_rate_factor)
+	rateMin := config.Datadog.GetFloat64("soft_memory_limit_rate_min")
+	rateMax := config.Datadog.GetFloat64("soft_memory_limit_rate_max")
+	rateFactor := config.Datadog.GetFloat64("soft_memory_limit_rate_factor")
+	releaseRateMin := config.Datadog.GetFloat64("soft_memory_limit_release_rate_min")
+	releaseRateMax := config.Datadog.GetFloat64("soft_memory_limit_release_rate_max")
+	releaseRateFactor := config.Datadog.GetFloat64("soft_memory_limit_release_rate_factor")
+	log.Infof("rate_min:%v rate_max:%v rate_factor:%v release_rate_min:%v release_rate_max:%v release_rate_factor:%v", rateMin, rateMax, rateFactor, releaseRateMin, releaseRateMax, releaseRateFactor)
 
 	return &MemThrottle{
-		process:                p,
-		soft_memory_limit_low:  low,
-		soft_memory_limit_high: high,
-		main:                   NewRateLimiter(rate_min, rate_max, rate_factor),
-		os_release:             NewRateLimiter(release_rate_min, release_rate_max, release_rate_factor),
+		process:             p,
+		softMemoryLimitLow:  low,
+		softMemoryLimitHigh: high,
+		main:                NewRateLimiter(rateMin, rateMax, rateFactor),
+		osRelease:           NewRateLimiter(releaseRateMin, releaseRateMax, releaseRateFactor),
 	}, nil
 }
 
@@ -100,7 +100,7 @@ func (t *MemThrottle) ThrottleIfLimitReached() error {
 
 	tlmMemory.Set(float64(stats.RSS))
 
-	for stats.RSS > t.soft_memory_limit_high {
+	for stats.RSS > t.softMemoryLimitHigh {
 		tlmHigh.Inc()
 		debug.FreeOSMemory()
 		time.Sleep(100 * time.Millisecond)
@@ -109,27 +109,27 @@ func (t *MemThrottle) ThrottleIfLimitReached() error {
 			return err
 		}
 	}
-	if stats.RSS > t.soft_memory_limit_low {
+	if stats.RSS > t.softMemoryLimitLow {
 		tlmLow.Inc()
-		if t.os_release.Keep() {
+		if t.osRelease.Keep() {
 			debug.FreeOSMemory()
 			tlmFreeOSMemory.Inc()
 		} else {
 			time.Sleep(1 * time.Millisecond)
 		}
 
-		if stats.RSS > t.previous_rss {
+		if stats.RSS > t.previousRSS {
 			t.main.Increase()
-			t.os_release.Increase()
+			t.osRelease.Increase()
 		} else {
-			t.os_release.Decrease()
+			t.osRelease.Decrease()
 		}
-		t.previous_rss = stats.RSS
+		t.previousRSS = stats.RSS
 	} else {
 		t.main.Decrease()
 	}
 	tlmRate.Set(t.main.Rate())
-	tlmRateFreeOs.Set(t.os_release.Rate())
+	tlmRateFreeOs.Set(t.osRelease.Rate())
 	return nil
 }
 
@@ -175,17 +175,17 @@ func (r *RateLimiter) Increase() {
 }
 
 // Decrease TODO
-func (t *RateLimiter) Decrease() {
-	t.value *= t.factor
-	t.normalize()
+func (r *RateLimiter) Decrease() {
+	r.value *= r.factor
+	r.normalize()
 }
 
-func (t *RateLimiter) normalize() {
-	if t.value > t.maxValue {
-		t.value = t.maxValue
+func (r *RateLimiter) normalize() {
+	if r.value > r.maxValue {
+		r.value = r.maxValue
 	}
-	if t.value < t.minValue {
-		t.value = t.minValue
+	if r.value < r.minValue {
+		r.value = r.minValue
 	}
 }
 
