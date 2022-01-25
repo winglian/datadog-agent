@@ -6,14 +6,26 @@
 package config
 
 import (
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"strings"
+	"sync"
 	"time"
 )
 
 const (
 	// DefaultGRPCConnectionTimeoutSecs sets the default value for timeout when connecting to the agent
 	DefaultGRPCConnectionTimeoutSecs = 60
+	// DefaultCheckQueueSize is the max amount of checks that can be buffered if the forwarder can't consume them fast enough (e.g. due to network disruption).
+	// This can be fairly high as the input should get throttled by queue bytes first.
+	// Assuming we generate ~8 checks/minute (for process/network), this should allow buffering of ~30 minutes of data assuming it fits within the queue bytes memory budget
+	DefaultCheckQueueSize = 256
 )
+
+type validateFn func(config Config)
+
+var processesAddOverrideOnce sync.Once
+
+var procValidators []func(config Config)
 
 // procBindEnvAndSetDefault is a helper function that generates both "DD_PROCESS_CONFIG_" and "DD_PROCESS_AGENT_" prefixes from a key.
 // We need this helper function because the standard BindEnvAndSetDefault can only generate one prefix from a key.
@@ -27,6 +39,10 @@ func procBindEnvAndSetDefault(config Config, key string, val interface{}) {
 	config.BindEnvAndSetDefault(key, val, envs...)
 }
 
+func addValidator(v validateFn) {
+	procValidators = append(procValidators, v)
+}
+
 func setupProcesses(config Config) {
 	// process_config.enabled is only used on Windows by the core agent to start the process agent service.
 	// it can be set from file, but not from env. Override it with value from DD_PROCESS_AGENT_ENABLED.
@@ -35,7 +51,8 @@ func setupProcesses(config Config) {
 	config.SetKnown("process_config.dd_agent_env")
 	config.SetKnown("process_config.enabled")
 	config.SetKnown("process_config.intervals.process_realtime")
-	config.SetKnown("process_config.queue_size")
+	procBindEnvAndSetDefault(config, "process_config.queue_size", DefaultCheckQueueSize)
+	addValidator(checkQueueSizeValidator)
 	config.SetKnown("process_config.rt_queue_size")
 	config.SetKnown("process_config.max_per_message")
 	config.SetKnown("process_config.max_ctr_procs_per_message")
@@ -69,4 +86,20 @@ func setupProcesses(config Config) {
 		"DD_PROCESS_AGENT_DISCOVERY_ENABLED",
 	)
 	procBindEnvAndSetDefault(config, "process_config.process_discovery.interval", 4*time.Hour)
+
+	processesAddOverrideOnce.Do(func() {
+		// Validation of settings set in the yaml file
+		for _, v := range procValidators {
+			AddOverrideFunc(v)
+		}
+	})
+}
+
+func checkQueueSizeValidator(config Config) {
+	if config.IsSet("process_config.queue_size") {
+		if queueSize := config.GetInt("process_config.queue_size"); queueSize <= 0 {
+			log.Warnf("Invalid check queue size: %d. Using default value: %d", queueSize, DefaultCheckQueueSize)
+			config.Set("process_config.queue_size", DefaultCheckQueueSize)
+		}
+	}
 }

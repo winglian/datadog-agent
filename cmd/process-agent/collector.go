@@ -240,10 +240,10 @@ func (l *Collector) run(exit chan struct{}) error {
 
 	go util.HandleSignals(exit)
 
-	l.processResults = api.NewWeightedQueue(l.cfg.QueueSize, int64(l.cfg.ProcessQueueBytes))
+	l.processResults = api.NewWeightedQueue(ddconfig.Datadog.GetInt("process_config.queue_size"), int64(l.cfg.ProcessQueueBytes))
 	// reuse main queue's ProcessQueueBytes because it's unlikely that it'll reach to that size in bytes, so we don't need a separate config for it
 	l.rtProcessResults = api.NewWeightedQueue(l.cfg.RTQueueSize, int64(l.cfg.ProcessQueueBytes))
-	l.podResults = api.NewWeightedQueue(l.cfg.QueueSize, int64(l.cfg.Orchestrator.PodQueueBytes))
+	l.podResults = api.NewWeightedQueue(ddconfig.Datadog.GetInt("process_config.queue_size"), int64(l.cfg.Orchestrator.PodQueueBytes))
 
 	go func() {
 		<-exit
