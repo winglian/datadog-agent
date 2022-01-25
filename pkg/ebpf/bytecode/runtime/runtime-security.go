@@ -4,4 +4,4 @@
 
 package runtime
 
-var RuntimeSecurity = NewRuntimeAsset("runtime-security.c", "bc6429bd5bdf75aca90a7a147a12ce0d2f44446e5dbeef8de243e7166341f1f2")
+var RuntimeSecurity = NewRuntimeAsset("runtime-security.c", "9c042678ff389e67fe04a7addcbb86fa0a19bef461bd4fd70193e857f8516507")

@@ -594,4 +594,21 @@ static __attribute__((always_inline)) u64 get_vfs_rename_target_dentry_offset() 
     return offset ? offset : 40; // offsetof(struct renamedata, new_dentry)
 }
 
+static __attribute__((always_inline))
+void *bpf_map_lookup_or_try_init(struct bpf_map_def *map, void *key, void *zero) {
+    if (map == NULL) {
+        return NULL;
+    }
+
+    void *value = bpf_map_lookup_elem(map, key);
+    if (value != NULL)
+        return value;
+
+    // Use BPF_NOEXIST to prevent race condition
+    if (bpf_map_update_elem(map, key, zero, BPF_NOEXIST) < 0)
+        return NULL;
+
+    return bpf_map_lookup_elem(map, key);
+}
+
 #endif
