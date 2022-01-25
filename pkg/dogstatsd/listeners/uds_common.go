@@ -143,7 +143,7 @@ func (l *UDSListener) Listen() {
 	//t := NewTodo()
 	t, err := NewMemThrottle()
 	if err != nil {
-		panic(err)
+		log.Error(err)
 	}
 	for {
 		var n int
