@@ -512,10 +512,16 @@ func InitConfig(config Config) {
 	// Default is 0 - blocking channel
 	config.BindEnvAndSetDefault("dogstatsd_capture_depth", 0)
 
-	config.BindEnvAndSetDefault("memomry_limit1", 1024*1024*200)
-	config.BindEnvAndSetDefault("memomry_limit2", 1024*1024*300)
-	config.BindEnvAndSetDefault("memomry_limit_run_gc", false)
-	config.BindEnvAndSetDefault("memomry_limit1_wait_duration_ms", 1000)
+	config.BindEnvAndSetDefault("soft_memory_limit_low", 1024*1024*300)
+	config.BindEnvAndSetDefault("soft_memory_limit_high", 1024*1024*500)
+	config.BindEnvAndSetDefault("soft_memory_limit_ballast", 1024*1024*1024)
+	config.BindEnvAndSetDefault("soft_memory_limit_go_gc", 30)
+	config.BindEnvAndSetDefault("soft_memory_limit_rate_min", 1)
+	config.BindEnvAndSetDefault("soft_memory_limit_rate_max", 100)
+	config.BindEnvAndSetDefault("soft_memory_limit_rate_factor", 2)
+	config.BindEnvAndSetDefault("soft_memory_limit_release_rate_min", 10)
+	config.BindEnvAndSetDefault("soft_memory_limit_release_rate_max", 100)
+	config.BindEnvAndSetDefault("soft_memory_limit_release_rate_factor", 1.5)
 
 	config.BindEnv("dogstatsd_mapper_profiles")
 	config.SetEnvKeyTransformer("dogstatsd_mapper_profiles", func(in string) interface{} {
