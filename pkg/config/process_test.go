@@ -46,6 +46,10 @@ func TestProcessDefaultConfig(t *testing.T) {
 			key:          "process_config.process_discovery.interval",
 			defaultValue: 4 * time.Hour,
 		},
+		{
+			key:          "process_config.queue_size",
+			defaultValue: DefaultCheckQueueSize,
+		},
 	} {
 		t.Run(tc.key+" default", func(t *testing.T) {
 			assert.Equal(t, tc.defaultValue, cfg.Get(tc.key))
@@ -157,6 +161,18 @@ func TestEnvVarOverride(t *testing.T) {
 			env:      "DD_PROCESS_CONFIG_DISABLE_REALTIME_CHECKS",
 			value:    "true",
 			expected: true,
+		},
+		{
+			key:      "process_config.queue_size",
+			env:      "DD_PROCESS_CONFIG_QUEUE_SIZE",
+			value:    "42",
+			expected: 42,
+		},
+		{
+			key:      "process_config.queue_size",
+			env:      "DD_PROCESS_CONFIG_QUEUE_SIZE",
+			value:    "-42",
+			expected: DefaultCheckQueueSize,
 		},
 	} {
 		t.Run(tc.env, func(t *testing.T) {
