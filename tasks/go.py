@@ -407,9 +407,10 @@ def generate_protobuf(ctx):
     We must build the packages one at a time due to protoc-gen-go limitations
     """
 
+    # Key: path, Value: grpc_gateway
     PROTO_PACKAGES = {
         'model/v1': False,
-        'config': False,
+        'remoteconfig': False,
         'api/v1': True,
         'trace': False,
         'trace/otlp': True,

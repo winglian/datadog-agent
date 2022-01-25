@@ -8,7 +8,7 @@ package uptane
 import (
 	"fmt"
 
-	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
+	pbgo "github.com/DataDog/datadog-agent/pkg/proto/pbgo/core"
 	"go.etcd.io/bbolt"
 )
 

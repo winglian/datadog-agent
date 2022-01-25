@@ -2,11 +2,11 @@
 // source: datadog/api/v1/api.proto
 
 /*
-Package pbgo is a reverse proxy.
+Package core is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package pbgo
+package core
 
 import (
 	"context"

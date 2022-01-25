@@ -10,7 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
+	pbgo "github.com/DataDog/datadog-agent/pkg/proto/pbgo/core"
 	"github.com/theupdateframework/go-tuf/client"
 )
 
