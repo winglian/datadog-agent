@@ -7,6 +7,7 @@ package config
 
 import (
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -23,15 +24,22 @@ const (
 
 var processesAddOverrideOnce sync.Once
 
-// validateFn is a function that acts in a Config object to validate settings
-type validateFn func(config Config)
+// loadValidationFn is a function that acts in a loaded Config object to validate settings
+type loadValidationFn func(config Config)
 
-// procValidators keeps a set of registered validateFns
-var procValidators []func(config Config)
+// envKeyTransformer is a function to sanitize env vars
+type envKeyTransformer func(val string) interface{}
 
-// registerValidator adds a validateFn to be executed once the Config is loaded
-func registerValidator(v validateFn) {
-	procValidators = append(procValidators, v)
+// procLoadValidations keeps a set of loadValidationFn to be applied once Config is loaded
+var procLoadValidations []func(config Config)
+
+// setupValidators sets up a EnvKeyTransformer for the given key and registers a loadValidationFn to make sure that
+// value from loaded Config is valid. The EnvKeyTransformer ensures that subsequent env var exports are still valid
+func setupValidators(config Config, key string, validators func() (envKeyTransformer, loadValidationFn)) {
+	envTransformer, loadValidation := validators()
+
+	config.SetEnvKeyTransformer(key, envTransformer)
+	procLoadValidations = append(procLoadValidations, loadValidation)
 }
 
 // procBindEnvAndSetDefault is a helper function that generates both "DD_PROCESS_CONFIG_" and "DD_PROCESS_AGENT_" prefixes from a key.
@@ -55,7 +63,7 @@ func setupProcesses(config Config) {
 	config.SetKnown("process_config.enabled")
 	config.SetKnown("process_config.intervals.process_realtime")
 	procBindEnvAndSetDefault(config, "process_config.queue_size", DefaultCheckQueueSize)
-	registerValidator(checkQueueSizeValidator)
+	setupValidators(config, "process_config.queue_size", queueSizeValidators)
 	config.SetKnown("process_config.rt_queue_size")
 	config.SetKnown("process_config.max_per_message")
 	config.SetKnown("process_config.max_ctr_procs_per_message")
@@ -91,19 +99,33 @@ func setupProcesses(config Config) {
 	procBindEnvAndSetDefault(config, "process_config.process_discovery.interval", 4*time.Hour)
 
 	processesAddOverrideOnce.Do(func() {
-		// Validation of settings set in the yaml file
-		for _, v := range procValidators {
+		// Validation of settings from the loaded Config object
+		for _, v := range procLoadValidations {
 			AddOverrideFunc(v)
 		}
 	})
 }
 
-// checkQueueSizeValidator ensures that process_config.queue_size has a non-negative value
-func checkQueueSizeValidator(config Config) {
-	if config.IsSet("process_config.queue_size") {
-		if queueSize := config.GetInt("process_config.queue_size"); queueSize <= 0 {
-			log.Warnf("Invalid check queue size: %d. Using default value: %d", queueSize, DefaultCheckQueueSize)
-			config.Set("process_config.queue_size", DefaultCheckQueueSize)
+// queueSizeValidators ensures that process_config.queue_size and the corresponding env var have a non-negative value
+func queueSizeValidators() (envKeyTransformer, loadValidationFn) {
+	key := "process_config.queue_size"
+	envTransformer := func(val string) interface{} {
+		size, err := strconv.ParseInt(val, 10, 32)
+		if err != nil || size <= 0 {
+			return DefaultCheckQueueSize
+		}
+
+		return size
+	}
+
+	loadValidation := func(config Config) {
+		if config.IsSet(key) {
+			if queueSize := config.GetInt(key); queueSize <= 0 {
+				log.Warnf("Invalid check queue size: %d. Using default value: %d", queueSize, DefaultCheckQueueSize)
+				config.Set(key, DefaultCheckQueueSize)
+			}
 		}
 	}
+
+	return envTransformer, loadValidation
 }
