@@ -26,12 +26,19 @@ var processesAddOverrideOnce sync.Once
 // validateFn is a function that acts in a Config object to validate settings
 type validateFn func(config Config)
 
-// procValidators keeps a set of registered validateFns
-var procValidators []func(config Config)
+// procValidator stores validateFns to sanitize process settings
+type procValidator struct {
+	validatorFns []validateFn
+}
 
-// registerValidator adds a validateFn to be executed once the Config is loaded
-func registerValidator(fn validateFn) {
-	procValidators = append(procValidators, fn)
+// register adds a validateFn to a procValidator
+func (v *procValidator) register(fn validateFn) {
+	v.validatorFns = append(v.validatorFns, fn)
+}
+
+// validateFns returns the validateFns from a procValidator
+func (v *procValidator) validateFns() []validateFn {
+	return v.validatorFns
 }
 
 // procBindEnvAndSetDefault is a helper function that generates both "DD_PROCESS_CONFIG_" and "DD_PROCESS_AGENT_" prefixes from a key.
@@ -47,6 +54,8 @@ func procBindEnvAndSetDefault(config Config, key string, val interface{}) {
 }
 
 func setupProcesses(config Config) {
+	validator := procValidator{}
+
 	// process_config.enabled is only used on Windows by the core agent to start the process agent service.
 	// it can be set from file, but not from env. Override it with value from DD_PROCESS_AGENT_ENABLED.
 	procBindEnvAndSetDefault(config, "process_config.enabled", "false")
@@ -55,7 +64,7 @@ func setupProcesses(config Config) {
 	config.SetKnown("process_config.enabled")
 	config.SetKnown("process_config.intervals.process_realtime")
 	procBindEnvAndSetDefault(config, "process_config.queue_size", DefaultCheckQueueSize)
-	registerValidator(checkQueueSizeValidator)
+	validator.register(checkQueueSizeValidator)
 	config.SetKnown("process_config.rt_queue_size")
 	config.SetKnown("process_config.max_per_message")
 	config.SetKnown("process_config.max_ctr_procs_per_message")
@@ -92,7 +101,7 @@ func setupProcesses(config Config) {
 
 	processesAddOverrideOnce.Do(func() {
 		// Validate settings right after global Config is loaded
-		for _, v := range procValidators {
+		for _, v := range validator.validateFns() {
 			AddOverrideFunc(v)
 		}
 	})
