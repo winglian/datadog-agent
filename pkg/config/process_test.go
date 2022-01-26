@@ -14,9 +14,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// initTestConfig creates a new Config object for tests and initializes it without loading secrets
+func initTestConfig() Config {
+	cfg := setupConf()
+	load(cfg, "datadog.yaml", false)
+	return cfg
+}
+
 // TestProcessDefaults tests to ensure that the config has set process settings correctly
 func TestProcessDefaultConfig(t *testing.T) {
-	cfg := setupConf()
+	cfg := initTestConfig()
 
 	for _, tc := range []struct {
 		key          string
@@ -102,8 +109,6 @@ func TestProcessConfigPrefixes(t *testing.T) {
 }
 
 func TestEnvVarOverride(t *testing.T) {
-	cfg := setupConf()
-
 	for _, tc := range []struct {
 		key, env, value string
 		expected        interface{}
@@ -177,6 +182,10 @@ func TestEnvVarOverride(t *testing.T) {
 	} {
 		t.Run(tc.env, func(t *testing.T) {
 			reset := setEnvForTest(tc.env, tc.value)
+			// The Config is loaded once the agent starts with a snapshot of the current env vars passed to the process.
+			// Since the tests dynamically update the env vars, each run needs to recreate and reload the Config object in order
+			// to validate their values
+			cfg := initTestConfig()
 			assert.Equal(t, tc.expected, cfg.Get(tc.key))
 			reset()
 		})
@@ -186,6 +195,7 @@ func TestEnvVarOverride(t *testing.T) {
 			env := strings.Replace(tc.env, "PROCESS_CONFIG", "PROCESS_AGENT", 1)
 			t.Run(env, func(t *testing.T) {
 				reset := setEnvForTest(env, tc.value)
+				cfg := initTestConfig()
 				assert.Equal(t, tc.expected, cfg.Get(tc.key))
 				reset()
 			})

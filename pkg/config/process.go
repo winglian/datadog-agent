@@ -15,7 +15,7 @@ import (
 const (
 	// DefaultGRPCConnectionTimeoutSecs sets the default value for timeout when connecting to the agent
 	DefaultGRPCConnectionTimeoutSecs = 60
-	// DefaultCheckQueueSize is the max amount of checks that can be buffered if the forwarder can't consume them fast enough (e.g. due to network disruption).
+	// DefaultCheckQueueSize is the max amount of checks that can be buffered in memory if the forwarder can't consume them fast enough (e.g. due to network disruption).
 	// This can be fairly high as the input should get throttled by queue bytes first.
 	// Assuming we generate ~8 checks/minute (for process/network), this should allow buffering of ~30 minutes of data assuming it fits within the queue bytes memory budget
 	DefaultCheckQueueSize = 256
@@ -30,8 +30,8 @@ type validateFn func(config Config)
 var procValidators []func(config Config)
 
 // registerValidator adds a validateFn to be executed once the Config is loaded
-func registerValidator(v validateFn) {
-	procValidators = append(procValidators, v)
+func registerValidator(fn validateFn) {
+	procValidators = append(procValidators, fn)
 }
 
 // procBindEnvAndSetDefault is a helper function that generates both "DD_PROCESS_CONFIG_" and "DD_PROCESS_AGENT_" prefixes from a key.
@@ -91,14 +91,14 @@ func setupProcesses(config Config) {
 	procBindEnvAndSetDefault(config, "process_config.process_discovery.interval", 4*time.Hour)
 
 	processesAddOverrideOnce.Do(func() {
-		// Validation of settings set in the yaml file
+		// Validate settings right after global Config is loaded
 		for _, v := range procValidators {
 			AddOverrideFunc(v)
 		}
 	})
 }
 
-// checkQueueSizeValidator ensures that process_config.queue_size has a non-negative value
+// checkQueueSizeValidator ensures that process_config.queue_size and associated env var have a non-negative value
 func checkQueueSizeValidator(config Config) {
 	if config.IsSet("process_config.queue_size") {
 		if queueSize := config.GetInt("process_config.queue_size"); queueSize <= 0 {
