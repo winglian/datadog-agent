@@ -264,7 +264,6 @@ int kprobe__sock_alloc_file(struct pt_regs* ctx) {
     if (status == NULL || status->what != GUESS_FILE_INODE) {
         return 0;
     }
-//    log_debug("sock_alloc_file\n");
     return 0;
 }
 SEC("kretprobe/sock_alloc_file")
@@ -279,7 +278,6 @@ int kretprobe__sock_alloc_file(struct pt_regs* ctx) {
     if (status == NULL || status->what != GUESS_FILE_INODE) {
         return 0;
     }
-    log_debug("sock_alloc_file ret\n");
     return 0;
 }
     
@@ -304,12 +302,6 @@ int kprobe__stream_open(struct pt_regs* ctx) {
         u64 socket;
         bpf_probe_read(&socket, sizeof(socket), file + status->offset_file_private);
         status->socket = socket;
-
-//        log_debug("stream  %x %x %d\n", socket, SOCKET_I((struct inode*)inode), status->offset_socket_i);
-        u64 r;
-        bpf_probe_read(&r, sizeof(r), ((char*)inode) - status->offset_socket_i);
-//        log_debug("stream  %x %c\n", r);
-
         guess_offsets(status, (char*)inode);
         return 0;
     }
