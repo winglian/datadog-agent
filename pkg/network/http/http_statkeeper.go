@@ -94,12 +94,12 @@ func (h *httpStatKeeper) newKey(tx httpTX, path string) Key {
 		DstIPLow:  uint64(tx.tup.daddr_l),
 		DstPort:   uint16(tx.tup.dport),
 		Path:      path,
-		Method:    Method(tx.request_method),
+		Method:    Method(tx.method),
 	}
 }
 
 func (h *httpStatKeeper) processHTTPPath(tx httpTX) (pathStr string, rejected bool) {
-	path := tx.Path(h.buffer)
+	path := tx.path
 
 	for _, r := range h.replaceRules {
 		if r.Re.Match(path) {

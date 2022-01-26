@@ -91,6 +91,9 @@ static __always_inline void http_enqueue(http_transaction_t *http) {
     batch->idx = batch_state->idx;
     batch->pos = batch_state->pos;
 
+    // this is used to hint userspace the actual size of each http_transaction_t in the context of runtime compilation
+    batch->sizeof_transaction = (u32)(sizeof(http_transaction_t));
+
     // If we have filled the batch we move to the next one
     // Notice that we don't flush it directly because we can't do so from socket filter programs.
     if (batch_state->pos == HTTP_BATCH_SIZE) {

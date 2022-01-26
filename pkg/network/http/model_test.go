@@ -9,61 +9,46 @@
 package http
 
 import (
-	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPath(t *testing.T) {
-	tx := httpTX{
-		request_fragment: requestFragment(
-			[]byte("GET /foo/bar?var1=value HTTP/1.1\nHost: example.com\nUser-Agent: example-browser/1.0"),
-		),
-	}
+func TestNewTXPath(t *testing.T) {
+	t.Run("regular path", func(t *testing.T) {
+		cHTTP := &cHTTP{
+			request_fragment: requestFragment(
+				[]byte("GET /foo/bar?var1=value HTTP/1.1\nHost: example.com\nUser-Agent: example-browser/1.0"),
+			),
+		}
 
-	b := make([]byte, HTTPBufferSize)
-	assert.Equal(t, "/foo/bar", string(tx.Path(b)))
-}
+		tx := newTX(cHTTP)
+		assert.Equal(t, "/foo/bar", string(tx.path))
+	})
 
-func TestPathHandlesNullTerminator(t *testing.T) {
-	tx := httpTX{
-		request_fragment: requestFragment(
-			// This probably isn't a valid HTTP request
-			// (since it's missing a version before the end),
-			// but if the null byte isn't handled
-			// then the path becomes "/foo/\x00bar"
-			[]byte("GET /foo/\x00bar?var1=value HTTP/1.1\nHost: example.com\nUser-Agent: example-browser/1.0"),
-		),
-	}
+	t.Run("null termination", func(t *testing.T) {
+		cHTTP := &cHTTP{
+			request_fragment: requestFragment(
+				// This probably isn't a valid HTTP request
+				// (since it's missing a version before the end),
+				// but if the null byte isn't handled
+				// then the path becomes "/foo/\x00bar"
+				[]byte("GET /foo/\x00bar?var1=value HTTP/1.1\nHost: example.com\nUser-Agent: example-browser/1.0"),
+			),
+		}
 
-	b := make([]byte, HTTPBufferSize)
-	assert.Equal(t, "/foo/", string(tx.Path(b)))
+		tx := newTX(cHTTP)
+		assert.Equal(t, "/foo/", string(tx.path))
+	})
 }
 
 func TestLatency(t *testing.T) {
 	tx := httpTX{
-		response_last_seen: 2e6,
-		request_started:    1e6,
+		responseLastSeen: 2e6,
+		requestStarted:   1e6,
 	}
 	// quantization brings it down
 	assert.Equal(t, 999424.0, tx.RequestLatency())
-}
-
-func BenchmarkPath(b *testing.B) {
-	tx := httpTX{
-		request_fragment: requestFragment(
-			[]byte("GET /foo/bar?var1=value HTTP/1.1\nHost: example.com\nUser-Agent: example-browser/1.0"),
-		),
-	}
-
-	b.ReportAllocs()
-	b.ResetTimer()
-	buf := make([]byte, HTTPBufferSize)
-	for i := 0; i < b.N; i++ {
-		_ = tx.Path(buf)
-	}
-	runtime.KeepAlive(buf)
 }
 
 func requestFragment(fragment []byte) [HTTPBufferSize]_Ctype_char {

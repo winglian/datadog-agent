@@ -108,14 +108,14 @@ func (b *incompleteBuffer) Flush(now time.Time) []*httpTX {
 		for i < len(parts.requests) && j < len(parts.responses) {
 			request := &parts.requests[i]
 			response := &parts.responses[j]
-			if request.request_started > response.response_last_seen {
+			if request.requestStarted > response.responseLastSeen {
 				j++
 				continue
 			}
 
 			// Merge response into request
-			request.response_status_code = response.response_status_code
-			request.response_last_seen = response.response_last_seen
+			request.statusCode = response.statusCode
+			request.responseLastSeen = response.responseLastSeen
 			joined = append(joined, request)
 			i++
 			j++
@@ -139,7 +139,7 @@ func (b *incompleteBuffer) Flush(now time.Time) []*httpTX {
 }
 
 func (b *incompleteBuffer) shouldKeep(tx *httpTX, now int64) bool {
-	then := int64(tx.request_started)
+	then := tx.requestStarted
 	return (now - then) < b.minAgeNano
 }
 
@@ -147,12 +147,12 @@ type byRequestTime []httpTX
 
 func (rt byRequestTime) Len() int           { return len(rt) }
 func (rt byRequestTime) Swap(i, j int)      { rt[i], rt[j] = rt[j], rt[i] }
-func (rt byRequestTime) Less(i, j int) bool { return rt[i].request_started < rt[j].request_started }
+func (rt byRequestTime) Less(i, j int) bool { return rt[i].requestStarted < rt[j].requestStarted }
 
 type byResponseTime []httpTX
 
 func (rt byResponseTime) Len() int      { return len(rt) }
 func (rt byResponseTime) Swap(i, j int) { rt[i], rt[j] = rt[j], rt[i] }
 func (rt byResponseTime) Less(i, j int) bool {
-	return rt[i].response_last_seen < rt[j].response_last_seen
+	return rt[i].responseLastSeen < rt[j].responseLastSeen
 }

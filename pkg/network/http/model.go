@@ -17,88 +17,57 @@ import (
 */
 import "C"
 
-const (
-	HTTPBatchSize  = int(C.HTTP_BATCH_SIZE)
-	HTTPBatchPages = int(C.HTTP_BATCH_PAGES)
-	HTTPBufferSize = int(C.HTTP_BUFFER_SIZE)
-)
+const HTTPBufferSize = int(C.HTTP_BUFFER_SIZE)
 
-type httpTX C.http_transaction_t
-type httpNotification C.http_batch_notification_t
-type httpBatch C.http_batch_t
-type httpBatchKey C.http_batch_key_t
+// for testing purposes only
+type cHTTP = C.http_transaction_t
 
-func toHTTPNotification(data []byte) httpNotification {
-	return *(*httpNotification)(unsafe.Pointer(&data[0]))
+type httpTX struct {
+	tup        C.conn_tuple_t
+	statusCode int
+	path       []byte
+	method     Method
+
+	requestStarted   int64
+	responseLastSeen int64
+
+	tags uint64
 }
 
-// Prepare the httpBatchKey for a map lookup
-func (k *httpBatchKey) Prepare(n httpNotification) {
-	k.cpu = n.cpu
-	k.page_num = C.uint(int(n.batch_idx) % HTTPBatchPages)
-}
-
-// Path returns the URL from the request fragment captured in eBPF with
-// GET variables excluded.
-// Example:
-// For a request fragment "GET /foo?var=bar HTTP/1.1", this method will return "/foo"
-func (tx *httpTX) Path(buffer []byte) []byte {
-	b := *(*[HTTPBufferSize]byte)(unsafe.Pointer(&tx.request_fragment))
-
-	// b might contain a null terminator in the middle
-	bLen := strlen(b[:])
-
-	var i, j int
-	for i = 0; i < bLen && b[i] != ' '; i++ {
+func newTX(http *C.http_transaction_t) httpTX {
+	// TODO: pool either httpTX objects or byte slices for the path
+	return httpTX{
+		tup:              http.tup,
+		statusCode:       int(http.response_status_code),
+		requestStarted:   int64(http.request_started),
+		responseLastSeen: int64(http.response_last_seen),
+		method:           Method(http.request_method),
+		tags:             uint64(http.tags),
+		path:             extractPath(nil, unsafe.Pointer(&http.request_fragment), HTTPBufferSize),
 	}
-
-	i++
-
-	for j = i; j < bLen && b[j] != ' ' && b[j] != '?'; j++ {
-	}
-
-	if i < j && j <= bLen {
-		n := copy(buffer, b[i:j])
-		return buffer[:n]
-	}
-
-	return nil
 }
 
 // StatusClass returns an integer representing the status code class
 // Example: a 404 would return 400
 func (tx *httpTX) StatusClass() int {
-	return (int(tx.response_status_code) / 100) * 100
+	return (int(tx.statusCode) / 100) * 100
 }
 
 // RequestLatency returns the latency of the request in nanoseconds
 func (tx *httpTX) RequestLatency() float64 {
-	return nsTimestampToFloat(uint64(tx.response_last_seen - tx.request_started))
+	return nsTimestampToFloat(uint64(tx.responseLastSeen - tx.requestStarted))
 }
 
 // Incomplete returns true if the transaction contains only the request or response information
 // This happens in the context of localhost with NAT, in which case we join the two parts in userspace
 func (tx *httpTX) Incomplete() bool {
-	return tx.request_started == 0 || tx.response_status_code == 0
+	return tx.requestStarted == 0 || tx.statusCode == 0
 }
 
 // Tags returns an uint64 representing the tags bitfields
 // Tags are defined here : pkg/network/ebpf/kprobe_types.go
 func (tx *httpTX) Tags() uint64 {
-	return uint64(tx.tags)
-}
-
-// IsDirty detects whether the batch page we're supposed to read from is still
-// valid.  A "dirty" page here means that between the time the
-// http_notification_t message was sent to userspace and the time we performed
-// the batch lookup the page was overridden.
-func (batch *httpBatch) IsDirty(notification httpNotification) bool {
-	return batch.idx != notification.batch_idx
-}
-
-// Transactions returns the slice of HTTP transactions embedded in the batch
-func (batch *httpBatch) Transactions() []httpTX {
-	return (*(*[HTTPBatchSize]httpTX)(unsafe.Pointer(&batch.txs)))[:]
+	return tx.tags
 }
 
 // below is copied from pkg/trace/stats/statsraw.go
@@ -115,12 +84,35 @@ func nsTimestampToFloat(ns uint64) float64 {
 	return float64(ns << shift)
 }
 
-// strlen returns the length of a null-terminated string
-func strlen(str []byte) int {
-	for i := 0; i < len(str); i++ {
-		if str[i] == 0 {
-			return i
+func extractPath(buffer []byte, p unsafe.Pointer, limit int) []byte {
+	buffer = buffer[:0]
+
+	var (
+		i int
+		b byte
+	)
+	for i = 0; i < limit; i++ {
+		b = *(*byte)(unsafe.Pointer(uintptr(p) + uintptr(i)))
+
+		if b == ' ' {
+			break
+		}
+
+		if b == 0 {
+			return buffer
 		}
 	}
-	return len(str)
+
+	i++
+	for j := i; j < limit; j++ {
+		b = *(*byte)(unsafe.Pointer(uintptr(p) + uintptr(j)))
+
+		if b == 0 || b == '?' || b == ' ' {
+			return buffer
+		}
+
+		buffer = append(buffer, b)
+	}
+
+	return buffer
 }

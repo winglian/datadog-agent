@@ -48,8 +48,6 @@ typedef struct {
     __u64 request_started;
     __u16 response_status_code;
     __u64 response_last_seen;
-    char request_fragment[HTTP_BUFFER_SIZE];
-
     // this field is used exclusively in the kernel side to prevent a TCP segment
     // to be processed twice in the context of localhost traffic. The field will
     // be populated with the "original" (pre-normalization) source port number of
@@ -61,6 +59,9 @@ typedef struct {
     __u32 tcp_seq;
 
     __u64 tags;
+
+    // this field should always be at the end of the struct
+    char request_fragment[HTTP_BUFFER_SIZE];
 } http_transaction_t;
 
 typedef struct {
@@ -81,7 +82,8 @@ typedef struct {
 
 typedef struct {
     __u64 idx;
-    __u8 pos;
+    __u32 pos;
+    __u32 sizeof_transaction;
     http_transaction_t txs[HTTP_BATCH_SIZE];
 } http_batch_t;
 
