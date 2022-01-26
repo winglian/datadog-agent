@@ -106,6 +106,12 @@ func (c *WorkloadMetaCollector) processEvents(evBundle workloadmeta.EventBundle)
 
 	for _, ev := range evBundle.Events {
 		entity := ev.Entity
+		if entity == nil {
+			log.Infof("got nil entity from workloadmeta")
+			log.Infof("event dump: %+v", ev)
+			log.Infof("bundle dump: %+v", evBundle)
+		}
+
 		entityID := entity.GetID()
 
 		switch ev.Type {
