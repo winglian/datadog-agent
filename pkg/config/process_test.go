@@ -108,6 +108,7 @@ func TestProcessConfigPrefixes(t *testing.T) {
 	}
 }
 
+// TestEnvVarOverride tests env vars overrides with valid values
 func TestEnvVarOverride(t *testing.T) {
 	for _, tc := range []struct {
 		key, env, value string
@@ -173,12 +174,6 @@ func TestEnvVarOverride(t *testing.T) {
 			value:    "42",
 			expected: 42,
 		},
-		{
-			key:      "process_config.queue_size",
-			env:      "DD_PROCESS_CONFIG_QUEUE_SIZE",
-			value:    "-42",
-			expected: DefaultCheckQueueSize,
-		},
 	} {
 		t.Run(tc.env, func(t *testing.T) {
 			reset := setEnvForTest(tc.env, tc.value)
@@ -220,4 +215,74 @@ func TestProcBindEnvAndSetDefault(t *testing.T) {
 
 	// Make sure the default is set properly
 	assert.Equal(t, "asdf", cfg.GetString("process_config.foo.bar"))
+}
+
+// TestSettingsValidators tests settings overrides with invalid values
+func TestSettingsValidators(t *testing.T) {
+	for _, tc := range []struct {
+		key, value string
+		expected   interface{}
+	}{
+		{
+			key:      "process_config.queue_size",
+			value:    "42",
+			expected: 42,
+		},
+		{
+			key:      "process_config.queue_size",
+			value:    "-42",
+			expected: DefaultCheckQueueSize,
+		},
+	} {
+		t.Run(fmt.Sprintf("%s set to %s", tc.key, tc.value), func(t *testing.T) {
+			cfg := setupConf()
+			cfg.Set(tc.key, tc.value)
+			load(cfg, "datadog.yaml", false)
+
+			assert.Equal(t, tc.expected, cfg.Get(tc.key))
+		})
+	}
+}
+
+// TestSettingsValidators tests env vars overrides with invalid values
+func TestEnvVarsValidators(t *testing.T) {
+	for _, tc := range []struct {
+		key, env, value string
+		expected        interface{}
+	}{
+		{
+			key:      "process_config.queue_size",
+			env:      "DD_PROCESS_CONFIG_QUEUE_SIZE",
+			value:    "-42",
+			expected: DefaultCheckQueueSize,
+		},
+		{
+			key:      "process_config.queue_size",
+			env:      "DD_PROCESS_AGENT_QUEUE_SIZE",
+			value:    "-42",
+			expected: DefaultCheckQueueSize,
+		},
+		{
+			key:      "process_config.queue_size",
+			env:      "DD_PROCESS_CONFIG_QUEUE_SIZE",
+			value:    "42",
+			expected: 42,
+		},
+		{
+			key:      "process_config.queue_size",
+			env:      "DD_PROCESS_AGENT_QUEUE_SIZE",
+			value:    "42",
+			expected: 42,
+		},
+	} {
+		t.Run(fmt.Sprintf("%s set to %s", tc.env, tc.value), func(t *testing.T) {
+			reset := setEnvForTest(tc.env, tc.value)
+			// The Config is loaded once the agent starts with a snapshot of the current env vars passed to the process.
+			// Since the tests dynamically update the env vars, each run needs to recreate and reload the Config object in order
+			// to validate their values
+			cfg := initTestConfig()
+			assert.Equal(t, tc.expected, cfg.Get(tc.key))
+			reset()
+		})
+	}
 }
