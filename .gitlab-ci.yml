@@ -689,9 +689,10 @@ variables:
   - <<: *if_testing_cleanup
 
 .on_system_probe_changes_or_manual:
-  - changes:
-      - pkg/ebpf/**/*
-      - pkg/network/**/*
+  - only:
+    - changes:
+        - pkg/ebpf/**/*
+        - pkg/network/**/*
     when: on_success
   - when: manual
     allow_failure: true
