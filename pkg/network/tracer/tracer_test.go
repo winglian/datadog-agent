@@ -433,20 +433,21 @@ func TestTCPCollectionDisabled(t *testing.T) {
 
 func TestUDPSendAndReceive(t *testing.T) {
 	t.Run("v4", func(t *testing.T) {
-		testUDPSendAndReceive(t, "127.0.0.1:8001")
+		testUDPSendAndReceive(t, "udp4", "127.0.0.1:8001")
 	})
 	t.Run("v6", func(t *testing.T) {
-		testUDPSendAndReceive(t, "[::1]:8001")
+		testUDPSendAndReceive(t, "udp6", "[::1]:8001")
 	})
 }
 
-func testUDPSendAndReceive(t *testing.T, addr string) {
+func testUDPSendAndReceive(t *testing.T, udpnet, addr string) {
 	cfg := testConfig()
 	tr, err := NewTracer(cfg)
 	require.NoError(t, err)
 	t.Cleanup(tr.Stop)
 
 	server := &UDPServer{
+		network: udpnet,
 		address: addr,
 		onMessage: func(buf []byte, n int) []byte {
 			return genPayload(serverMessageSize)
@@ -459,7 +460,7 @@ func testUDPSendAndReceive(t *testing.T, addr string) {
 	t.Cleanup(func() { close(doneChan) })
 
 	// Connect to server
-	c, err := net.DialTimeout("udp", server.address, 50*time.Millisecond)
+	c, err := net.DialTimeout(udpnet, server.address, 50*time.Millisecond)
 	require.NoError(t, err)
 	defer c.Close()
 
