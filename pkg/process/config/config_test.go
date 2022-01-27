@@ -555,6 +555,10 @@ func TestNetworkConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.True(t, agentConfig.EnableSystemProbe)
+	})
+}
+
+func TestSystemProbeNoNetwork(t *testing.T) {
 	defer restoreGlobalConfig()
 
 	agentConfig := loadAgentConfigForTest(t, "./testdata/TestDDAgentConfigYamlOnly.yaml", "./testdata/TestDDAgentConfig-OOMKillOnly.yaml")
