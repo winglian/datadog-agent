@@ -388,6 +388,7 @@ func (s *Launcher) restartTailerAfterFileRotation(tailer *tailer.Tailer, file *t
 // createTailer returns a new initialized tailer
 func (s *Launcher) createTailer(file *tailer.File, outputChan chan *message.Message) *tailer.Tailer {
 	return tailer.NewTailer(outputChan, file, s.tailerSleepDuration, decoder.NewDecoderFromSource(file.Source))
+
 }
 
 func (s *Launcher) createRotatedTailer(file *tailer.File, outputChan chan *message.Message, pattern *regexp.Regexp) *tailer.Tailer {
