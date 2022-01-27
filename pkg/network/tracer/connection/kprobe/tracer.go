@@ -391,7 +391,7 @@ func populateConnStats(stats *network.ConnectionStats, t *netebpf.ConnTuple, s *
 		},
 		LastUpdateEpoch: s.Timestamp,
 		IsAssured:       s.IsAssured(),
-		Tags:			 s.Tags,
+		Tags:            s.Tags,
 	}
 
 	if t.Type() == netebpf.TCP {
