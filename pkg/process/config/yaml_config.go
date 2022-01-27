@@ -25,8 +25,7 @@ import (
 )
 
 const (
-	ns                   = "process_config"
-	discoveryMinInterval = 10 * time.Minute
+	ns = "process_config"
 )
 
 func key(pieces ...string) string {
@@ -56,13 +55,6 @@ func (a *AgentConfig) LoadProcessYamlConfig(path string) error {
 		a.HostName = config.Datadog.GetString("hostname")
 	}
 
-	a.Enabled = false
-	if config.Datadog.GetBool("process_config.process_collection.enabled") {
-		a.Enabled, a.EnabledChecks = true, processChecks
-	} else if config.Datadog.GetBool("process_config.container_collection.enabled") {
-		// Container checks are enabled only when process checks are not (since they automatically collect container data).
-		a.Enabled, a.EnabledChecks = true, containerChecks
-	}
 	// The interval, in seconds, at which we will run each check. If you want consistent
 	// behavior between real-time you may set the Container/ProcessRT intervals to 10.
 	// Defaults to 10s for normal checks and 2s for others.
@@ -71,10 +63,6 @@ func (a *AgentConfig) LoadProcessYamlConfig(path string) error {
 	a.setCheckInterval(ns, "process", ProcessCheckName)
 	a.setCheckInterval(ns, "process_realtime", RTProcessCheckName)
 	a.setCheckInterval(ns, "connections", ConnectionsCheckName)
-
-	// We need another method to read in process discovery check configs because it is in its own object,
-	// and uses a different unit of time
-	a.initProcessDiscoveryCheck()
 
 	if a.CheckIntervals[ProcessCheckName] < a.CheckIntervals[RTProcessCheckName] || a.CheckIntervals[ProcessCheckName]%a.CheckIntervals[RTProcessCheckName] != 0 {
 		// Process check interval must be greater or equal to RTProcess check interval and the intervals must be divisible
@@ -258,6 +246,7 @@ func (a *AgentConfig) setCheckInterval(ns, check, checkKey string) {
 		a.CheckIntervals[checkKey] = time.Duration(interval) * time.Second
 	}
 }
+<<<<<<< HEAD
 
 // Separate handler for initializing the process discovery check.
 // Since it has its own unique object, we need to handle loading in the check config differently separately
@@ -274,11 +263,8 @@ func (a *AgentConfig) initProcessDiscoveryCheck() {
 
 		// We don't need to check if the key exists since we already bound it to a default in InitConfig.
 		// We use a minimum of 10 minutes for this value.
-		discoveryInterval := config.Datadog.GetDuration(key(root, "interval"))
-		if discoveryInterval < discoveryMinInterval {
-			discoveryInterval = discoveryMinInterval
-			_ = log.Warnf("Invalid interval for process discovery (<= %s) using default value of %[1]s", discoveryMinInterval.String())
-		}
-		a.CheckIntervals[DiscoveryCheckName] = discoveryInterval
+		a.CheckIntervals[DiscoveryCheckName] = config.Datadog.GetDuration(key(root, "interval"))
 	}
 }
+=======
+>>>>>>> b8f34e7a6 (Removed check initialization code from AgentConfig)

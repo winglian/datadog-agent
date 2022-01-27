@@ -253,8 +253,10 @@ func runAgent(exit chan struct{}) {
 		cleanupAndExit(1)
 	}
 
+	enabledChecks := getChecks(syscfg, cfg.Orchestrator)
+
 	// Exit if agent is not enabled and we're not debugging a check.
-	if !cfg.Enabled && opts.check == "" {
+	if len(enabledChecks) == 0 && opts.check == "" {
 		log.Infof(agent6DisabledMessage)
 
 		// a sleep is necessary to ensure that supervisor registers this process as "STARTED"
@@ -320,7 +322,7 @@ func runAgent(exit chan struct{}) {
 		_ = log.Error(err)
 	}
 
-	cl, err := NewCollector(cfg)
+	cl, err := NewCollector(cfg, enabledChecks)
 	if err != nil {
 		log.Criticalf("Error creating collector: %s", err)
 		cleanupAndExit(1)

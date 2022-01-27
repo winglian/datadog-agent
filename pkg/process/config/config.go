@@ -50,10 +50,9 @@ const (
 	PodCheckName         = "pod"
 	DiscoveryCheckName   = "process_discovery"
 
-	NetworkCheckName        = "Network"
-	OOMKillCheckName        = "OOM Kill"
-	TCPQueueLengthCheckName = "TCP queue length"
-	ProcessModuleCheckName  = "Process Module"
+	NetworkCheckName       = "Network"
+	OOMKillCheckName       = "OOM Kill"
+	ProcessModuleCheckName = "Process Module"
 
 	ProcessCheckDefaultInterval          = 10 * time.Second
 	RTProcessCheckDefaultInterval        = 2 * time.Second
@@ -68,11 +67,10 @@ var (
 	processChecks   = []string{ProcessCheckName, RTProcessCheckName}
 	containerChecks = []string{ContainerCheckName, RTContainerCheckName}
 
-	moduleCheckMap = map[sysconfig.ModuleName][]string{
-		sysconfig.NetworkTracerModule:        {ConnectionsCheckName, NetworkCheckName},
-		sysconfig.OOMKillProbeModule:         {OOMKillCheckName},
-		sysconfig.TCPQueueLengthTracerModule: {TCPQueueLengthCheckName},
-		sysconfig.ProcessModule:              {ProcessModuleCheckName},
+	// ModuleCheckMap
+	ModuleCheckMap = map[sysconfig.ModuleName][]string{
+		sysconfig.NetworkTracerModule: {ConnectionsCheckName},
+		sysconfig.ProcessModule:       {ProcessModuleCheckName},
 	}
 )
 
@@ -133,11 +131,6 @@ type AgentConfig struct {
 	Windows WindowsConfig
 }
 
-// CheckIsEnabled returns a bool indicating if the given check name is enabled.
-func (a AgentConfig) CheckIsEnabled(checkName string) bool {
-	return util.StringInSlice(a.EnabledChecks, checkName)
-}
-
 // CheckInterval returns the interval for the given check name, defaulting to 10s if not found.
 func (a AgentConfig) CheckInterval(checkName string) time.Duration {
 	d, ok := a.CheckIntervals[checkName]
@@ -178,11 +171,6 @@ func NewDefaultAgentConfig(canAccessContainers bool) *AgentConfig {
 		panic(err)
 	}
 
-	var enabledChecks []string
-	if canAccessContainers {
-		enabledChecks = containerChecks
-	}
-
 	ac := &AgentConfig{
 		Enabled:      canAccessContainers, // We'll always run inside of a container.
 		APIEndpoints: []apicfg.Endpoint{{Endpoint: processEndpoint}},
@@ -210,7 +198,6 @@ func NewDefaultAgentConfig(canAccessContainers bool) *AgentConfig {
 		Orchestrator: oconfig.NewDefaultOrchestratorConfig(),
 
 		// Check config
-		EnabledChecks: enabledChecks,
 		CheckIntervals: map[string]time.Duration{
 			ProcessCheckName:     ProcessCheckDefaultInterval,
 			RTProcessCheckName:   RTProcessCheckDefaultInterval,
@@ -293,18 +280,6 @@ func NewAgentConfig(loggerName config.LoggerName, yamlPath string, syscfg *sysco
 		cfg.EnableSystemProbe = true
 		cfg.MaxConnsPerMessage = syscfg.MaxConnsPerMessage
 		cfg.SystemProbeAddress = syscfg.SocketAddress
-
-		// enable corresponding checks to system-probe modules
-		for mod := range syscfg.EnabledModules {
-			if checks, ok := moduleCheckMap[mod]; ok {
-				cfg.EnabledChecks = append(cfg.EnabledChecks, checks...)
-			}
-		}
-
-		if !cfg.Enabled {
-			log.Info("enabling process-agent for connections check as the system-probe is enabled")
-			cfg.Enabled = true
-		}
 	}
 
 	// TODO: Once proxies have been moved to common config util, remove this
@@ -335,15 +310,6 @@ func NewAgentConfig(loggerName config.LoggerName, yamlPath string, syscfg *sysco
 	if cfg.Windows.ArgsRefreshInterval == 0 {
 		log.Warnf("invalid configuration: windows_collect_skip_new_args was set to 0.  Disabling argument collection")
 		cfg.Windows.ArgsRefreshInterval = -1
-	}
-
-	// activate the pod collection if enabled and we have the cluster name set
-	if cfg.Orchestrator.OrchestrationCollectionEnabled {
-		if cfg.Orchestrator.KubeClusterName != "" {
-			cfg.EnabledChecks = append(cfg.EnabledChecks, PodCheckName)
-		} else {
-			log.Warnf("Failed to auto-detect a Kubernetes cluster name. Pod collection will not start. To fix this, set it manually via the cluster_name config option")
-		}
 	}
 
 	return cfg, nil

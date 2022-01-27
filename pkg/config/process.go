@@ -17,6 +17,8 @@ import (
 const (
 	// DefaultGRPCConnectionTimeoutSecs sets the default value for timeout when connecting to the agent
 	DefaultGRPCConnectionTimeoutSecs = 60
+
+	procDiscoveryMinInterval = 10 * time.Minute
 )
 
 // setupProcesses is meant to be called multiple times for different configs, but overrides apply to all configs, so
@@ -120,6 +122,15 @@ func loadProcessTransforms(config Config) {
 		} else { // "false"
 			config.Set("process_config.process_collection.enabled", false)
 			config.Set("process_config.container_collection.enabled", true)
+		}
+	}
+
+	if config.GetBool("process_config.process_discovery.enabled") {
+		procDiscoveryInterval := config.GetDuration("process_config.process_discovery.interval")
+		if procDiscoveryInterval < procDiscoveryMinInterval {
+			_ = log.Warnf("Invalid interval for process discovery (<= %s) using default value of %[1]s",
+				procDiscoveryMinInterval.String())
+			config.Set("process_config.process_discovery.interval", procDiscoveryMinInterval)
 		}
 	}
 }

@@ -335,8 +335,6 @@ func TestAgentConfigYamlAndSystemProbeConfig(t *testing.T) {
 	assert.Equal("apikey_20", ep.APIKey)
 	assert.Equal("my-process-app.datadoghq.com", ep.Endpoint.Hostname())
 	assert.Equal(10, agentConfig.QueueSize)
-	assert.Equal(true, agentConfig.Enabled)
-	assert.Equal(append(processChecks), agentConfig.EnabledChecks)
 	assert.Equal(8*time.Second, agentConfig.CheckIntervals[ContainerCheckName])
 	assert.Equal(30*time.Second, agentConfig.CheckIntervals[ProcessCheckName])
 	assert.Equal(100, agentConfig.Windows.ArgsRefreshInterval)
@@ -360,7 +358,6 @@ func TestAgentConfigYamlAndSystemProbeConfig(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		assert.Equal("/var/my-location/system-probe.log", agentConfig.SystemProbeAddress)
 	}
-	assert.Equal(append(processChecks, ConnectionsCheckName, NetworkCheckName), agentConfig.EnabledChecks)
 
 	newConfig()
 	agentConfig = loadAgentConfigForTest(t, "./testdata/TestDDAgentConfigYamlAndSystemProbeConfig.yaml", "./testdata/TestDDAgentConfigYamlAndSystemProbeConfig-Net-2.yaml")
@@ -377,7 +374,6 @@ func TestAgentConfigYamlAndSystemProbeConfig(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		assert.Equal("/var/my-location/system-probe.log", agentConfig.SystemProbeAddress)
 	}
-	assert.Equal(append(processChecks), agentConfig.EnabledChecks)
 
 	newConfig()
 	agentConfig = loadAgentConfigForTest(t, "./testdata/TestDDAgentConfigYamlAndSystemProbeConfig.yaml", "./testdata/TestDDAgentConfigYamlAndSystemProbeConfig-Net-Windows.yaml")
@@ -468,7 +464,6 @@ func TestEnvSiteConfig(t *testing.T) {
 	require.NoError(t, err)
 	agentConfig = loadAgentConfigForTest(t, "./testdata/TestEnvSiteConfig-ProcessDiscovery.yaml", "")
 	require.NoError(t, err)
-	assert.Contains(agentConfig.EnabledChecks, "process_discovery")
 	os.Unsetenv("DD_PROCESS_AGENT_DISCOVERY_ENABLED")
 }
 
@@ -545,8 +540,6 @@ func TestNetworkConfig(t *testing.T) {
 		agentConfig := loadAgentConfigForTest(t, "./testdata/TestDDAgentConfigYamlOnly.yaml", "./testdata/TestDDAgentConfig-NetConfig.yaml")
 
 		assert.True(t, agentConfig.EnableSystemProbe)
-		assert.True(t, agentConfig.Enabled)
-		assert.ElementsMatch(t, []string{ConnectionsCheckName, NetworkCheckName, ProcessCheckName, RTProcessCheckName}, agentConfig.EnabledChecks)
 	})
 
 	t.Run("env", func(t *testing.T) {
@@ -562,20 +555,11 @@ func TestNetworkConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.True(t, agentConfig.EnableSystemProbe)
-		assert.True(t, agentConfig.Enabled)
-		assert.ElementsMatch(t, []string{ConnectionsCheckName, NetworkCheckName, ContainerCheckName, RTContainerCheckName, DiscoveryCheckName}, agentConfig.EnabledChecks)
-	})
-}
-
-func TestSystemProbeNoNetwork(t *testing.T) {
-	newConfig()
 	defer restoreGlobalConfig()
 
 	agentConfig := loadAgentConfigForTest(t, "./testdata/TestDDAgentConfigYamlOnly.yaml", "./testdata/TestDDAgentConfig-OOMKillOnly.yaml")
 
 	assert.True(t, agentConfig.EnableSystemProbe)
-	assert.True(t, agentConfig.Enabled)
-	assert.ElementsMatch(t, []string{OOMKillCheckName, ProcessCheckName, RTProcessCheckName}, agentConfig.EnabledChecks)
 }
 
 func TestGetHostnameFromGRPC(t *testing.T) {
@@ -673,41 +657,6 @@ func TestGetHostnameShellCmd(t *testing.T) {
 	case "agent-empty_hostname":
 		assert.EqualValues(t, []string{"hostname"}, args)
 		fmt.Fprintf(os.Stdout, "")
-	}
-}
-
-// TestProcessDiscoveryConfig tests to make sure that the process discovery check is properly configured
-func TestProcessDiscoveryConfig(t *testing.T) {
-	assert := assert.New(t)
-
-	for _, procCollectionEnabled := range []bool{true, false} {
-		for _, procDiscoveryEnabled := range []bool{true, false} {
-			config.Datadog.Set("process_config.process_collection.enabled", procCollectionEnabled)
-			config.Datadog.Set("process_config.process_discovery.enabled", procDiscoveryEnabled)
-			config.Datadog.Set("process_config.process_discovery.interval", time.Hour)
-			cfg := AgentConfig{EnabledChecks: []string{}, CheckIntervals: map[string]time.Duration{}}
-			cfg.initProcessDiscoveryCheck()
-
-			// Make sure that the process discovery check is only enabled when process collection is disabled,
-			// and procDiscoveryEnabled isn't overridden.
-			if procDiscoveryEnabled && !procCollectionEnabled {
-				assert.ElementsMatch([]string{DiscoveryCheckName}, cfg.EnabledChecks)
-
-				// Interval Tests:
-				// These can only be done while the check is enabled, which is why we do them here.
-
-				// Make sure that the discovery check interval can be overridden.
-				assert.Equal(time.Hour, cfg.CheckIntervals[DiscoveryCheckName])
-
-				// Ensure that the minimum interval for the process_discovery check is enforced
-				config.Datadog.Set("process_config.process_discovery.interval", time.Second)
-				cfg = AgentConfig{EnabledChecks: []string{}, CheckIntervals: map[string]time.Duration{}}
-				cfg.initProcessDiscoveryCheck()
-				assert.Equal(10*time.Minute, cfg.CheckIntervals[DiscoveryCheckName])
-			} else {
-				assert.ElementsMatch([]string{}, cfg.EnabledChecks)
-			}
-		}
 	}
 }
 
