@@ -1,0 +1,51 @@
+Decoder
+  - decoder.Input ([]byte) -> decoder.Message
+  - has line parser, Matcher
+  - matches, then parses
+
+LineParser
+  - possibly recombines lines, if parser supports partial lines
+
+Parser
+  - line -> content/severity/timestamp/partial/error
+  - EncodedText just decodes strings
+  - docker_File decodes JSON
+
+Matcher
+  - bizarre API used to end lines
+
+File Tailer
+ - takes decoder
+ - "forwards" decoder.Message from decoder to outputChan
+
++-Tailer---------------
+|          * reading (socket, file)
+|          | []byte buffers
+|  +-Decoder-----------
+|  |       |
+|  |    Matcher
+|  |       | []byte lines
+|  |  +-LineParser-----
+|  |  |    |
+|  |  |  Parser
+|  |  |    | (content, severity, timestamp, partial, error)
+|  |  +----------------
+|  |       |
+|  +-------------------
+|          | decoder.Message
+|          |
+|          * add origin
+|          |
+|          | message.Message
++----------------------
+           |
+       outputChan
+
+
+It appears that parser.Message#Timestamp is ignored, as it is never included
+in a message.Message -- to verify
+
+
+parser.Message#IsPartial appears to be about _one_ kind of multi-line parsing,
+from docker's and k8s's JSON format, where a single line of output maybe sent
+in JSON-wrapped "chunks", each on one line (of JSON) (confirmed by Brian)
