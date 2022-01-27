@@ -116,8 +116,8 @@ github.com/DataDog/datadog-operator v0.5.0-rc.2.0.20210402083916-25ba9a22e67a h1
 github.com/DataDog/datadog-operator v0.5.0-rc.2.0.20210402083916-25ba9a22e67a/go.mod h1:2qOvG41jii2ks6Umn6MbDGlHRgwoFiYXcjgQQ9VlsS0=
 github.com/DataDog/ebpf v0.0.0-20211116165855-af5870810f0b h1:jh2MmUAXxKlWQw48DEuXxIFJtFHKvDcIp1bczg8fVaY=
 github.com/DataDog/ebpf v0.0.0-20211116165855-af5870810f0b/go.mod h1:tSPYMUcskM0OLVEJSoydgYUVuhX8hOSmtaSLNtOQThg=
-github.com/DataDog/ebpf-manager v0.0.0-20220103145404-d938938b1a8e h1:FutKp9ucvaoyiaYslgoZ64c/1wlOIgiPs+scZFy1K7s=
-github.com/DataDog/ebpf-manager v0.0.0-20220103145404-d938938b1a8e/go.mod h1:05Y9FhEyILUdCovBthi5y4KPY8AfUg5EbMNC6RMQXDY=
+github.com/DataDog/ebpf-manager v0.0.0-20220125102432-266fda150ee4 h1:zSuIvvR1UXERGq7df54+yzT7764KYNwcckprZ/fM7Zc=
+github.com/DataDog/ebpf-manager v0.0.0-20220125102432-266fda150ee4/go.mod h1:q6FEcnn+mlqeRyd+nNN/xuoHfVKVsZav5k3xEIQxkpI=
 github.com/DataDog/extendeddaemonset v0.5.1-0.20210315105301-41547d4ff09c h1:a9OMhZzrrB4nd2eAsXZIBkQ061Gb/QT4CI2g+OWWevs=
 github.com/DataDog/extendeddaemonset v0.5.1-0.20210315105301-41547d4ff09c/go.mod h1:lMIXf2EAzxbIv2zEvWu1bdqlaclUWoCtN13MHuPcY5I=
 github.com/DataDog/gohai v0.0.0-20210303102637-6b668acb50dd h1:tvXbvgbfV9OkVQPwdla2Fk7SPT1ICAM6fpFsuKbOhEI=
@@ -299,8 +299,8 @@ github.com/cilium/ebpf v0.2.0/go.mod h1:To2CFviqOWL/M0gIMsvSMlqe7em/l1ALkX1PyjrX
 github.com/cilium/ebpf v0.4.0/go.mod h1:4tRaxcgiL706VnOzHOdBlY8IEAIdxINsQBcU4xJJXRs=
 github.com/cilium/ebpf v0.5.0/go.mod h1:4tRaxcgiL706VnOzHOdBlY8IEAIdxINsQBcU4xJJXRs=
 github.com/cilium/ebpf v0.6.2/go.mod h1:4tRaxcgiL706VnOzHOdBlY8IEAIdxINsQBcU4xJJXRs=
-github.com/cilium/ebpf v0.6.3-0.20210917122031-fc2955d2ecee h1:eg3Xm5uBYJLRDVq750EFFx9CHTOEFIH/MjLNNpyTS3Y=
-github.com/cilium/ebpf v0.6.3-0.20210917122031-fc2955d2ecee/go.mod h1:/oI2+1shJiTGAMgl6/RgJr36Eo1jzrRcAWbcXO2usCA=
+github.com/cilium/ebpf v0.7.1-0.20211227144435-70d770f1e5f9 h1:WJJWEj2ETcJwnTZWHaB2tzWb9nTteHfFg1bX9l4t7j4=
+github.com/cilium/ebpf v0.7.1-0.20211227144435-70d770f1e5f9/go.mod h1:f5zLIM0FSNuAkSyLAN7X+Hy6yznlF1mNiWUMfxMtrgk=
 github.com/clbanning/mxj v1.8.4 h1:HuhwZtbyvyOw+3Z1AowPkU87JkJUSv751ELWaiTpj8I=
 github.com/clbanning/mxj v1.8.4/go.mod h1:BVjHeAH+rl9rs6f+QIpeRl0tfu10SXn1pUSa5PVGJng=
 github.com/cloudfoundry-community/go-cfclient v0.0.0-20210621174645-7773f7e22665 h1:LDCKU3OIIsl7sX1KggC6zIHKk0PCeYbmOGbCHqNCSOQ=
@@ -490,8 +490,9 @@ github.com/flynn/go-docopt v0.0.0-20140912013429-f6dd2ebbb31e/go.mod h1:HyVoz1Mz
 github.com/form3tech-oss/jwt-go v3.2.2+incompatible/go.mod h1:pbq4aXjuKjdthFRnoDwaVPLA+WlJuPGy+QneDUgJi2k=
 github.com/fortytw2/leaktest v1.3.0 h1:u8491cBMTQ8ft8aeV+adlcytMZylmA5nnwwkRZjI8vw=
 github.com/fortytw2/leaktest v1.3.0/go.mod h1:jDsjWgpAGjm2CA7WthBh/CdZYEPF31XHquHwclZch5g=
-github.com/frankban/quicktest v1.11.3 h1:8sXhOn0uLys67V8EsXLc6eszDs8VXWxL3iRvebPhedY=
 github.com/frankban/quicktest v1.11.3/go.mod h1:wRf/ReqHper53s+kmmSZizM8NamnL3IM0I9ntUbOk+k=
+github.com/frankban/quicktest v1.14.0 h1:+cqqvzZV87b4adx/5ayVOaYZ2CrvM4ejQvUdBzPPUss=
+github.com/frankban/quicktest v1.14.0/go.mod h1:NeW+ay9A/U67EYXNFA1nPE8e/tnQv/09mUdL/ijj8og=
 github.com/freddierice/go-losetup v0.0.0-20170407175016-fc9adea44124 h1:TVfi5xMshZAXzVXozESk8bi0JSTPwHkx7qtLOkkcu/c=
 github.com/freddierice/go-losetup v0.0.0-20170407175016-fc9adea44124/go.mod h1:zAk7fcFx45euzK9Az14j6Hd9n8Cwhnjp/NBfhSIAmFg=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
