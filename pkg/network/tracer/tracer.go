@@ -245,7 +245,7 @@ func newReverseDNS(supported bool, c *config.Config) dns.ReverseDNS {
 		return dns.NewNullReverseDNS()
 	}
 
-	log.Info("dns inspection enabled")
+	log.Info("dns inspection enabled some change here")
 	return rdns
 }
 
