@@ -9,6 +9,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/logs/config"
 	tailer "github.com/DataDog/datadog-agent/pkg/logs/internal/tailers/channel"
 	"github.com/DataDog/datadog-agent/pkg/logs/pipeline"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 // Launcher starts a channel reader on the given channel of string.
@@ -36,8 +37,12 @@ func (l *Launcher) Start() {
 func (l *Launcher) startNewTailer(source *config.LogSource) {
 	outputChan := l.pipelineProvider.NextPipelineChan()
 	tailer := tailer.NewTailer(source, source.Config.Channel, outputChan)
+	err := tailer.Start()
+	if err != nil {
+		log.Warnf("Could not start tailer for channel: %v", err)
+		return
+	}
 	l.tailers = append(l.tailers, tailer)
-	tailer.Start()
 }
 
 func (l *Launcher) run() {
@@ -55,7 +60,7 @@ func (l *Launcher) run() {
 // Stop waits for any running tailer to be flushed.
 func (l *Launcher) Stop() {
 	for _, tailer := range l.tailers {
-		tailer.WaitFlush()
+		tailer.Stop()
 	}
 	l.stop <- struct{}{}
 }

@@ -15,6 +15,7 @@ package windowsevent
 import "C"
 
 import (
+	"context"
 	"unicode/utf16"
 	"unsafe"
 
@@ -24,20 +25,19 @@ import (
 )
 
 // Start starts tailing the event log.
-func (t *Tailer) Start() {
+func (t *Tailer) Start() error {
 	log.Infof("Starting windows event log tailing for channel %s query %s", t.config.ChannelPath, t.config.Query)
-	go t.tail()
+	return t.TailerBase.Start()
 }
 
 // Stop stops the tailer
 func (t *Tailer) Stop() {
 	log.Info("Stop tailing windows event log")
-	t.stop <- struct{}{}
-	<-t.done
+	t.TailerBase.Stop()
 }
 
 // tail subscribes to the channel for the windows events
-func (t *Tailer) tail() {
+func (t *Tailer) run(ctx context.Context) {
 	t.context = &eventContext{
 		id: indexForTailer(t),
 	}
@@ -48,12 +48,11 @@ func (t *Tailer) tail() {
 		C.int(EvtSubscribeToFutureEvents),
 		C.PVOID(uintptr(unsafe.Pointer(t.context))),
 	)
-	t.source.Status.Success()
+	t.Source.Status.Success()
 
 	// wait for stop signal
-	<-t.stop
-	t.done <- struct{}{}
-	return
+	<-ctx.Done()
+	// NOTE: this tailer does not stop listening on Stop()
 }
 
 /*
@@ -94,8 +93,8 @@ func goNotificationCallback(handle C.ULONGLONG, ctx C.PVOID) {
 		return
 	}
 
-	t.source.BytesRead.Add(int64(len(msg.Content)))
-	t.outputChan <- msg
+	t.Source.BytesRead.Add(int64(len(msg.Content)))
+	t.OutputChan <- msg
 }
 
 var (

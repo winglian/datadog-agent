@@ -80,7 +80,8 @@ func (l *Launcher) Stop() {
 func (l *Launcher) setupTailer(source *config.LogSource) (*tailer.Tailer, error) {
 	tailer := tailer.NewTailer(source, l.pipelineProvider.NextPipelineChan())
 	cursor := l.registry.GetOffset(tailer.Identifier())
-	err := tailer.Start(cursor)
+	tailer.SetCursor(cursor)
+	err := tailer.Start()
 	if err != nil {
 		return nil, err
 	}

@@ -229,7 +229,7 @@ func (suite *TailerTestSuite) TestWithBlanklines() {
 	suite.Equal(len(lines), int(suite.tailer.decodedOffset))
 }
 
-func (suite *TailerTestSuite) TestTailerIdentifier() {
+func (suite *TailerTestSuite) TestTailerID() {
 	suite.tailer.StartFromBeginning()
 	suite.Equal(fmt.Sprintf("file:%s/tailer.log", suite.testDir), suite.tailer.Identifier())
 }

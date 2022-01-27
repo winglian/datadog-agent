@@ -57,7 +57,7 @@ func (l *Launcher) run() {
 // Stop waits for any running tailer to be flushed.
 func (l *Launcher) Stop() {
 	if l.tailer != nil {
-		l.tailer.WaitFlush()
+		l.tailer.Stop()
 		l.tailer = nil
 	}
 	l.stop <- true

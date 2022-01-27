@@ -69,7 +69,10 @@ func (l *UDPListener) startNewTailer() error {
 		return err
 	}
 	l.tailer = tailer.NewTailer(l.source, conn, l.pipelineProvider.NextPipelineChan(), l.read)
-	l.tailer.Start()
+	err = l.tailer.Start()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

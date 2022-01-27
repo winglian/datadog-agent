@@ -19,6 +19,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/logs/config"
 	"github.com/DataDog/datadog-agent/pkg/logs/decoder"
+	"github.com/DataDog/datadog-agent/pkg/logs/internal/tailers"
 	"github.com/DataDog/datadog-agent/pkg/logs/message"
 	"github.com/DataDog/datadog-agent/pkg/logs/tag"
 
@@ -85,9 +86,7 @@ func NewTestTailer(reader io.ReadCloser, dockerClient *fakeDockerClient, cancelF
 	source := config.NewLogSource("foo", nil)
 	tailer := &Tailer{
 		ContainerID:        containerID,
-		outputChan:         make(chan *message.Message, 100),
 		decoder:            NewTestDecoder(),
-		Source:             source,
 		tagProvider:        tag.NewLocalProvider([]string{}),
 		dockerutil:         dockerClient,
 		readTimeout:        time.Millisecond,
@@ -98,13 +97,17 @@ func NewTestTailer(reader io.ReadCloser, dockerClient *fakeDockerClient, cancelF
 		reader:             newSafeReader(),
 		readerCancelFunc:   cancelFunc,
 	}
+	tailer.TailerBase = tailers.NewTailerBase(source, tailer.run,
+		fmt.Sprintf("docker:%s", containerID),
+		make(chan *message.Message, 100))
 	tailer.reader.setUnsafeReader(reader)
 
 	return tailer
 }
 
-func TestTailerIdentifier(t *testing.T) {
-	tailer := &Tailer{ContainerID: "test"}
+func TestTailerID(t *testing.T) {
+	source := config.NewLogSource("foo", &config.LogsConfig{})
+	tailer := NewTailer(nil, "test", source, nil, nil, 0)
 	assert.Equal(t, "docker:test", tailer.Identifier())
 }
 
@@ -136,19 +139,6 @@ func TestReadTimeout(t *testing.T) {
 
 	assert.NotNil(t, err)
 	assert.Equal(t, 0, n)
-}
-
-func TestTailerCanStopWithNilReader(t *testing.T) {
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	tailer := NewTestTailer(newMockReaderSleep(ctx), nil, cancelFunc)
-
-	// Simulate error in tailer.setupReader()
-	tailer.reader = newSafeReader()
-	tailer.done <- struct{}{}
-
-	tailer.Stop()
-
-	assert.True(t, true)
 }
 
 func TestTailer_readForever(t *testing.T) {

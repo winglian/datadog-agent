@@ -6,10 +6,13 @@
 package traps
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/logs/config"
+	"github.com/DataDog/datadog-agent/pkg/logs/internal/tailers"
 	"github.com/DataDog/datadog-agent/pkg/logs/message"
 	"github.com/DataDog/datadog-agent/pkg/snmp/traps"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
@@ -17,52 +20,41 @@ import (
 
 // Tailer consumes and processes a stream of trap packets, and sends them to a stream of log messages.
 type Tailer struct {
-	source     *config.LogSource
-	inputChan  traps.PacketsChannel
-	outputChan chan *message.Message
-	done       chan interface{}
+	tailers.TailerBase
+	inputChan traps.PacketsChannel
 }
 
 // NewTailer returns a new Tailer
 func NewTailer(source *config.LogSource, inputChan traps.PacketsChannel, outputChan chan *message.Message) *Tailer {
-	return &Tailer{
-		source:     source,
-		inputChan:  inputChan,
-		outputChan: outputChan,
-		done:       make(chan interface{}, 1),
+	t := &Tailer{
+		inputChan: inputChan,
 	}
+	t.TailerBase = tailers.NewTailerBase(source, t.run, fmt.Sprintf("traps:%p", inputChan), outputChan)
+	return t
 }
 
 // Start starts the tailer.
-func (t *Tailer) Start() {
-	go t.run()
-}
-
-// WaitFlush waits for all items in the input channel to be processed.
-func (t *Tailer) WaitFlush() {
-	<-t.done
-}
-
-func (t *Tailer) run() {
-	defer func() {
-		t.done <- true
-	}()
-
+func (t *Tailer) run(ctx context.Context) {
 	// Loop terminates when the channel is closed.
-	for packet := range t.inputChan {
-		data, err := traps.FormatPacketToJSON(packet)
-		if err != nil {
-			log.Errorf("failed to format packet: %s", err)
-			continue
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case packet := <-t.inputChan:
+			data, err := traps.FormatPacketToJSON(packet)
+			if err != nil {
+				log.Errorf("failed to format packet: %s", err)
+				continue
+			}
+			t.Source.BytesRead.Add(int64(len(data)))
+			content, err := json.Marshal(data)
+			if err != nil {
+				log.Errorf("failed to serialize packet data to JSON: %s", err)
+				continue
+			}
+			origin := message.NewOrigin(t.Source)
+			origin.SetTags(traps.GetTags(packet))
+			t.OutputChan <- message.NewMessage(content, origin, message.StatusInfo, time.Now().UnixNano())
 		}
-		t.source.BytesRead.Add(int64(len(data)))
-		content, err := json.Marshal(data)
-		if err != nil {
-			log.Errorf("failed to serialize packet data to JSON: %s", err)
-			continue
-		}
-		origin := message.NewOrigin(t.source)
-		origin.SetTags(traps.GetTags(packet))
-		t.outputChan <- message.NewMessage(content, origin, message.StatusInfo, time.Now().UnixNano())
 	}
 }

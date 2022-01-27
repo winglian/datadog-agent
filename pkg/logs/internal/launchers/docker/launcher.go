@@ -385,7 +385,8 @@ func (l *Launcher) startSocketTailer(container *Container, source *config.LogSou
 	}
 
 	// start the tailer
-	err = tailer.Start(since)
+	tailer.SetSince(since)
+	err = tailer.Start()
 	if err != nil {
 		log.Warnf("Could not start tailer %s: %v", containerID, err)
 		return
@@ -461,7 +462,8 @@ func (l *Launcher) restartTailer(containerID string) {
 		}
 
 		// start the tailer
-		err = tailer.Start(since)
+		tailer.SetSince(since)
+		err = tailer.Start()
 		if err != nil {
 			log.Warnf("Could not start tailer for container %v: %v", dockerutilpkg.ShortContainerID(containerID), err)
 			time.Sleep(backoffDuration)

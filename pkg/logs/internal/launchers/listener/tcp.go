@@ -143,8 +143,12 @@ func (l *TCPListener) startTailer(conn net.Conn) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	tailer := tailer.NewTailer(l.source, conn, l.pipelineProvider.NextPipelineChan(), l.read)
+	err := tailer.Start()
+	if err != nil {
+		log.Warnf("Could not start tailer %s: %v", tailer.Identifier(), err)
+		return
+	}
 	l.tailers = append(l.tailers, tailer)
-	tailer.Start()
 }
 
 // stopTailer stops the tailer.

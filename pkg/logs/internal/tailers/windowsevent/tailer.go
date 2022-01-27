@@ -15,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/DataDog/datadog-agent/pkg/logs/config"
+	"github.com/DataDog/datadog-agent/pkg/logs/internal/tailers"
 	"github.com/DataDog/datadog-agent/pkg/logs/message"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/clbanning/mxj"
@@ -49,34 +50,19 @@ type richEvent struct {
 
 // Tailer collects logs from event log.
 type Tailer struct {
-	source     *config.LogSource
-	config     *Config
-	outputChan chan *message.Message
-	stop       chan struct{}
-	done       chan struct{}
+	tailers.TailerBase
+	config *Config
 
 	context *eventContext
 }
 
 // NewTailer returns a new tailer.
 func NewTailer(source *config.LogSource, config *Config, outputChan chan *message.Message) *Tailer {
-	return &Tailer{
-		source:     source,
-		config:     config,
-		outputChan: outputChan,
-		stop:       make(chan struct{}, 1),
-		done:       make(chan struct{}, 1),
+	t := &Tailer{
+		config: config,
 	}
-}
-
-// Identifier returns a string that uniquely identifies a source
-func Identifier(channelPath, query string) string {
-	return fmt.Sprintf("eventlog:%s;%s", channelPath, query)
-}
-
-// Identifier returns a string that uniquely identifies a source
-func (t *Tailer) Identifier() string {
-	return Identifier(t.config.ChannelPath, t.config.Query)
+	t.TailerBase = tailers.NewTailerBase(source, t.run, fmt.Sprintf("eventlog:%s;%s", config.ChannelPath, config.Query), outputChan)
+	return t
 }
 
 // toMessage converts an XML message into json
@@ -132,7 +118,7 @@ func (t *Tailer) toMessage(re *richEvent) (*message.Message, error) { //nolint:u
 	}
 	jsonEvent = replaceTextKeyToValue(jsonEvent)
 	log.Debug("Sending JSON:", string(jsonEvent))
-	return message.NewMessageWithSource(jsonEvent, message.StatusInfo, t.source, time.Now().UnixNano()), nil
+	return message.NewMessageWithSource(jsonEvent, message.StatusInfo, t.Source, time.Now().UnixNano()), nil
 }
 
 // extractDataField transforms the fields parsed from <Data Name='NAME1'>VALUE1</Data><Data Name='NAME2'>VALUE2</Data> to

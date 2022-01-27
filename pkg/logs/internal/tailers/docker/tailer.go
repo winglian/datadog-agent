@@ -21,6 +21,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/logs/config"
 	"github.com/DataDog/datadog-agent/pkg/logs/decoder"
+	"github.com/DataDog/datadog-agent/pkg/logs/internal/tailers"
 	"github.com/DataDog/datadog-agent/pkg/logs/message"
 	"github.com/DataDog/datadog-agent/pkg/logs/tag"
 
@@ -42,11 +43,11 @@ type dockerContainerLogInterface interface {
 //  - decoder
 //  - message forwarder
 type Tailer struct {
+	tailers.TailerBase
+
 	ContainerID string
-	outputChan  chan *message.Message
 	decoder     *decoder.Decoder
 	dockerutil  dockerContainerLogInterface
-	Source      *config.LogSource
 	tagProvider tag.Provider
 
 	readTimeout   time.Duration
@@ -69,17 +70,19 @@ type Tailer struct {
 	// calls, which will return context.Canceled
 	readerCancelFunc context.CancelFunc
 
+	// lastSince is the most recent "since" timestamp from which to begin logging.
 	lastSince string
-	mutex     sync.Mutex
+
+	// lastSinceMutex protects lastSince, which is accessed both from the readForever
+	// and processMessages goroutines.
+	lastSinceMutex sync.Mutex
 }
 
 // NewTailer returns a new Tailer
 func NewTailer(cli *dockerutil.DockerUtil, containerID string, source *config.LogSource, outputChan chan *message.Message, erroredContainerID chan string, readTimeout time.Duration) *Tailer {
-	return &Tailer{
+	t := &Tailer{
 		ContainerID:        containerID,
-		outputChan:         outputChan,
 		decoder:            InitializeDecoder(source, containerID),
-		Source:             source,
 		tagProvider:        tag.NewProvider(dockerutil.ContainerIDToTaggerEntityName(containerID)),
 		dockerutil:         cli,
 		readTimeout:        readTimeout,
@@ -89,18 +92,50 @@ func NewTailer(cli *dockerutil.DockerUtil, containerID string, source *config.Lo
 		erroredContainerID: erroredContainerID,
 		reader:             newSafeReader(),
 	}
+	t.TailerBase = tailers.NewTailerBase(source, t.run, fmt.Sprintf("docker:%s", containerID), outputChan)
+	return t
 }
 
-// Identifier returns a string that uniquely identifies a source
-func (t *Tailer) Identifier() string {
-	return fmt.Sprintf("docker:%s", t.ContainerID)
+// SetSince sets the point from which this tailer will begin logging.  Call
+// this before calling Start().
+func (t *Tailer) SetSince(since time.Time) {
+	t.setLastSince(since.Format(config.DateFormat))
 }
 
-// Stop stops the tailer from reading new container logs,
-// this call blocks until the decoder is completely flushed
+// Start starts tailing from the point designated with SetSince.  It implements
+// Tailer#Start.
+func (t *Tailer) Start() error {
+	log.Debugf("Start tailing container: %v", dockerutil.ShortContainerID(t.ContainerID))
+
+	err := t.setupReader()
+	if err != nil {
+		// could not start the tailer
+		t.Source.Status.Error(err)
+		return err
+	}
+	t.Source.Status.Success()
+	t.Source.AddInput(t.ContainerID)
+
+	return t.TailerBase.Start()
+}
+
+// Stop stops the tailer from reading new container logs, this call blocks
+// until the tailer is completely finished.  It implements Tailer#Stop.
 func (t *Tailer) Stop() {
 	log.Infof("Stop tailing container: %v", dockerutil.ShortContainerID(t.ContainerID))
 
+	t.interruptRead()
+
+	t.Source.RemoveInput(t.ContainerID)
+
+	// the closed readForever component will eventually close its channel to the decoder,
+	// which will eventually close its channel to the message-forwarder component,
+	// which is the goroutine being monitored by TailerBase.
+	t.TailerBase.Stop()
+}
+
+// Interrupt any ongoing operations reading from the docker API
+func (t *Tailer) interruptRead() {
 	// signal the readForever component to stop
 	t.stop <- struct{}{}
 
@@ -110,27 +145,11 @@ func (t *Tailer) Stop() {
 	// signal the reader to stop a third way, by cancelling its context.  no-op
 	// if already closed because of a timeout
 	t.readerCancelFunc()
-
-	t.Source.RemoveInput(t.ContainerID)
-
-	// the closed readForever component will eventually close its channel to the decoder,
-	// which will eventually close its channel to the message-forwarder component,
-	// which will indicate it's done with this channel.
-	<-t.done
-}
-
-// Start starts tailing from the last log line processed.
-// if we see this container for the first time, it will:
-// start from now if the container has been created before the agent started
-// start from oldest log otherwise
-func (t *Tailer) Start(since time.Time) error {
-	log.Debugf("Start tailing container: %v", dockerutil.ShortContainerID(t.ContainerID))
-	return t.tail(since.Format(config.DateFormat))
 }
 
 func (t *Tailer) getLastSince() string {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
+	t.lastSinceMutex.Lock()
+	defer t.lastSinceMutex.Unlock()
 	since, err := time.Parse(config.DateFormat, t.lastSince)
 	if err != nil {
 		since = time.Now().UTC()
@@ -143,8 +162,8 @@ func (t *Tailer) getLastSince() string {
 }
 
 func (t *Tailer) setLastSince(since string) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
+	t.lastSinceMutex.Lock()
+	defer t.lastSinceMutex.Unlock()
 	t.lastSince = since
 }
 
@@ -178,28 +197,19 @@ func (t *Tailer) tryRestartReader(reason string) error {
 	return err
 }
 
-// tail sets up and starts the tailer
-func (t *Tailer) tail(since string) error {
-	t.setLastSince(since)
-	err := t.setupReader()
-	if err != nil {
-		// could not start the tailer
-		t.Source.Status.Error(err)
-		return err
-	}
-	t.Source.Status.Success()
-	t.Source.AddInput(t.ContainerID)
+// run runs the tailer components.
+func (t *Tailer) run(ctx context.Context) {
 
-	// Start (in reverse order) the three actor components of this tailer, each
-	// in dedicated goroutines:
-	// - readForever, which reads data from the docker API and passes it to..
-	// - the decoder, which runs in its own goroutine(s) and passes messages to..
-	// - forwardMessage, which writes messages to t.outputChan.
-	go t.forwardMessages()
-	t.decoder.Start()
+	// Of the three tailer components, readForever and the decoder will run in their
+	// own goroutines, while forwardMessages will run in this goroutine.  The Stop
+	// method "poisons" the readForever component, which eventually stops, and that
+	// stop percolates through the decoder to forwardMessages.
 	go t.readForever()
+	t.decoder.Start()
 
-	return nil
+	// forwardMessages runs in this goroutine, so t.TailerBase.Stop() will not
+	// return until it finishes.
+	t.forwardMessages()
 }
 
 // readForever reads from the reader as fast as it can,
@@ -317,7 +327,7 @@ func (t *Tailer) forwardMessages() {
 			t.setLastSince(output.Timestamp)
 			origin.Identifier = t.Identifier()
 			origin.SetTags(t.tagProvider.GetTags())
-			t.outputChan <- message.NewMessage(output.Content, origin, output.Status, output.IngestionTimestamp)
+			t.OutputChan <- message.NewMessage(output.Content, origin, output.Status, output.IngestionTimestamp)
 		}
 	}
 }

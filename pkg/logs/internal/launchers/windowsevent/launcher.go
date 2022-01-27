@@ -48,16 +48,15 @@ func (l *Launcher) run() {
 	for {
 		select {
 		case source := <-l.sources:
-			identifier := tailer.Identifier(source.Config.ChannelPath, source.Config.Query)
-			if _, exists := l.tailers[identifier]; exists {
+			tailer, err := l.setupTailer(source)
+			if _, exists := l.tailers[tailer.Identifier()]; exists {
 				// tailer already setup
 				continue
 			}
-			tailer, err := l.setupTailer(source)
 			if err != nil {
 				log.Info("Could not set up windows event log tailer: ", err)
 			} else {
-				l.tailers[identifier] = tailer
+				l.tailers[tailer.Identifier()] = tailer
 			}
 		case <-l.stop:
 			return
@@ -96,6 +95,9 @@ func (l *Launcher) setupTailer(source *config.LogSource) (*tailer.Tailer, error)
 		Query:       sanitizedConfig.Query,
 	}
 	tailer := tailer.NewTailer(source, config, l.pipelineProvider.NextPipelineChan())
-	tailer.Start()
+	err := tailer.Start()
+	if err != nil {
+		return nil, err
+	}
 	return tailer, nil
 }

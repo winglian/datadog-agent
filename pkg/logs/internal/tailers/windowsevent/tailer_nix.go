@@ -9,23 +9,18 @@
 package windowsevent
 
 import (
+	"context"
+
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 // Start does not do much
-func (t *Tailer) Start() {
+func (t *Tailer) Start() error {
 	log.Warn("windows event log not supported on this system")
-	go t.tail()
+	return t.TailerBase.Start()
 }
 
-// Stop stops the tailer
-func (t *Tailer) Stop() {
-	t.stop <- struct{}{}
-	<-t.done
-}
-
-// tail does nothing
-func (t *Tailer) tail() {
-	<-t.stop
-	t.done <- struct{}{}
+// run does nothing
+func (t *Tailer) run(ctx context.Context) {
+	<-ctx.Done()
 }

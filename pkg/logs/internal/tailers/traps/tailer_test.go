@@ -50,8 +50,7 @@ func TestTrapsShouldReceiveMessages(t *testing.T) {
 	assert.Equal(t, format(t, p), msg.Content)
 	assert.Equal(t, traps.GetTags(p), msg.Origin.Tags())
 
-	close(inputChan)
-	tailer.WaitFlush()
+	tailer.Stop()
 }
 
 func format(t *testing.T, p *traps.SnmpPacket) []byte {

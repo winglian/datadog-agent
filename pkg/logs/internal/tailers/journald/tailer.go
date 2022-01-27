@@ -9,6 +9,7 @@
 package journald
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ import (
 	"github.com/coreos/go-systemd/sdjournal"
 
 	"github.com/DataDog/datadog-agent/pkg/logs/config"
+	"github.com/DataDog/datadog-agent/pkg/logs/internal/tailers"
 	"github.com/DataDog/datadog-agent/pkg/logs/message"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
@@ -27,54 +29,50 @@ const (
 	defaultApplicationName = "docker"
 )
 
+// journaldIntegration represents the name of the integration,
+// it's used to override the source of the message and as a fingerprint to store the journal cursor.
+const journaldIntegration = "journald"
+
 // Tailer collects logs from a journal.
 type Tailer struct {
-	source     *config.LogSource
-	outputChan chan *message.Message
-	journal    *sdjournal.Journal
-	blacklist  map[string]bool
-	stop       chan struct{}
-	done       chan struct{}
+	tailers.TailerBase
+	cursor    string
+	journal   *sdjournal.Journal
+	blacklist map[string]bool
 }
 
 // NewTailer returns a new tailer.
 func NewTailer(source *config.LogSource, outputChan chan *message.Message) *Tailer {
-	return &Tailer{
-		source:     source,
-		outputChan: outputChan,
-		stop:       make(chan struct{}, 1),
-		done:       make(chan struct{}, 1),
-	}
+	t := &Tailer{}
+	t.TailerBase = tailers.NewTailerBase(source, t.run, journaldIntegration+":"+journalPath(source), outputChan)
+	return t
 }
 
-// Start starts tailing the journal from a given offset.
-func (t *Tailer) Start(cursor string) error {
+// Set the point at which to begin tailing.  If no cursor is set, tailing will
+// begin at the beginning of the journal.
+func (t *Tailer) SetCursor(cursor string) {
+	t.cursor = cursor
+}
+
+// Start performs some setup, then starts the actor.
+func (t *Tailer) Start() error {
 	if err := t.setup(); err != nil {
-		t.source.Status.Error(err)
+		t.Source.Status.Error(err)
 		return err
 	}
-	if err := t.seek(cursor); err != nil {
-		t.source.Status.Error(err)
+	if err := t.seek(t.cursor); err != nil {
+		t.Source.Status.Error(err)
 		return err
 	}
-	t.source.Status.Success()
-	t.source.AddInput(t.journalPath())
-	log.Info("Start tailing journal ", t.journalPath())
-	go t.tail()
-	return nil
-}
-
-// Stop stops the tailer
-func (t *Tailer) Stop() {
-	log.Info("Stop tailing journal ", t.journalPath())
-	t.stop <- struct{}{}
-	t.source.RemoveInput(t.journalPath())
-	<-t.done
+	t.Source.Status.Success()
+	t.Source.AddInput(journalPath(t.Source))
+	log.Info("Start tailing journal ", journalPath(t.Source))
+	return t.TailerBase.Start()
 }
 
 // setup configures the tailer
 func (t *Tailer) setup() error {
-	config := t.source.Config
+	config := t.Source.Config
 	var err error
 
 	t.initializeTagger()
@@ -123,23 +121,22 @@ func (t *Tailer) seek(cursor string) error {
 	return t.journal.SeekTail()
 }
 
-// tail tails the journal until a message stop is received.
-func (t *Tailer) tail() {
+// run tails the journal until a message stop is received.
+func (t *Tailer) run(ctx context.Context) {
 	defer func() {
 		t.journal.Close()
-		t.done <- struct{}{}
 	}()
 	for {
 		select {
-		case <-t.stop:
+		case <-ctx.Done():
 			// stop tailing journal
 			return
 		default:
 			n, err := t.journal.Next()
-			t.source.BytesRead.Add(int64(n))
+			t.Source.BytesRead.Add(int64(n))
 			if err != nil && err != io.EOF {
-				err := fmt.Errorf("cant't tail journal %s: %s", t.journalPath(), err)
-				t.source.Status.Error(err)
+				err := fmt.Errorf("cant't tail journal %s: %s", journalPath(t.Source), err)
+				t.Source.Status.Error(err)
 				log.Error(err)
 				return
 			}
@@ -156,7 +153,7 @@ func (t *Tailer) tail() {
 			if t.shouldDrop(entry) {
 				continue
 			}
-			t.outputChan <- t.toMessage(entry)
+			t.OutputChan <- t.toMessage(entry)
 		}
 	}
 }
@@ -220,7 +217,7 @@ func (t *Tailer) getContent(entry *sdjournal.JournalEntry) []byte {
 
 // getOrigin returns the message origin computed from the journal entry
 func (t *Tailer) getOrigin(entry *sdjournal.JournalEntry) *message.Origin {
-	origin := message.NewOrigin(t.source)
+	origin := message.NewOrigin(t.Source)
 	origin.Identifier = t.Identifier()
 	origin.Offset, _ = t.journal.GetCursor()
 	// set the service and the source attributes of the message,
@@ -243,7 +240,7 @@ var applicationKeys = []string{
 // getApplicationName returns the name of the application from where the entry is from.
 func (t *Tailer) getApplicationName(entry *sdjournal.JournalEntry, tags []string) string {
 	if t.isContainerEntry(entry) {
-		if t.source.Config.ContainerMode {
+		if t.Source.Config.ContainerMode {
 			if shortName, found := getDockerImageShortName(t.getContainerID(entry), tags); found {
 				return shortName
 			}
@@ -295,19 +292,10 @@ func (t *Tailer) getStatus(entry *sdjournal.JournalEntry) string {
 	return status
 }
 
-// journaldIntegration represents the name of the integration,
-// it's used to override the source of the message and as a fingerprint to store the journal cursor.
-const journaldIntegration = "journald"
-
-// Identifier returns the unique identifier of the current journal being tailed.
-func (t *Tailer) Identifier() string {
-	return journaldIntegration + ":" + t.journalPath()
-}
-
 // journalPath returns the path of the journal
-func (t *Tailer) journalPath() string {
-	if t.source.Config.Path != "" {
-		return t.source.Config.Path
+func journalPath(source *config.LogSource) string {
+	if source.Config.Path != "" {
+		return source.Config.Path
 	}
 	return "default"
 }
