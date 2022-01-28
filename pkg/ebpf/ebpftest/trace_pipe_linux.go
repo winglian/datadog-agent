@@ -82,7 +82,7 @@ func (t *TracePipe) ReadLine() (*TraceEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	traceEvent, err := parseTraceLine(line)
+	traceEvent, err := parseTraceLine(strings.TrimSuffix(line, "\n"))
 	if err != nil {
 		return nil, err
 	}
