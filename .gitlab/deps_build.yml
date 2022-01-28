@@ -15,7 +15,6 @@
     - mkdir llvm && tar xf llvm.src.tar.xz --strip-components=1 --no-same-owner -C llvm
     - mkdir build && cd build
     - |
-      ASAN_OPTIONS=detect_leaks=0 \
       cmake -DLLVM_ENABLE_PROJECTS=clang \
       -DLLVM_TARGETS_TO_BUILD="BPF" \
       -DCMAKE_INSTALL_PREFIX=$DATADOG_AGENT_EMBEDDED_PATH \
@@ -34,7 +33,7 @@
       -DCMAKE_C_FLAGS:STRING="-fsanitize=address -fno-omit-frame-pointer" \
       -DCMAKE_EXE_LINKER_FLAGS="-pthread -ldl -lstdc++" \
       ../llvm
-    - cmake --build . --target install
+    - ASAN_OPTIONS=detect_leaks=0 cmake --build . --target install
     - cd $DATADOG_AGENT_EMBEDDED_PATH
     - rm -rf bin share libexec lib/clang lib/cmake lib/*.so*
     - mkdir -p $CI_PROJECT_DIR/.tmp
