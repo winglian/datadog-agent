@@ -114,6 +114,7 @@ func (l *UDPListener) Listen() {
 			tlmUDPPacketsBytes.Add(float64(n))
 
 			// packetAssembler merges multiple packets together and sends them when its buffer is full
+			log.Infof("Read from UDP port: %s", string(l.buffer[:n]))
 			l.packetAssembler.AddMessage(l.buffer[:n])
 		}
 

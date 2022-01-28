@@ -564,9 +564,9 @@ func (agg *BufferedAggregator) sendSeries(start time.Time, series metrics.Series
 
 	// For debug purposes print out all metrics/tag combinations
 	if config.Datadog.GetBool("log_payloads") {
-		log.Debug("Flushing the following metrics:")
+		log.Info("Flushing the following metrics:")
 		for _, serie := range series {
-			log.Debugf("%s", serie)
+			log.Infof("%s", serie)
 		}
 	}
 
@@ -633,9 +633,9 @@ func (agg *BufferedAggregator) flushServiceChecks(start time.Time, waitForSerial
 
 	// For debug purposes print out all serviceCheck/tag combinations
 	if config.Datadog.GetBool("log_payloads") {
-		log.Debug("Flushing the following Service Checks:")
+		log.Info("Flushing the following Service Checks:")
 		for _, sc := range serviceChecks {
-			log.Debugf("%s", sc)
+			log.Infof("%s", sc)
 		}
 	}
 
@@ -686,9 +686,9 @@ func (agg *BufferedAggregator) flushEvents(start time.Time, waitForSerializer bo
 
 	// For debug purposes print out all Event/tag combinations
 	if config.Datadog.GetBool("log_payloads") {
-		log.Debug("Flushing the following Events:")
+		log.Info("Flushing the following Events:")
 		for _, event := range events {
-			log.Debugf("%s", event)
+			log.Infof("%s", event)
 		}
 	}
 
