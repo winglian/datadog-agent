@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DataDog/datadog-agent/pkg/ebpf/ebpftest"
 	nettestutil "github.com/DataDog/datadog-agent/pkg/network/testutil"
 	tracertest "github.com/DataDog/datadog-agent/pkg/network/tracer/testutil"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
@@ -1182,6 +1183,17 @@ func TestUDPPeekCount(t *testing.T) {
 	require.Equal(t, 0, int(incoming.MonotonicSentBytes))
 	require.Equal(t, len(msg), int(incoming.MonotonicRecvBytes))
 	require.True(t, incoming.IntraHost)
+}
+
+func TestUDPSendAndReceive(t *testing.T) {
+	t.Run("v4", func(t *testing.T) {
+		ebpftest.StartTracing(t)
+		testUDPSendAndReceive(t, "udp4", "127.0.0.1:8001")
+	})
+	t.Run("v6", func(t *testing.T) {
+		ebpftest.StartTracing(t)
+		testUDPSendAndReceive(t, "udp6", "[::1]:8001")
+	})
 }
 
 func TestDNSStatsWithNAT(t *testing.T) {

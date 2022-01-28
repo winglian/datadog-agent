@@ -431,17 +431,9 @@ func TestTCPCollectionDisabled(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestUDPSendAndReceive(t *testing.T) {
-	t.Run("v4", func(t *testing.T) {
-		testUDPSendAndReceive(t, "udp4", "127.0.0.1:8001")
-	})
-	t.Run("v6", func(t *testing.T) {
-		testUDPSendAndReceive(t, "udp6", "[::1]:8001")
-	})
-}
-
 func testUDPSendAndReceive(t *testing.T, udpnet, addr string) {
 	cfg := testConfig()
+	cfg.BPFDebug = true
 	tr, err := NewTracer(cfg)
 	require.NoError(t, err)
 	t.Cleanup(tr.Stop)
