@@ -35,6 +35,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	sysconfig "github.com/DataDog/datadog-agent/cmd/system-probe/config"
+	"github.com/DataDog/datadog-agent/pkg/ebpf/ebpftest"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
 	"github.com/DataDog/datadog-agent/pkg/security/config"
 	"github.com/DataDog/datadog-agent/pkg/security/module"
@@ -915,13 +916,13 @@ func (tm *testModule) Create(filename string) (string, unsafe.Pointer, error) {
 
 //nolint:unused
 type tracePipeLogger struct {
-	*TracePipe
+	*ebpftest.TracePipe
 	stop       chan struct{}
 	executable string
 }
 
 //nolint:unused
-func (l *tracePipeLogger) handleEvent(event *TraceEvent) {
+func (l *tracePipeLogger) handleEvent(event *ebpftest.TraceEvent) {
 	// for some reason, the event task is resolved to "<...>"
 	// so we check that event.PID is the ID of a task of the running process
 	taskPath := filepath.Join(util.HostProc(), strconv.Itoa(int(utils.Getpid())), "task", event.PID)
@@ -963,7 +964,7 @@ func (l *tracePipeLogger) Stop() {
 
 //nolint:unused
 func (tm *testModule) startTracing() (*tracePipeLogger, error) {
-	tracePipe, err := NewTracePipe()
+	tracePipe, err := ebpftest.NewTracePipe()
 	if err != nil {
 		return nil, err
 	}

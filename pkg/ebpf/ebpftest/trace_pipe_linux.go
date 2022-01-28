@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tests
+package ebpftest
 
 import (
 	"bufio"
@@ -91,7 +91,7 @@ func (t *TracePipe) ReadLine() (*TraceEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	traceEvent, err := parseTraceLine(line)
+	traceEvent, err := parseTraceLine(strings.TrimSuffix(line, "\n"))
 	if err != nil {
 		return nil, err
 	}
