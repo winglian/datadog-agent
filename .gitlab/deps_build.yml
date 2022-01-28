@@ -32,6 +32,7 @@
       -DCMAKE_CXX_FLAGS:STRING="-fsanitize=address -fno-omit-frame-pointer" \
       -DCMAKE_C_FLAGS:STRING="-fsanitize=address -fno-omit-frame-pointer" \
       -DCMAKE_EXE_LINKER_FLAGS="-pthread -ldl -lstdc++" \
+      -DCMAKE_SHARED_LINKER_FLAGS="-pthread -ldl -lstdc++" \
       ../llvm
     - ASAN_OPTIONS=detect_leaks=0 cmake --build . --target install
     - cd $DATADOG_AGENT_EMBEDDED_PATH
