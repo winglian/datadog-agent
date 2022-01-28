@@ -19,7 +19,7 @@
       -DLLVM_TARGETS_TO_BUILD="BPF" \
       -DCMAKE_INSTALL_PREFIX=$DATADOG_AGENT_EMBEDDED_PATH \
       -G "Ninja" \
-      -DCMAKE_BUILD_TYPE=MinSizeRel \
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo \
       -DLLVM_BUILD_TOOLS=OFF \
       -DLLVM_ENABLE_TERMINFO=OFF \
       -DLLVM_INCLUDE_EXAMPLES=OFF \
@@ -29,18 +29,20 @@
       -DLLVM_ENABLE_BINDINGS=OFF \
       -DLLVM_PARALLEL_COMPILE_JOBS=4 \
       -DLLVM_PARALLEL_LINK_JOBS=4 \
+      -DCMAKE_CXX_FLAGS:STRING="-fsanitize=address -fno-omit-frame-pointer" \
+      -DCMAKE_C_FLAGS:STRING="-fsanitize=address -fno-omit-frame-pointer" \
       ../llvm
     - cmake --build . --target install
     - cd $DATADOG_AGENT_EMBEDDED_PATH
     - rm -rf bin share libexec lib/clang lib/cmake lib/*.so*
     - mkdir -p $CI_PROJECT_DIR/.tmp
-    - tar cvaf $CI_PROJECT_DIR/.tmp/clang-$ARCH-11.0.1.tar.xz .
-    - $S3_CP_CMD $CI_PROJECT_DIR/.tmp/clang-$ARCH-11.0.1.tar.xz $S3_PERMANENT_ARTIFACTS_URI/clang-$ARCH-11.0.1.tar.xz
+    - tar cvaf $CI_PROJECT_DIR/.tmp/clang-$ARCH-11.0.1-reldebug-memcheck.tar.xz .
+    - $S3_CP_CMD $CI_PROJECT_DIR/.tmp/clang-$ARCH-11.0.1-reldebug-memcheck.tar.xz $S3_PERMANENT_ARTIFACTS_URI/clang-$ARCH-11.0.1-reldebug-memcheck.tar.xz
   timeout: 2h 00m
   artifacts:
     expire_in: 2 weeks
     paths:
-      - $CI_PROJECT_DIR/.tmp/clang-$ARCH-11.0.1.tar.xz
+      - $CI_PROJECT_DIR/.tmp/clang-$ARCH-11.0.1-reldebug-memcheck.tar.xz
 
 build_clang_x64:
   extends: .build_clang_common
