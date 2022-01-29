@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DataDog/datadog-agent/pkg/ebpf/ebpftest"
 	"github.com/DataDog/datadog-agent/pkg/network"
 	"github.com/DataDog/datadog-agent/pkg/network/config"
 	"github.com/DataDog/datadog-agent/pkg/network/http"
@@ -431,9 +432,20 @@ func TestTCPCollectionDisabled(t *testing.T) {
 	require.False(t, ok)
 }
 
-func testUDPSendAndReceive(t *testing.T, udpnet, addr string) {
-	cfg := testConfig()
-	cfg.BPFDebug = true
+func TestUDPSendAndReceive(t *testing.T) {
+	t.Run("v4", func(t *testing.T) {
+		cfg := testConfig()
+		ebpftest.StartTracing(t, &cfg.Config)
+		testUDPSendAndReceive(t, cfg, "udp4", "127.0.0.1:8001")
+	})
+	t.Run("v6", func(t *testing.T) {
+		cfg := testConfig()
+		ebpftest.StartTracing(t, &cfg.Config)
+		testUDPSendAndReceive(t, cfg, "udp6", "[::1]:8001")
+	})
+}
+
+func testUDPSendAndReceive(t *testing.T, cfg *config.Config, udpnet, addr string) {
 	tr, err := NewTracer(cfg)
 	require.NoError(t, err)
 	t.Cleanup(tr.Stop)

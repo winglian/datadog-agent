@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DataDog/datadog-agent/pkg/ebpf"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
 	"github.com/DataDog/datadog-agent/pkg/security/utils"
 )
@@ -62,7 +63,9 @@ func (l *tracePipeLogger) Stop() {
 }
 
 // StartTracing starts capturing the output of the kprobe trace_pipe for the current running process
-func StartTracing(t *testing.T) {
+func StartTracing(t *testing.T, cfg *ebpf.Config) {
+	// force this to on, because tracer is worthless otherwise
+	cfg.BPFDebug = true
 	tracePipe, err := NewTracePipe()
 	if err != nil {
 		t.Error(err)
