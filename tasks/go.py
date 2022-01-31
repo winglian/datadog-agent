@@ -422,6 +422,12 @@ def generate_protobuf(ctx):
         'trace': '--gogoslick_out=',
     }
 
+    # msgp targets
+    msgp_targets = {
+        'trace': ['remote_rates.pb.go', 'span.pb.go', 'stats.pb.go', 'tracer_payload.pb.go', 'trace.go'],
+        'core': ['remoteconfig.pb.go'],
+    }
+
     base = os.path.dirname(os.path.abspath(__file__))
     repo_root = os.path.abspath(os.path.join(base, ".."))
     proto_root = os.path.join(repo_root, "pkg", "proto")
@@ -495,12 +501,19 @@ def generate_protobuf(ctx):
         )
 
     # generate messagepack marshallers
-    ctx.run(
-        "msgp -file {in_path}/core/config.pb.go -o={out_path}/core/config_gen.go".format(
-            in_path=pbgo_dir,
-            out_path=pbgo_dir,
-        )
-    )
+    for pkg, files in msgp_targets.items():
+        for src in files:
+            dst = os.path.splitext(os.path.basename(src))[0]  # .go
+            dst = os.path.splitext(dst)[0]  # .pb
+            ctx.run(
+                "msgp -file {in_path}/{pkg}/{src} -o={out_path}/{pkg}/{dst}_gen.go".format(
+                    pkg=pkg,
+                    src=src,
+                    dst=dst,
+                    in_path=pbgo_dir,
+                    out_path=pbgo_dir,
+                )
+            )
 
 
 @task

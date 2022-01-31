@@ -22,11 +22,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
+	pbgocore "github.com/DataDog/datadog-agent/pkg/proto/pbgo/core"
+	pb "github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace"
 	"github.com/DataDog/datadog-agent/pkg/trace/config"
 	"github.com/DataDog/datadog-agent/pkg/trace/config/features"
 	"github.com/DataDog/datadog-agent/pkg/trace/info"
-	pb "github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace"
 	"github.com/DataDog/datadog-agent/pkg/trace/sampler"
 	"github.com/DataDog/datadog-agent/pkg/trace/test/testutil"
 	"google.golang.org/grpc"
@@ -62,40 +62,40 @@ func newTestReceiverFromConfig(conf *config.AgentConfig) *HTTPReceiver {
 	return receiver
 }
 
-func newTestReceiverFromConfigWithGRPC(conf *config.AgentConfig, grpcClient pbgo.AgentSecureClient) *HTTPReceiver {
+func newTestReceiverFromConfigWithGRPC(conf *config.AgentConfig, grpcClient pbgocore.AgentSecureClient) *HTTPReceiver {
 	receiver := newTestReceiverFromConfig(conf)
 	receiver.coreClient = grpcClient
 	return receiver
 }
 
 type mockAgentSecureServer struct {
-	pbgo.AgentSecureClient
+	pbgocore.AgentSecureClient
 	mock.Mock
 }
 
-func (a *mockAgentSecureServer) TaggerStreamEntities(ctx context.Context, in *pbgo.StreamTagsRequest, opts ...grpc.CallOption) (pbgo.AgentSecure_TaggerStreamEntitiesClient, error) {
+func (a *mockAgentSecureServer) TaggerStreamEntities(ctx context.Context, in *pbgocore.StreamTagsRequest, opts ...grpc.CallOption) (pbgocore.AgentSecure_TaggerStreamEntitiesClient, error) {
 	args := a.Called(ctx, in, opts)
-	return args.Get(0).(pbgo.AgentSecure_TaggerStreamEntitiesClient), args.Error(1)
+	return args.Get(0).(pbgocore.AgentSecure_TaggerStreamEntitiesClient), args.Error(1)
 }
 
-func (a *mockAgentSecureServer) TaggerFetchEntity(ctx context.Context, in *pbgo.FetchEntityRequest, opts ...grpc.CallOption) (*pbgo.FetchEntityResponse, error) {
+func (a *mockAgentSecureServer) TaggerFetchEntity(ctx context.Context, in *pbgocore.FetchEntityRequest, opts ...grpc.CallOption) (*pbgocore.FetchEntityResponse, error) {
 	args := a.Called(ctx, in, opts)
-	return args.Get(0).(*pbgo.FetchEntityResponse), args.Error(1)
+	return args.Get(0).(*pbgocore.FetchEntityResponse), args.Error(1)
 }
 
-func (a *mockAgentSecureServer) DogstatsdCaptureTrigger(ctx context.Context, in *pbgo.CaptureTriggerRequest, opts ...grpc.CallOption) (*pbgo.CaptureTriggerResponse, error) {
+func (a *mockAgentSecureServer) DogstatsdCaptureTrigger(ctx context.Context, in *pbgocore.CaptureTriggerRequest, opts ...grpc.CallOption) (*pbgocore.CaptureTriggerResponse, error) {
 	args := a.Called(ctx, in, opts)
-	return args.Get(0).(*pbgo.CaptureTriggerResponse), args.Error(1)
+	return args.Get(0).(*pbgocore.CaptureTriggerResponse), args.Error(1)
 }
 
-func (a *mockAgentSecureServer) DogstatsdSetTaggerState(ctx context.Context, in *pbgo.TaggerState, opts ...grpc.CallOption) (*pbgo.TaggerStateResponse, error) {
+func (a *mockAgentSecureServer) DogstatsdSetTaggerState(ctx context.Context, in *pbgocore.TaggerState, opts ...grpc.CallOption) (*pbgocore.TaggerStateResponse, error) {
 	args := a.Called(ctx, in, opts)
-	return args.Get(0).(*pbgo.TaggerStateResponse), args.Error(1)
+	return args.Get(0).(*pbgocore.TaggerStateResponse), args.Error(1)
 }
 
-func (a *mockAgentSecureServer) ClientGetConfigs(ctx context.Context, in *pbgo.ClientGetConfigsRequest, opts ...grpc.CallOption) (*pbgo.ClientGetConfigsResponse, error) {
+func (a *mockAgentSecureServer) ClientGetConfigs(ctx context.Context, in *pbgocore.ClientGetConfigsRequest, opts ...grpc.CallOption) (*pbgocore.ClientGetConfigsResponse, error) {
 	args := a.Called(ctx, in, opts)
-	return args.Get(0).(*pbgo.ClientGetConfigsResponse), args.Error(1)
+	return args.Get(0).(*pbgocore.ClientGetConfigsResponse), args.Error(1)
 }
 
 func newTestReceiverConfig() *config.AgentConfig {
@@ -910,10 +910,10 @@ func TestConfigEndpoint(t *testing.T) {
 			mux := rcv.buildMux()
 			server := httptest.NewServer(mux)
 			if tc.valid {
-				var request pbgo.ClientGetConfigsRequest
+				var request pbgocore.ClientGetConfigsRequest
 				err := json.Unmarshal([]byte(tc.reqBody), &request)
 				assert.NoError(err)
-				grpc.On("ClientGetConfigs", mock.Anything, &request, mock.Anything).Return(&pbgo.ClientGetConfigsResponse{Targets: &pbgo.TopMeta{Version: 1, Raw: []byte("test")}}, nil)
+				grpc.On("ClientGetConfigs", mock.Anything, &request, mock.Anything).Return(&pbgocore.ClientGetConfigsResponse{Targets: &pbgocore.TopMeta{Version: 1, Raw: []byte("test")}}, nil)
 			}
 			req, _ := http.NewRequest("POST", server.URL+"/v0.7/config", strings.NewReader(tc.reqBody))
 			req.Header.Set("Content-Type", "application/msgpack")

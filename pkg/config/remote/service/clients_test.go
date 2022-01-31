@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
+	pbgo "github.com/DataDog/datadog-agent/pkg/proto/pbgo/core"
 	"github.com/benbjohnson/clock"
 	"github.com/stretchr/testify/assert"
 )

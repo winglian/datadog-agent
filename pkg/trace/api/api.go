@@ -34,8 +34,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/api/security"
 	"github.com/DataDog/datadog-agent/pkg/appsec"
 	mainconfig "github.com/DataDog/datadog-agent/pkg/config"
-	pbcore "github.com/DataDog/datadog-agent/pkg/proto/pbgo/core"
-	pbgo "github.com/DataDog/datadog-agent/pkg/proto/pbgo/core"
+	pbgocore "github.com/DataDog/datadog-agent/pkg/proto/pbgo/core"
 	pb "github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace"
 	"github.com/DataDog/datadog-agent/pkg/tagger"
 	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
@@ -81,7 +80,7 @@ type HTTPReceiver struct {
 	server          *http.Server
 	statsProcessor  StatsProcessor
 	appsecHandler   http.Handler
-	coreClient      pbgo.AgentSecureClient // gRPC client to core agent process
+	coreClient      pbgocore.AgentSecureClient // gRPC client to core agent process
 	coreClientToken string
 
 	debug               bool
@@ -101,7 +100,7 @@ func NewHTTPReceiver(conf *config.AgentConfig, dynConf *sampler.DynamicConfig, o
 	if err != nil {
 		log.Errorf("Could not instantiate AppSec: %v", err)
 	}
-	var coreClient pbgo.AgentSecureClient
+	var coreClient pbgocore.AgentSecureClient
 	var coreClientToken string
 	if features.Has("config_endpoint") {
 		coreClientToken, err = security.FetchAuthToken()
@@ -535,7 +534,7 @@ func (r *HTTPReceiver) handleGetConfig(w http.ResponseWriter, req *http.Request)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 
 	}
-	var configsRequest pbcore.GetConfigsRequest
+	var configsRequest pbgocore.ClientGetConfigsRequest
 	err = json.Unmarshal(buf.Bytes(), &configsRequest)
 	if err != nil {
 		statusCode = http.StatusBadRequest

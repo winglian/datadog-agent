@@ -4,14 +4,14 @@ import (
 	"testing"
 
 	"github.com/DataDog/datadog-agent/pkg/config/remote/data"
-	"github.com/DataDog/datadog-agent/pkg/trace/pb"
+	pb "github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestConfigsAPMSamplingUpdates(t *testing.T) {
 	configs := newConfigs()
 	samplingFile1 := pb.APMSampling{
-		TargetTPS: []pb.TargetTPS{
+		TargetTps: []pb.TargetTPS{
 			{
 				Env:     "env1",
 				Service: "service1",
@@ -48,7 +48,7 @@ func TestConfigsAPMSamplingUpdates(t *testing.T) {
 	assert.Equal(t, update{apmSamplingUpdate: &APMSamplingUpdate{Config: expectedConfig1}}, update1)
 
 	samplingFile2 := pb.APMSampling{
-		TargetTPS: []pb.TargetTPS{
+		TargetTps: []pb.TargetTPS{
 			{
 				Env:     "env3",
 				Service: "service3",

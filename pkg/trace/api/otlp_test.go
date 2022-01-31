@@ -27,7 +27,7 @@ func makeOTLPTestSpan(start uint64) *otlp.Span {
 		TraceState:        "state",
 		ParentSpanId:      []byte{0},
 		Name:              "/path",
-		Kind:              otlp.SPAN_KIND_SERVER,
+		Kind:              otlp.Span_SPAN_KIND_SERVER,
 		StartTimeUnixNano: start,
 		EndTimeUnixNano:   start + 200000000,
 		Attributes: []*otlp.KeyValue{
@@ -62,7 +62,7 @@ func makeOTLPTestSpan(start uint64) *otlp.Span {
 		DroppedLinksCount:  0,
 		Status: &otlp.Status{
 			Message: "Error",
-			Code:    otlp.STATUS_CODE_ERROR,
+			Code:    otlp.Status_STATUS_CODE_ERROR,
 		},
 	}
 }
@@ -234,13 +234,13 @@ func TestOTLPHelpers(t *testing.T) {
 
 	t.Run("spanKindNames", func(t *testing.T) {
 		for in, out := range map[otlp.Span_SpanKind]string{
-			otlp.SPAN_KIND_UNSPECIFIED: "unspecified",
-			otlp.SPAN_KIND_INTERNAL:    "internal",
-			otlp.SPAN_KIND_SERVER:      "server",
-			otlp.SPAN_KIND_CLIENT:      "client",
-			otlp.SPAN_KIND_PRODUCER:    "producer",
-			otlp.SPAN_KIND_CONSUMER:    "consumer",
-			99:                         "unknown",
+			otlp.Span_SPAN_KIND_UNSPECIFIED: "unspecified",
+			otlp.Span_SPAN_KIND_INTERNAL:    "internal",
+			otlp.Span_SPAN_KIND_SERVER:      "server",
+			otlp.Span_SPAN_KIND_CLIENT:      "client",
+			otlp.Span_SPAN_KIND_PRODUCER:    "producer",
+			otlp.Span_SPAN_KIND_CONSUMER:    "consumer",
+			99:                              "unknown",
 		} {
 			assert.Equal(t, out, spanKindName(in))
 		}
@@ -253,7 +253,7 @@ func TestOTLPHelpers(t *testing.T) {
 			out    pb.Span
 		}{
 			{
-				status: &otlp.Status{Code: otlp.STATUS_CODE_ERROR},
+				status: &otlp.Status{Code: otlp.Status_STATUS_CODE_ERROR},
 				events: []*otlp.Span_Event{
 					{
 						Name: "exception",
@@ -274,7 +274,7 @@ func TestOTLPHelpers(t *testing.T) {
 				},
 			},
 			{
-				status: &otlp.Status{Code: otlp.STATUS_CODE_ERROR},
+				status: &otlp.Status{Code: otlp.Status_STATUS_CODE_ERROR},
 				events: []*otlp.Span_Event{
 					{
 						Name: "exception",
@@ -289,7 +289,7 @@ func TestOTLPHelpers(t *testing.T) {
 				},
 			},
 			{
-				status: &otlp.Status{Code: otlp.STATUS_CODE_ERROR},
+				status: &otlp.Status{Code: otlp.Status_STATUS_CODE_ERROR},
 				events: []*otlp.Span_Event{
 					{
 						Name: "EXCEPTION",
@@ -304,7 +304,7 @@ func TestOTLPHelpers(t *testing.T) {
 				},
 			},
 			{
-				status: &otlp.Status{Code: otlp.STATUS_CODE_ERROR},
+				status: &otlp.Status{Code: otlp.Status_STATUS_CODE_ERROR},
 				events: []*otlp.Span_Event{
 					{
 						Name: "OTher",
@@ -316,15 +316,15 @@ func TestOTLPHelpers(t *testing.T) {
 				out: pb.Span{Error: 1},
 			},
 			{
-				status: &otlp.Status{Code: otlp.STATUS_CODE_ERROR},
+				status: &otlp.Status{Code: otlp.Status_STATUS_CODE_ERROR},
 				out:    pb.Span{Error: 1},
 			},
 			{
-				status: &otlp.Status{Code: otlp.STATUS_CODE_OK},
+				status: &otlp.Status{Code: otlp.Status_STATUS_CODE_OK},
 				out:    pb.Span{Error: 0},
 			},
 			{
-				status: &otlp.Status{Code: otlp.STATUS_CODE_OK},
+				status: &otlp.Status{Code: otlp.Status_STATUS_CODE_OK},
 				events: []*otlp.Span_Event{
 					{
 						Name: "exception",
@@ -394,42 +394,42 @@ func TestOTLPHelpers(t *testing.T) {
 			out  string
 		}{
 			{
-				kind: otlp.SPAN_KIND_SERVER,
+				kind: otlp.Span_SPAN_KIND_SERVER,
 				out:  "web",
 			},
 			{
-				kind: otlp.SPAN_KIND_CLIENT,
+				kind: otlp.Span_SPAN_KIND_CLIENT,
 				out:  "http",
 			},
 			{
-				kind: otlp.SPAN_KIND_CLIENT,
+				kind: otlp.Span_SPAN_KIND_CLIENT,
 				meta: map[string]string{"db.system": "redis"},
 				out:  "cache",
 			},
 			{
-				kind: otlp.SPAN_KIND_CLIENT,
+				kind: otlp.Span_SPAN_KIND_CLIENT,
 				meta: map[string]string{"db.system": "memcached"},
 				out:  "cache",
 			},
 			{
-				kind: otlp.SPAN_KIND_CLIENT,
+				kind: otlp.Span_SPAN_KIND_CLIENT,
 				meta: map[string]string{"db.system": "other"},
 				out:  "db",
 			},
 			{
-				kind: otlp.SPAN_KIND_PRODUCER,
+				kind: otlp.Span_SPAN_KIND_PRODUCER,
 				out:  "custom",
 			},
 			{
-				kind: otlp.SPAN_KIND_CONSUMER,
+				kind: otlp.Span_SPAN_KIND_CONSUMER,
 				out:  "custom",
 			},
 			{
-				kind: otlp.SPAN_KIND_INTERNAL,
+				kind: otlp.Span_SPAN_KIND_INTERNAL,
 				out:  "custom",
 			},
 			{
-				kind: otlp.SPAN_KIND_UNSPECIFIED,
+				kind: otlp.Span_SPAN_KIND_UNSPECIFIED,
 				out:  "custom",
 			},
 		} {
@@ -512,7 +512,7 @@ func TestOTLPConvertSpan(t *testing.T) {
 				TraceState:        "state",
 				ParentSpanId:      []byte{0},
 				Name:              "/path",
-				Kind:              otlp.SPAN_KIND_SERVER,
+				Kind:              otlp.Span_SPAN_KIND_SERVER,
 				StartTimeUnixNano: now,
 				EndTimeUnixNano:   now + 200000000,
 				Attributes: []*otlp.KeyValue{
@@ -551,7 +551,7 @@ func TestOTLPConvertSpan(t *testing.T) {
 				DroppedLinksCount:  0,
 				Status: &otlp.Status{
 					Message: "Error",
-					Code:    otlp.STATUS_CODE_ERROR,
+					Code:    otlp.Status_STATUS_CODE_ERROR,
 				},
 			},
 			out: &pb.Span{
@@ -604,7 +604,7 @@ func TestOTLPConvertSpan(t *testing.T) {
 				TraceState:        "state",
 				ParentSpanId:      []byte{0},
 				Name:              "/path",
-				Kind:              otlp.SPAN_KIND_SERVER,
+				Kind:              otlp.Span_SPAN_KIND_SERVER,
 				StartTimeUnixNano: now,
 				EndTimeUnixNano:   now + 200000000,
 				Attributes: []*otlp.KeyValue{
@@ -641,7 +641,7 @@ func TestOTLPConvertSpan(t *testing.T) {
 				DroppedLinksCount:  0,
 				Status: &otlp.Status{
 					Message: "Error",
-					Code:    otlp.STATUS_CODE_ERROR,
+					Code:    otlp.Status_STATUS_CODE_ERROR,
 				},
 			},
 			out: &pb.Span{

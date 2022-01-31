@@ -69,7 +69,7 @@ func (r *RemoteRates) onUpdate(update remote.APMSamplingUpdate) error {
 	log.Debugf("fetched config version %d from remote config management", update.Config.Version)
 	tpsTargets := make(map[Signature]pb.TargetTPS, len(r.tpsTargets))
 	for _, rates := range update.Config.Rates {
-		for _, targetTPS := range rates.TargetTPS {
+		for _, targetTPS := range rates.TargetTps {
 			if targetTPS.Value > r.maxSigTPS {
 				targetTPS.Value = r.maxSigTPS
 			}
@@ -229,7 +229,7 @@ func (r *RemoteRates) getAllSignatureSampleRates() map[Signature]rm {
 	for sig, s := range r.samplers {
 		res[sig] = rm{
 			r: s.GetSignatureSampleRate(sig),
-			m: s.target.Mechanism,
+			m: SamplingMechanism(s.target.Mechanism),
 		}
 	}
 	return res

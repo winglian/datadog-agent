@@ -10,7 +10,6 @@ import (
 	"sync"
 
 	coreconfig "github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/DataDog/datadog-agent/pkg/trace/pb"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
@@ -38,7 +37,7 @@ type catalogEntry struct {
 // rm specifies the pair of rate and mechanism.
 type rm struct {
 	r float64
-	m pb.SamplingMechanism
+	m SamplingMechanism
 }
 
 // newServiceLookup returns a new serviceKeyCatalog.

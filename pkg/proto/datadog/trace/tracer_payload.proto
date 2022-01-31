@@ -1,9 +1,11 @@
 syntax = "proto3";
 
-package pb;
+package datadog.trace;
 
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-import "span.proto";
+import "gogo/protobuf/gogoproto/gogo.proto";
+import "datadog/trace/span.proto";
+
+option go_package = "pkg/proto/pbgo/trace"; // golang
 
 // TraceChunk represents a list of spans with the same trace id.
 message TraceChunk {
@@ -12,7 +14,7 @@ message TraceChunk {
 	// origin specifies origin product ("lambda", "rum", etc.) of the trace.
 	string origin = 2 [(gogoproto.jsontag) = "origin", (gogoproto.moretags) = "msg:\"origin\""];
 	// spans specifies list of containing spans.
-	repeated Span spans = 3 [(gogoproto.jsontag) = "spans", (gogoproto.moretags) = "msg:\"spans\""];
+	repeated datadog.trace.Span spans = 3 [(gogoproto.jsontag) = "spans", (gogoproto.moretags) = "msg:\"spans\""];
 	// tags specifies tags common in all `spans`.
 	map<string, string> tags = 4 [(gogoproto.jsontag) = "tags", (gogoproto.moretags) = "msg:\"tags\""];
 	// droppedTrace specifies whether the trace was dropped by samplers or not.

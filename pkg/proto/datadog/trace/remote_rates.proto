@@ -6,11 +6,17 @@ import "gogo/protobuf/gogoproto/gogo.proto";
 
 option go_package = "pkg/proto/pbgo/trace"; // golang
 
+
 // TargetTPS contains the targeted traces per second the agent should try to sample for a particular service and env
 message TargetTPS {
     string service = 1;
     string env = 2;
     double value = 3;
+	// Rank is the rank associated to this TargetTPS. Lower ranks of a same (env, service) are discarded
+	// in favor of the highest rank.
+    uint32 rank = 4;
+	// Mechanism is the identifier of the mechanism that generated this TargetTPS
+    uint32 mechanism = 5;
 }
 
 // APMSampling is the list of target tps

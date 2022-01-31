@@ -17,8 +17,8 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/config"
 	rdata "github.com/DataDog/datadog-agent/pkg/config/remote/data"
 	"github.com/DataDog/datadog-agent/pkg/config/remote/meta"
-	"github.com/DataDog/datadog-agent/pkg/proto/pbgo"
-	"github.com/DataDog/datadog-agent/pkg/trace/pb"
+	pbgocore "github.com/DataDog/datadog-agent/pkg/proto/pbgo/core"
+	pbgotrace "github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -29,13 +29,13 @@ import (
 )
 
 type testServer struct {
-	pbgo.UnimplementedAgentSecureServer
+	pbgocore.UnimplementedAgentSecureServer
 	mock.Mock
 }
 
-func (s *testServer) ClientGetConfigs(ctx context.Context, req *pbgo.ClientGetConfigsRequest) (*pbgo.ClientGetConfigsResponse, error) {
+func (s *testServer) ClientGetConfigs(ctx context.Context, req *pbgocore.ClientGetConfigsRequest) (*pbgocore.ClientGetConfigsResponse, error) {
 	args := s.Called(ctx, req)
-	return args.Get(0).(*pbgo.ClientGetConfigsResponse), args.Error(1)
+	return args.Get(0).(*pbgocore.ClientGetConfigsResponse), args.Error(1)
 }
 
 func getTestServer(t *testing.T) *testServer {
@@ -57,7 +57,7 @@ func getTestServer(t *testing.T) *testServer {
 	}
 	server := grpc.NewServer(opts...)
 	testServer := &testServer{}
-	pbgo.RegisterAgentSecureServer(server, testServer)
+	pbgocore.RegisterAgentSecureServer(server, testServer)
 
 	go func() {
 		if err := server.Serve(listener); err != nil {
@@ -83,8 +83,8 @@ func TestClientEmptyResponse(t *testing.T) {
 	client, err := newClient(testFacts, []rdata.Product{rdata.ProductAPMSampling})
 	assert.NoError(t, err)
 
-	testServer.On("ClientGetConfigs", mock.Anything, &pbgo.ClientGetConfigsRequest{Client: &pbgo.Client{
-		State: &pbgo.ClientState{
+	testServer.On("ClientGetConfigs", mock.Anything, &pbgocore.ClientGetConfigsRequest{Client: &pbgocore.Client{
+		State: &pbgocore.ClientState{
 			RootVersion:    meta.RootsDirector().LastVersion(),
 			TargetsVersion: 0,
 			Error:          "",
@@ -93,10 +93,10 @@ func TestClientEmptyResponse(t *testing.T) {
 		Name:     testFacts.Name,
 		Version:  testFacts.Version,
 		Products: []string{string(rdata.ProductAPMSampling)},
-	}}).Return(&pbgo.ClientGetConfigsResponse{
-		Roots:       []*pbgo.TopMeta{},
-		Targets:     &pbgo.TopMeta{},
-		TargetFiles: []*pbgo.File{},
+	}}).Return(&pbgocore.ClientGetConfigsResponse{
+		Roots:       []*pbgocore.TopMeta{},
+		Targets:     &pbgocore.TopMeta{},
+		TargetFiles: []*pbgocore.File{},
 	}, nil)
 
 	err = client.poll()
@@ -108,8 +108,8 @@ func TestClientValidResponse(t *testing.T) {
 
 	targetsKey := generateKey()
 	embeddedRoot := generateRoot(generateKey(), 1, targetsKey)
-	apmConfig := pb.APMSampling{
-		TargetTPS: []pb.TargetTPS{{Service: "service1", Env: "env1", Value: 4}},
+	apmConfig := pbgotrace.APMSampling{
+		TargetTps: []pbgotrace.TargetTPS{{Service: "service1", Env: "env1", Value: 4}},
 	}
 	rawApmConfig, err := apmConfig.MarshalMsg(nil)
 	assert.NoError(t, err)
@@ -122,8 +122,8 @@ func TestClientValidResponse(t *testing.T) {
 	client, err := newClient(testFacts, []rdata.Product{rdata.ProductAPMSampling})
 	assert.NoError(t, err)
 
-	testServer.On("ClientGetConfigs", mock.Anything, &pbgo.ClientGetConfigsRequest{Client: &pbgo.Client{
-		State: &pbgo.ClientState{
+	testServer.On("ClientGetConfigs", mock.Anything, &pbgocore.ClientGetConfigsRequest{Client: &pbgocore.Client{
+		State: &pbgocore.ClientState{
 			RootVersion:    meta.RootsDirector().LastVersion(),
 			TargetsVersion: 0,
 			Error:          "",
@@ -132,13 +132,13 @@ func TestClientValidResponse(t *testing.T) {
 		Name:     testFacts.Name,
 		Version:  testFacts.Version,
 		Products: []string{string(rdata.ProductAPMSampling)},
-	}}).Return(&pbgo.ClientGetConfigsResponse{
-		Roots: []*pbgo.TopMeta{},
-		Targets: &pbgo.TopMeta{
+	}}).Return(&pbgocore.ClientGetConfigsResponse{
+		Roots: []*pbgocore.TopMeta{},
+		Targets: &pbgocore.TopMeta{
 			Version: 1,
 			Raw:     targets,
 		},
-		TargetFiles: []*pbgo.File{
+		TargetFiles: []*pbgocore.File{
 			{Path: "datadog/3/APM_SAMPLING/id/1", Raw: rawApmConfig},
 			{Path: "datadog/3/TESTING1/id/2", Raw: target2content},
 		},
@@ -155,7 +155,7 @@ func TestClientValidResponse(t *testing.T) {
 				ID:      "id",
 				Version: 5,
 			},
-			Rates: []pb.APMSampling{apmConfig},
+			Rates: []pbgotrace.APMSampling{apmConfig},
 		},
 	}, apmUpdate)
 }

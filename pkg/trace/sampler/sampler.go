@@ -53,6 +53,10 @@ const (
 // SamplingPriority is the type encoding a priority sampling decision.
 type SamplingPriority int8
 
+// SamplingMechanism this type is an alias for pkg/proto/datadog/trace/remote_rates.proto
+// TargetTPS.mechanism
+type SamplingMechanism uint32
+
 const (
 	// PriorityNone is the value for SamplingPriority when no priority sampling decision could be found.
 	PriorityNone SamplingPriority = math.MinInt8

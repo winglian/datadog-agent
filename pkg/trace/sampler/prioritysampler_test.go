@@ -9,9 +9,9 @@ import (
 	"math/rand"
 	"testing"
 
+	pb "github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace"
 	"github.com/DataDog/datadog-agent/pkg/trace/atomic"
 	"github.com/DataDog/datadog-agent/pkg/trace/config"
-	pb "github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace"
 	"github.com/cihub/seelog"
 
 	"github.com/stretchr/testify/assert"
@@ -220,12 +220,12 @@ func TestPrioritySamplerTPSFeedbackLoop(t *testing.T) {
 	}
 
 	// setting up remote store
-	testCasesRates := pb.APMSampling{TargetTPS: make([]pb.TargetTPS, 0, len(testCases))}
+	testCasesRates := pb.APMSampling{TargetTps: make([]pb.TargetTPS, 0, len(testCases))}
 	for _, tc := range testCases {
 		if tc.localRate {
 			continue
 		}
-		testCasesRates.TargetTPS = append(testCasesRates.TargetTPS, pb.TargetTPS{Service: tc.service, Value: tc.targetTPS, Env: defaultEnv})
+		testCasesRates.TargetTps = append(testCasesRates.TargetTps, pb.TargetTPS{Service: tc.service, Value: tc.targetTPS, Env: defaultEnv})
 	}
 	s.remoteRates = newTestRemoteRates()
 	generatedConfigVersion := uint64(120)
