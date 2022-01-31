@@ -66,6 +66,7 @@ type JSONPayloadBuilder struct {
 	mu                            sync.Mutex
 }
 
+// NewJSONPayloadBuilder TODO
 func NewJSONPayloadBuilder(shareAndLockBuffers bool) *JSONPayloadBuilder {
 	if shareAndLockBuffers {
 		return &JSONPayloadBuilder{
