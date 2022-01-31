@@ -3,8 +3,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
-//go:build zlib && optional_benchmarks
-// +build zlib,optional_benchmarks
+//go:build optional_benchmarks
+// +build optional_benchmarks
 
 package serializer
 
