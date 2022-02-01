@@ -137,8 +137,9 @@ func (g *HashGenerator) Hash(tb *HashingTagsAccumulator) uint64 {
 }
 
 // Hash2 combines the hashes of unique tags in l and r accumulators. Duplicate tags are removed.
-func (g *HashGenerator) Hash2(l *HashingTagsAccumulator, r *HashingTagsAccumulator) uint64 {
-	var hash uint64
+func (g *HashGenerator) Hash2(l *HashingTagsAccumulator, r *HashingTagsAccumulator) (uint64, uint64) {
+	var hash [2]uint64
+
 	ntags := l.Len() + r.Len()
 
 	if ntags > hashSetSize {
@@ -147,7 +148,7 @@ func (g *HashGenerator) Hash2(l *HashingTagsAccumulator, r *HashingTagsAccumulat
 		r.Reset()
 
 		for _, h := range l.hash {
-			hash ^= h
+			hash[0] ^= h
 		}
 	} else if ntags > bruteforceSize {
 		// reset the `seen` hashset.
@@ -163,7 +164,7 @@ func (g *HashGenerator) Hash2(l *HashingTagsAccumulator, r *HashingTagsAccumulat
 		copy(g.seenIdx[:size], g.empty[:size])
 
 		ibase := int16(0)
-		for _, tb := range [2]*HashingTagsAccumulator{l, r} {
+		for tbi, tb := range [2]*HashingTagsAccumulator{l, r} {
 			tags := tb.data
 			hashes := tb.hash
 			ntags := len(hashes)
@@ -175,7 +176,7 @@ func (g *HashGenerator) Hash2(l *HashingTagsAccumulator, r *HashingTagsAccumulat
 					if g.seenIdx[j] == blank {
 						g.seen[j] = h
 						g.seenIdx[j] = int16(i) + ibase
-						hash ^= h
+						hash[tbi] ^= h
 						i++
 						break
 					} else if g.seen[j] == h {
@@ -210,7 +211,7 @@ func (g *HashGenerator) Hash2(l *HashingTagsAccumulator, r *HashingTagsAccumulat
 					continue L
 				}
 			}
-			hash ^= h
+			hash[0] ^= h
 			g.seen[i] = h
 			i++
 		}
@@ -238,7 +239,7 @@ func (g *HashGenerator) Hash2(l *HashingTagsAccumulator, r *HashingTagsAccumulat
 					continue R
 				}
 			}
-			hash ^= h
+			hash[1] ^= h
 			g.seen[lsize+i] = h
 			i++
 		}
@@ -246,5 +247,5 @@ func (g *HashGenerator) Hash2(l *HashingTagsAccumulator, r *HashingTagsAccumulat
 
 	}
 
-	return hash
+	return hash[0], hash[1]
 }
