@@ -8,57 +8,53 @@ package encodedtext
 import (
 	"testing"
 
-	parsertesting "github.com/DataDog/datadog-agent/pkg/logs/internal/parsers/internal/testing"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUTF16LEParserHandleMessages(t *testing.T) {
-	pt := parsertesting.NewParserTester(New(UTF16LE))
-	defer pt.Stop()
+	parser := New(UTF16LE)
 	testMsg := []byte{'F', 0x0, 'o', 0x0, 'o', 0x0}
-	pt.SendLine(testMsg)
-	msg := pt.GetMessage()
+	msg, err := parser.Parse(testMsg)
+	assert.Nil(t, err)
 	assert.Equal(t, "Foo", string(msg.Content))
 
 	// We should support BOM
 	testMsg = []byte{0xFF, 0xFE, 'F', 0x0, 'o', 0x0, 'o', 0x0}
-	pt.SendLine(testMsg)
-	msg = pt.GetMessage()
+	msg, err = parser.Parse(testMsg)
+	assert.Nil(t, err)
 	assert.Equal(t, "Foo", string(msg.Content))
 
 	// BOM overrides endianness
 	testMsg = []byte{0xFE, 0xFF, 0x0, 'F', 0x0, 'o', 0x0, 'o'}
-	pt.SendLine(testMsg)
-	msg = pt.GetMessage()
+	msg, err = parser.Parse(testMsg)
+	assert.Nil(t, err)
 	assert.Equal(t, "Foo", string(msg.Content))
 }
 
 func TestUTF16BEParserHandleMessages(t *testing.T) {
-	pt := parsertesting.NewParserTester(New(UTF16BE))
-	defer pt.Stop()
+	parser := New(UTF16BE)
 	testMsg := []byte{0x0, 'F', 0x0, 'o', 0x0, 'o'}
-	pt.SendLine(testMsg)
-	msg := pt.GetMessage()
+	msg, err := parser.Parse(testMsg)
+	assert.Nil(t, err)
 	assert.Equal(t, "Foo", string(msg.Content))
 
 	// We should support BOM
 	testMsg = []byte{0xFE, 0xFF, 0x0, 'F', 0x0, 'o', 0x0, 'o'}
-	pt.SendLine(testMsg)
-	msg = pt.GetMessage()
+	msg, err = parser.Parse(testMsg)
+	assert.Nil(t, err)
 	assert.Equal(t, "Foo", string(msg.Content))
 
 	// BOM overrides endianness
 	testMsg = []byte{0xFF, 0xFE, 'F', 0x0, 'o', 0x0, 'o', 0x0}
-	pt.SendLine(testMsg)
-	msg = pt.GetMessage()
+	msg, err = parser.Parse(testMsg)
+	assert.Nil(t, err)
 	assert.Equal(t, "Foo", string(msg.Content))
 }
 
 func TestSHIFTJISParserHandleMessages(t *testing.T) {
-	pt := parsertesting.NewParserTester(New(SHIFTJIS))
-	defer pt.Stop()
+	parser := New(SHIFTJIS)
 	testMsg := []byte{0x93, 0xfa, 0x96, 0x7b}
-	pt.SendLine(testMsg)
-	msg := pt.GetMessage()
+	msg, err := parser.Parse(testMsg)
+	assert.Nil(t, err)
 	assert.Equal(t, "日本", string(msg.Content))
 }

@@ -14,7 +14,6 @@ import (
 	"fmt"
 
 	"github.com/DataDog/datadog-agent/pkg/logs/internal/parsers"
-	"github.com/DataDog/datadog-agent/pkg/logs/internal/parsers/internal/base"
 	"github.com/DataDog/datadog-agent/pkg/logs/message"
 )
 
@@ -30,7 +29,6 @@ const dockerBufferSize = 16 * 1024
 var escapedCRLF = []byte{'\\', 'r', '\\', 'n'}
 
 type dockerStreamFormat struct {
-	base.ParserBase
 	containerID string
 }
 
@@ -41,16 +39,19 @@ type dockerStreamFormat struct {
 // API.  The format is documented at
 // https://pkg.go.dev/github.com/moby/moby/client?utm_source=godoc#Client.ContainerLogs
 func New(containerID string) parsers.Parser {
-	p := &dockerStreamFormat{
+	return &dockerStreamFormat{
 		containerID: containerID,
 	}
-	p.ParserBase.Process = p.Process
-	return p
 }
 
-// Process handles the actual parsing
-func (p *dockerStreamFormat) Process(msg []byte) (parsers.Message, error) {
+// Parse implements Parser#Parse
+func (p *dockerStreamFormat) Parse(msg []byte) (parsers.Message, error) {
 	return parseDockerStream(msg, p.containerID)
+}
+
+// SupportsPartialLine implements Parser#SupportsPartialLine
+func (p *dockerStreamFormat) SupportsPartialLine() bool {
+	return false
 }
 
 func parseDockerStream(msg []byte, containerID string) (parsers.Message, error) {

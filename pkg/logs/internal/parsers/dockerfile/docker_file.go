@@ -12,7 +12,6 @@ import (
 	"fmt"
 
 	"github.com/DataDog/datadog-agent/pkg/logs/internal/parsers"
-	"github.com/DataDog/datadog-agent/pkg/logs/internal/parsers/internal/base"
 	"github.com/DataDog/datadog-agent/pkg/logs/message"
 )
 
@@ -31,9 +30,7 @@ import (
 //         IsPartial: false,
 //     }
 func New() parsers.Parser {
-	p := &dockerFileFormat{}
-	p.CombiningParserBase.Process = p.Process
-	return p
+	return &dockerFileFormat{}
 }
 
 type logLine struct {
@@ -42,12 +39,10 @@ type logLine struct {
 	Time   string
 }
 
-type dockerFileFormat struct {
-	base.CombiningParserBase
-}
+type dockerFileFormat struct{}
 
-// Process handles the actual parsing
-func (p *dockerFileFormat) Process(data []byte) (parsers.Message, bool, error) {
+// Parse implements Parser#Parse
+func (p *dockerFileFormat) Parse(data []byte) (parsers.Message, error) {
 	var log *logLine
 	err := json.Unmarshal(data, &log)
 	if err != nil {
@@ -56,7 +51,7 @@ func (p *dockerFileFormat) Process(data []byte) (parsers.Message, bool, error) {
 			Status:    message.StatusInfo,
 			Timestamp: "",
 			IsPartial: false,
-		}, false, fmt.Errorf("cannot parse docker message, invalid JSON: %v", err)
+		}, fmt.Errorf("cannot parse docker message, invalid JSON: %v", err)
 	}
 
 	var status string
@@ -83,5 +78,11 @@ func (p *dockerFileFormat) Process(data []byte) (parsers.Message, bool, error) {
 		Content:   content,
 		Status:    status,
 		Timestamp: log.Time,
-	}, partial, nil
+		IsPartial: partial,
+	}, nil
+}
+
+// SupportsPartialLine implements Parser#SupportsPartialLine
+func (p *dockerFileFormat) SupportsPartialLine() bool {
+	return true
 }

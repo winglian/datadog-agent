@@ -8,16 +8,14 @@ package noop
 import (
 	"testing"
 
-	parsertesting "github.com/DataDog/datadog-agent/pkg/logs/internal/parsers/internal/testing"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNoopParserHandleMessages(t *testing.T) {
-	pt := parsertesting.NewParserTester(New())
-	defer pt.Stop()
-
-	pt.SendLine([]byte("Foo"))
-	msg := pt.GetMessage()
+	parser := New()
+	testMsg := []byte("Foo")
+	msg, err := parser.Parse(testMsg)
+	assert.Nil(t, err)
 	assert.False(t, msg.IsPartial)
-	assert.Equal(t, []byte("Foo"), msg.Content)
+	assert.Equal(t, testMsg, msg.Content)
 }
