@@ -8,6 +8,7 @@ package model
 import (
 	"strings"
 	"time"
+	"unsafe"
 )
 
 // SetAncestor set the ancestor
@@ -93,6 +94,8 @@ type ArgsEnvs struct {
 // ArgsEnvsCacheEntry defines a args/envs base entry
 type ArgsEnvsCacheEntry struct {
 	ArgsEnvs
+
+	UserCtx unsafe.Pointer
 
 	next *ArgsEnvsCacheEntry
 	last *ArgsEnvsCacheEntry

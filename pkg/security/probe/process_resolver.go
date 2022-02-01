@@ -9,6 +9,7 @@
 package probe
 
 import (
+	"container/list"
 	"context"
 	"fmt"
 	"io"
@@ -20,6 +21,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+	"unsafe"
 
 	"github.com/DataDog/datadog-go/statsd"
 	manager "github.com/DataDog/ebpf-manager"
@@ -45,7 +47,10 @@ const (
 	snapshotted
 )
 
-const procResolveMaxDepth = 16
+const (
+	procResolveMaxDepth = 16
+	maxArgsEnvResidents = 512
+)
 
 func getAttr2(probe *Probe) uint64 {
 	if probe.kernelVersion.IsRH7Kernel() {
@@ -111,10 +116,22 @@ type ProcessResolver struct {
 // ArgsEnvsPool defines a pool for args/envs allocations
 type ArgsEnvsPool struct {
 	pool *sync.Pool
+
+	// entries that wont be release to the pool
+	maxResidents   int
+	totalResidents int
+	freeResidents  *list.List
 }
 
 // Get returns a cache entry
 func (a *ArgsEnvsPool) Get() *model.ArgsEnvsCacheEntry {
+	// first try from resident pool
+	if el := a.freeResidents.Front(); el != nil {
+		entry := el.Value.(*model.ArgsEnvsCacheEntry)
+		a.freeResidents.Remove(el)
+		return entry
+	}
+
 	return a.pool.Get().(*model.ArgsEnvsCacheEntry)
 }
 
@@ -127,12 +144,29 @@ func (a *ArgsEnvsPool) GetFrom(event *model.ArgsEnvsEvent) *model.ArgsEnvsCacheE
 
 // Put returns a cache entry to the pool
 func (a *ArgsEnvsPool) Put(entry *model.ArgsEnvsCacheEntry) {
-	a.pool.Put(entry)
+	if entry.UserCtx != nil {
+		// from the residents list
+		el := (*list.Element)(entry.UserCtx)
+		a.freeResidents.MoveToBack(el)
+	} else if a.totalResidents < a.maxResidents {
+		// still some places so we can create a new node
+		el := &list.Element{Value: entry}
+		entry.UserCtx = unsafe.Pointer(el)
+		a.totalResidents++
+
+		a.freeResidents.MoveToBack(el)
+	} else {
+		a.pool.Put(entry)
+	}
 }
 
 // NewArgsEnvsPool returns a new ArgsEnvEntry pool
-func NewArgsEnvsPool() *ArgsEnvsPool {
-	ap := ArgsEnvsPool{pool: &sync.Pool{}}
+func NewArgsEnvsPool(maxResident int) *ArgsEnvsPool {
+	ap := ArgsEnvsPool{
+		pool:          &sync.Pool{},
+		maxResidents:  maxResident,
+		freeResidents: list.New(),
+	}
 
 	ap.pool.New = func() interface{} {
 		return model.NewArgsEnvsCacheEntry(ap.Put)
@@ -980,7 +1014,7 @@ func NewProcessResolver(probe *Probe, resolvers *Resolvers, client *statsd.Clien
 		opts:          opts,
 		argsEnvsCache: argsEnvsCache,
 		state:         snapshotting,
-		argsEnvsPool:  NewArgsEnvsPool(),
+		argsEnvsPool:  NewArgsEnvsPool(maxArgsEnvResidents),
 		hitsStats:     map[string]*int64{},
 	}
 	for _, t := range metrics.AllTypesTags {
