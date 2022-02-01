@@ -74,6 +74,7 @@ type Compressor struct {
 	separator           []byte
 }
 
+// NewCompressor TODO
 func NewCompressor(input, output *bytes.Buffer, header, footer []byte, separator []byte) (*Compressor, error) {
 	// the backend accepts payloads up to 3MB compressed / 50MB uncompressed but
 	// prefers small uncompressed payloads of ~4MB
@@ -130,6 +131,7 @@ func (c *Compressor) pack() error {
 	return nil
 }
 
+// Write TODO
 func (c *Compressor) Write(data []byte) (int, error) {
 	err := c.AddItem(data)
 	return len(data), err
@@ -171,6 +173,7 @@ func (c *Compressor) AddItem(data []byte) error {
 	return nil
 }
 
+// Close TODO
 func (c *Compressor) Close() ([]byte, error) {
 	// Flush remaining uncompressed data
 	if c.input.Len() > 0 {
