@@ -512,15 +512,14 @@ func InitConfig(config Config) {
 	// Default is 0 - blocking channel
 	config.BindEnvAndSetDefault("dogstatsd_capture_depth", 0)
 
-	config.BindEnvAndSetDefault("soft_memory_limit_low", 1024*1024*300)
-	config.BindEnvAndSetDefault("soft_memory_limit_high", 1024*1024*500)
-	config.BindEnvAndSetDefault("soft_memory_limit_ballast", 1024*1024*1024)
-	config.BindEnvAndSetDefault("soft_memory_limit_go_gc", 30)
-	config.BindEnvAndSetDefault("soft_memory_limit_rate_min", 1)
-	config.BindEnvAndSetDefault("soft_memory_limit_rate_max", 100)
+	config.BindEnvAndSetDefault("soft_memory_limit_low", 0.6)
+	config.BindEnvAndSetDefault("soft_memory_limit_high", 0.8)
+	config.BindEnvAndSetDefault("soft_memory_limit_go_gc", 0)
+	config.BindEnvAndSetDefault("soft_memory_limit_rate_min", 0.01)
+	config.BindEnvAndSetDefault("soft_memory_limit_rate_max", 1)
 	config.BindEnvAndSetDefault("soft_memory_limit_rate_factor", 2)
-	config.BindEnvAndSetDefault("soft_memory_limit_release_rate_min", 10)
-	config.BindEnvAndSetDefault("soft_memory_limit_release_rate_max", 100)
+	config.BindEnvAndSetDefault("soft_memory_limit_release_rate_min", 0.01)
+	config.BindEnvAndSetDefault("soft_memory_limit_release_rate_max", 0.1)
 	config.BindEnvAndSetDefault("soft_memory_limit_release_rate_factor", 1.5)
 
 	config.BindEnv("dogstatsd_mapper_profiles")

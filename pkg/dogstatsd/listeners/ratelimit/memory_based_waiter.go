@@ -11,6 +11,8 @@ import (
 	"runtime/debug"
 	"strings"
 	"time"
+
+	"github.com/DataDog/datadog-agent/pkg/config"
 )
 
 // MemoryBasedWaiter is a rate limiter based on memory usage. $$$$$$$$$$$$$$$$$$$$$$ TODDO
@@ -35,11 +37,13 @@ func BuildMemoryBasedWaiter() (*MemoryBasedWaiter, error) {
 	return NewMemoryBasedWaiter(
 		memoryBasedWaiterTelemetry,
 		memoryUsageRate,
-		0, // lowSoftLimit uint64,
-		0, // highSoftLimit uint64,
-		0, // goGC int,
-		geometricRateLimiterConfig{ // memoryRateLimiter ,
-			0, 0, 0},
+		float32(config.Datadog.GetFloat64("soft_memory_limit_low")),
+		float32(config.Datadog.GetFloat64("soft_memory_limit_low")),
+		config.Datadog.GetInt("soft_memory_limit_go_gc"),
+		geometricRateLimiterConfig{
+			float32(config.Datadog.GetFloat64("soft_memory_limit_rate_min")),
+			float32(config.Datadog.GetFloat64("soft_memory_limit_rate_max")),
+			float32(config.Datadog.GetFloat64("soft_memory_limit_rate_factor"))},
 		geometricRateLimiterConfig{0, 0, 0}, // freeOSMemoryRateLimiter RateLimiterConfig
 	)
 }
