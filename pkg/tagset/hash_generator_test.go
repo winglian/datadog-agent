@@ -140,7 +140,8 @@ func TestHash2Small(t *testing.T) {
 			b.Append(l.Get()...)
 			b.Append(r.Get()...)
 
-			got := g.Hash2(l, r)
+			hl, hr := g.Hash2(l, r)
+			got := hl ^ hr
 			exp := g.Hash(b)
 
 			assert.EqualValues(t, exp, got)
@@ -164,7 +165,8 @@ func TestHash2Rand(t *testing.T) {
 					r := NewHashingTagsAccumulatorWithTags(tags[n:])
 
 					h1 := g.Hash(b)
-					h2 := g.Hash2(l, r)
+					hl, hr := g.Hash2(l, r)
+					h2 := hl ^ hr
 
 					assert.EqualValues(t, h1, h2)
 					l.AppendHashingAccumulator(r)
@@ -190,7 +192,8 @@ func BenchmarkHash2(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for n := 0; n < b.N; n++ {
-				Hash = hg.Hash2(l, r)
+				hl, hr := hg.Hash2(l, r)
+				Hash = hl ^ hr
 			}
 		})
 	}
