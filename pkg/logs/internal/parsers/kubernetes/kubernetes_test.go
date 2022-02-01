@@ -8,6 +8,7 @@ package kubernetes
 import (
 	"testing"
 
+	parsertesting "github.com/DataDog/datadog-agent/pkg/logs/internal/parsers/internal/testing"
 	"github.com/DataDog/datadog-agent/pkg/logs/message"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,28 +22,40 @@ func TestKubernetesGetStatus(t *testing.T) {
 	assert.Equal(t, message.StatusInfo, getStatus([]byte("")))
 }
 
+func TestParser(t *testing.T) {
+	pt := parsertesting.NewParserTester(New())
+	defer pt.Stop()
+
+	pt.SendLine([]byte(partialContainerdHeaderOut + " " + "part1"))
+	pt.SendLine([]byte(containerdHeaderOut + " " + "part2"))
+	msg := pt.GetMessage()
+	assert.Equal(t, message.StatusInfo, msg.Status)
+	assert.Equal(t, []byte("part1part2"), msg.Content)
+}
+
 func TestKubernetesParserShouldSucceedWithValidInput(t *testing.T) {
 	validMessage := containerdHeaderOut + " " + "anything"
-	msg, err := New().Parse([]byte(validMessage))
+	msg, partial, err := (&kubernetesFormat{}).Process([]byte(validMessage))
 	assert.Nil(t, err)
-	assert.False(t, msg.IsPartial)
+	assert.False(t, partial)
 	assert.Equal(t, message.StatusInfo, msg.Status)
 	assert.Equal(t, []byte("anything"), msg.Content)
 }
+
 func TestKubernetesParserShouldSucceedWithPartialFlag(t *testing.T) {
 	validMessage := partialContainerdHeaderOut + " " + "anything"
-	msg, err := New().Parse([]byte(validMessage))
+	msg, partial, err := (&kubernetesFormat{}).Process([]byte(validMessage))
 	assert.Nil(t, err)
-	assert.True(t, msg.IsPartial)
+	assert.True(t, partial)
 	assert.Equal(t, message.StatusInfo, msg.Status)
 	assert.Equal(t, []byte("anything"), msg.Content)
 }
 
 func TestKubernetesParserShouldHandleEmptyMessage(t *testing.T) {
-	msg, err := New().Parse([]byte(containerdHeaderOut))
+	msg, partial, err := (&kubernetesFormat{}).Process([]byte(containerdHeaderOut))
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(msg.Content))
-	assert.False(t, msg.IsPartial)
+	assert.False(t, partial)
 	assert.Equal(t, message.StatusInfo, msg.Status)
 	assert.Equal(t, "2018-09-20T11:54:11.753589172Z", msg.Timestamp)
 }
@@ -51,8 +64,8 @@ func TestKubernetesParserShouldFailWithInvalidInput(t *testing.T) {
 	// Only timestamp
 	var err error
 	log := []byte("2018-09-20T11:54:11.753589172Z foo")
-	msg, err := New().Parse(log)
-	assert.False(t, msg.IsPartial)
+	msg, partial, err := (&kubernetesFormat{}).Process(log)
+	assert.False(t, partial)
 	assert.NotNil(t, err)
 	assert.Equal(t, log, msg.Content)
 	assert.Equal(t, message.StatusInfo, msg.Status)
@@ -61,6 +74,6 @@ func TestKubernetesParserShouldFailWithInvalidInput(t *testing.T) {
 	// Missing timestamp but with 3 spaces, the message is valid
 	// FIXME: We might want to handle that
 	log = []byte("stdout F foo bar")
-	msg, err = New().Parse(log)
+	msg, partial, err = (&kubernetesFormat{}).Process(log)
 	assert.Nil(t, err)
 }

@@ -3,40 +3,23 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
-// Package parsers supports transforming raw log "lines" into messages with some
-// associated metadata (timestamp, severity, etc.).
+package parsers
+
+// Parser supports transforming raw log "lines" into messages with some associated
+// envelope metadata (timestamp, severity, etc.).  This is a low-level parser,
+// meant to decipher on-the-wire and on-disk formats into log messages.  It does
+// not interpret what the user would consider the message itself (e.g., syslog
+// priority).
 //
 // This parsing comes after "line parsing" (breaking input into multiple lines) and
 // before further processing and aggregation of log messages.
-package parsers
-
-// Message represents a message parsed from a single line of log data
-type Message struct {
-	// Content is the message content.  If this is nil then the message
-	// should be considered empty and ignored.
-	Content []byte
-
-	// Status is the status parsed from the message, if any.
-	Status string
-
-	// Timestamp is the message timestamp from the source, if any, as an
-	// ISO-8601-formatted string (./pkg/logs/config.DateFormat).  Log sources
-	// which do not contain a timestamp (such as files) leave this set to "".
-	Timestamp string
-
-	// IsPartial indicates that this is a partial message.  If the parser
-	// supports partial lines, then this is true only for the message returned
-	// from the last parsed line in a multi-line message.
-	IsPartial bool
-}
-
-// Parser parses messages, given as a raw byte sequence, into content and metadata.
 type Parser interface {
-	// Parse parses a line of log input.
-	Parse([]byte) (Message, error)
+	// Start the parser, reading lines from input and writing the results to
+	// output.
+	Start(input chan []byte, output chan Message)
 
-	// SupportsPartialLine returns true for sources that can have partial
-	// lines. If SupportsPartialLine is true, Parse can return messages with
-	// IsPartial: true
-	SupportsPartialLine() bool
+	// Wait for the parser to stop.  The input channel must be closed first.
+	// This will return when the last input item has been processed and its
+	// results sent to the output channel.
+	Wait()
 }

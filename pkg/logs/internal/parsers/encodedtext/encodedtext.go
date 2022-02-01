@@ -8,6 +8,7 @@ package encodedtext
 
 import (
 	"github.com/DataDog/datadog-agent/pkg/logs/internal/parsers"
+	"github.com/DataDog/datadog-agent/pkg/logs/internal/parsers/internal/base"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/japanese"
 	"golang.org/x/text/encoding/unicode"
@@ -27,11 +28,12 @@ const (
 )
 
 type encodedText struct {
+	base.ParserBase
 	decoder *encoding.Decoder
 }
 
-// Parse implements Parser#Parse
-func (p *encodedText) Parse(msg []byte) (parsers.Message, error) {
+// Process handles the actual parsing
+func (p *encodedText) Process(msg []byte) (parsers.Message, error) {
 	decoded, _, err := transform.Bytes(p.decoder, msg)
 	return parsers.Message{Content: decoded}, err
 }
@@ -46,6 +48,8 @@ func (p *encodedText) SupportsPartialLine() bool {
 // metadata are returned.
 func New(e Encoding) parsers.Parser {
 	p := &encodedText{}
+	p.ParserBase.Process = p.Process
+
 	var enc encoding.Encoding
 	switch e {
 	case UTF16LE:
@@ -56,5 +60,6 @@ func New(e Encoding) parsers.Parser {
 		enc = japanese.ShiftJIS
 	}
 	p.decoder = enc.NewDecoder()
+
 	return p
 }

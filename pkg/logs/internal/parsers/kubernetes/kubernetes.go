@@ -10,6 +10,7 @@ import (
 	"errors"
 
 	"github.com/DataDog/datadog-agent/pkg/logs/internal/parsers"
+	"github.com/DataDog/datadog-agent/pkg/logs/internal/parsers/internal/base"
 	"github.com/DataDog/datadog-agent/pkg/logs/message"
 )
 
@@ -25,34 +26,28 @@ var (
 //
 // For example: `2018-09-20T11:54:11.753589172Z stdout F This is my message`
 func New() parsers.Parser {
-	return &kubernetesFormat{}
+	p := &kubernetesFormat{}
+	p.CombiningParserBase.Process = p.Process
+	return p
 }
 
-type kubernetesFormat struct{}
-
-// Parse implements Parser#Parse
-func (p *kubernetesFormat) Parse(msg []byte) (parsers.Message, error) {
-	return parseKubernetes(msg)
+type kubernetesFormat struct {
+	base.CombiningParserBase
 }
 
-// SupportsPartialLine implements Parser#SupportsPartialLine
-func (p *kubernetesFormat) SupportsPartialLine() bool {
-	return true
-}
-
-func parseKubernetes(msg []byte) (parsers.Message, error) {
+// Process handles the actual parsing
+func (p *kubernetesFormat) Process(data []byte) (parsers.Message, bool, error) {
 	var status = message.StatusInfo
 	var flag string
 	var timestamp string
 	// split '<timestamp> <stream> <flag> <content>' into its components
-	components := bytes.SplitN(msg, spaceByte, 4)
+	components := bytes.SplitN(data, spaceByte, 4)
 	if len(components) < 3 {
 		return parsers.Message{
-			Content:   msg,
+			Content:   data,
 			Status:    status,
 			Timestamp: timestamp,
-			IsPartial: isPartial(flag),
-		}, errors.New("cannot parse the log line")
+		}, isPartial(flag), errors.New("cannot parse the log line")
 	}
 	var content []byte
 	if len(components) > 3 {
@@ -61,12 +56,12 @@ func parseKubernetes(msg []byte) (parsers.Message, error) {
 	status = getStatus(components[1])
 	timestamp = string(components[0])
 	flag = string(components[2])
+
 	return parsers.Message{
 		Content:   content,
 		Status:    status,
 		Timestamp: timestamp,
-		IsPartial: isPartial(flag),
-	}, nil
+	}, isPartial(flag), nil
 }
 
 func isPartial(flag string) bool {
