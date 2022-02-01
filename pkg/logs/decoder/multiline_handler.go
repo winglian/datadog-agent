@@ -30,14 +30,12 @@ type MultiLineHandler struct {
 }
 
 // NewMultiLineHandler returns a new MultiLineHandler.
-func NewMultiLineHandler(outputChan chan *Message, newContentRe *regexp.Regexp, flushTimeout time.Duration, lineLimit int) *MultiLineHandler {
-	return newMultiLineHandler(make(chan *Message), outputChan, newContentRe, flushTimeout, lineLimit)
+func NewMultiLineHandler(newContentRe *regexp.Regexp, flushTimeout time.Duration, lineLimit int) *MultiLineHandler {
+	return newMultiLineHandler(newContentRe, flushTimeout, lineLimit)
 }
 
-func newMultiLineHandler(inputChan chan *Message, outputChan chan *Message, newContentRe *regexp.Regexp, flushTimeout time.Duration, lineLimit int) *MultiLineHandler {
+func newMultiLineHandler(newContentRe *regexp.Regexp, flushTimeout time.Duration, lineLimit int) *MultiLineHandler {
 	return &MultiLineHandler{
-		inputChan:    inputChan,
-		outputChan:   outputChan,
 		newContentRe: newContentRe,
 		buffer:       bytes.NewBuffer(nil),
 		flushTimeout: flushTimeout,
@@ -57,7 +55,10 @@ func (h *MultiLineHandler) Stop() {
 }
 
 // Start starts the handler.
-func (h *MultiLineHandler) Start() {
+func (h *MultiLineHandler) Start(input chan *Message, output chan *Message) {
+	// TODO: this is silly - just pass these to the constructor
+	h.inputChan = input
+	h.outputChan = output
 	go h.run()
 }
 

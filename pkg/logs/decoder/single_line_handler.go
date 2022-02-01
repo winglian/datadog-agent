@@ -19,11 +19,9 @@ type SingleLineHandler struct {
 }
 
 // NewSingleLineHandler returns a new SingleLineHandler.
-func NewSingleLineHandler(outputChan chan *Message, lineLimit int) *SingleLineHandler {
+func NewSingleLineHandler(lineLimit int) *SingleLineHandler {
 	return &SingleLineHandler{
-		inputChan:  make(chan *Message),
-		outputChan: outputChan,
-		lineLimit:  lineLimit,
+		lineLimit: lineLimit,
 	}
 }
 
@@ -38,7 +36,9 @@ func (h *SingleLineHandler) Stop() {
 }
 
 // Start starts the handler.
-func (h *SingleLineHandler) Start() {
+func (h *SingleLineHandler) Start(input chan *Message, output chan *Message) {
+	h.inputChan = input
+	h.outputChan = output
 	go h.run()
 }
 

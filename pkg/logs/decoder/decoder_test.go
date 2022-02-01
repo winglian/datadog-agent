@@ -26,17 +26,11 @@ type MockLineParser struct {
 }
 
 func NewMockLineParser() *MockLineParser {
-	return &MockLineParser{
-		inputChan: make(chan *DecodedInput, 10),
-	}
+	return &MockLineParser{}
 }
 
-func (p *MockLineParser) Handle(input *DecodedInput) {
-	p.inputChan <- input
-}
-
-func (p *MockLineParser) Start() {
-
+func (p *MockLineParser) Start(input chan *DecodedInput, output chan *Message) {
+	p.inputChan = input
 }
 
 func (p *MockLineParser) Stop() {
@@ -46,14 +40,14 @@ func (p *MockLineParser) Stop() {
 const contentLenLimit = 100
 
 func TestDecodeIncomingData(t *testing.T) {
-	p := NewMockLineParser()
-	d := New(nil, nil, p, contentLenLimit, &NewLineMatcher{}, nil)
+	decodedChan := make(chan *DecodedInput, 10)
+	d := New(nil, decodedChan, nil, nil, nil, nil, contentLenLimit, &NewLineMatcher{}, nil)
 
 	var line *DecodedInput
 
 	// one line in one raw should be sent
 	d.decodeIncomingData([]byte("helloworld\n"))
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, "helloworld", string(line.content))
 	assert.Equal(t, len("helloworld\n"), line.rawDataLen)
 	assert.Equal(t, "", d.lineBuffer.String())
@@ -61,10 +55,10 @@ func TestDecodeIncomingData(t *testing.T) {
 	// multiple lines in one raw should be sent
 	d.decodeIncomingData([]byte("helloworld\nhowayou\ngoodandyou"))
 	l := 0
-	line = <-p.inputChan
+	line = <-decodedChan
 	l += line.rawDataLen
 	assert.Equal(t, "helloworld", string(line.content))
-	line = <-p.inputChan
+	line = <-decodedChan
 	l += line.rawDataLen
 	assert.Equal(t, "howayou", string(line.content))
 	assert.Equal(t, "goodandyou", d.lineBuffer.String())
@@ -74,12 +68,12 @@ func TestDecodeIncomingData(t *testing.T) {
 
 	// multiple lines in multiple rows should be sent
 	d.decodeIncomingData([]byte("helloworld\nthisisa"))
-	line = <-p.inputChan
+	line = <-decodedChan
 	l += line.rawDataLen
 	assert.Equal(t, "helloworld", string(line.content))
 	assert.Equal(t, "thisisa", d.lineBuffer.String())
 	d.decodeIncomingData([]byte("longinput\nindeed"))
-	line = <-p.inputChan
+	line = <-decodedChan
 	l += line.rawDataLen
 	assert.Equal(t, "thisisalonginput", string(line.content))
 	assert.Equal(t, "indeed", d.lineBuffer.String())
@@ -90,32 +84,32 @@ func TestDecodeIncomingData(t *testing.T) {
 	// one line in multiple rows should be sent
 	d.decodeIncomingData([]byte("hello world"))
 	d.decodeIncomingData([]byte("!\n"))
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, "hello world!", string(line.content))
 	assert.Equal(t, len("hello world!\n"), line.rawDataLen)
 
 	// excessively long line in one row should be sent by chunks
 	d.decodeIncomingData([]byte(strings.Repeat("a", contentLenLimit+10) + "\n"))
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, contentLenLimit, len(line.content))
 	assert.Equal(t, contentLenLimit, line.rawDataLen)
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, strings.Repeat("a", 10), string(line.content))
 	assert.Equal(t, 11, line.rawDataLen)
 
 	// excessively long line in multiple rows should be sent by chunks
 	d.decodeIncomingData([]byte(strings.Repeat("a", contentLenLimit-5)))
 	d.decodeIncomingData([]byte(strings.Repeat("a", 15) + "\n"))
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, contentLenLimit, len(line.content))
 	assert.Equal(t, contentLenLimit, line.rawDataLen)
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, strings.Repeat("a", 10), string(line.content))
 	assert.Equal(t, 11, line.rawDataLen)
 
 	// empty lines should be sent
 	d.decodeIncomingData([]byte("\n"))
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, "", string(line.content))
 	assert.Equal(t, "", d.lineBuffer.String())
 	assert.Equal(t, 1, line.rawDataLen)
@@ -127,22 +121,22 @@ func TestDecodeIncomingData(t *testing.T) {
 }
 
 func TestDecodeIncomingDataWithCustomSequence(t *testing.T) {
-	p := NewMockLineParser()
-	d := New(nil, nil, p, contentLenLimit, NewBytesSequenceMatcher([]byte("SEPARATOR"), 1), nil)
+	decodedChan := make(chan *DecodedInput, 10)
+	d := New(nil, nil, nil, nil, nil, nil, contentLenLimit, NewBytesSequenceMatcher([]byte("SEPARATOR"), 1), nil)
 
 	var line *DecodedInput
 
 	// one line in one raw should be sent
 	d.decodeIncomingData([]byte("helloworldSEPARATOR"))
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, "helloworld", string(line.content))
 	assert.Equal(t, "", d.lineBuffer.String())
 
 	// multiple lines in one raw should be sent
 	d.decodeIncomingData([]byte("helloworldSEPARATORhowayouSEPARATORgoodandyou"))
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, "helloworld", string(line.content))
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, "howayou", string(line.content))
 	assert.Equal(t, "goodandyou", d.lineBuffer.String())
 	d.lineBuffer.Reset()
@@ -151,16 +145,16 @@ func TestDecodeIncomingDataWithCustomSequence(t *testing.T) {
 	d.decodeIncomingData([]byte("helloworldSEPAR"))
 	d.decodeIncomingData([]byte("ATORhowayouSEPARATO"))
 	d.decodeIncomingData([]byte("Rgoodandyou"))
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, "helloworld", string(line.content))
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, "howayou", string(line.content))
 	assert.Equal(t, "goodandyou", d.lineBuffer.String())
 	d.lineBuffer.Reset()
 
 	// empty lines should be sent
 	d.decodeIncomingData([]byte("SEPARATOR"))
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, "", string(line.content))
 	assert.Equal(t, "", d.lineBuffer.String())
 
@@ -170,14 +164,14 @@ func TestDecodeIncomingDataWithCustomSequence(t *testing.T) {
 }
 
 func TestDecodeIncomingDataWithSingleByteCustomSequence(t *testing.T) {
-	p := NewMockLineParser()
-	d := New(nil, nil, p, contentLenLimit, NewBytesSequenceMatcher([]byte("&"), 1), nil)
+	decodedChan := make(chan *DecodedInput, 10)
+	d := New(nil, decodedChan, nil, nil, nil, nil, contentLenLimit, NewBytesSequenceMatcher([]byte("&"), 1), nil)
 
 	var line *DecodedInput
 
 	// one line in one raw should be sent
 	d.decodeIncomingData([]byte("helloworld&"))
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, "helloworld", string(line.content))
 	assert.Equal(t, "", d.lineBuffer.String())
 
@@ -185,7 +179,7 @@ func TestDecodeIncomingDataWithSingleByteCustomSequence(t *testing.T) {
 	n := 10
 	d.decodeIncomingData([]byte(strings.Repeat("&", n)))
 	for i := 0; i < n; i++ {
-		line = <-p.inputChan
+		line = <-decodedChan
 		assert.Equal(t, "", string(line.content))
 	}
 	assert.Equal(t, "", d.lineBuffer.String())
@@ -194,13 +188,13 @@ func TestDecodeIncomingDataWithSingleByteCustomSequence(t *testing.T) {
 	// Mix empty & non-empty lines
 	d.decodeIncomingData([]byte("helloworld&&"))
 	d.decodeIncomingData([]byte("&howayou&"))
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, "helloworld", string(line.content))
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, "", string(line.content))
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, "", string(line.content))
-	line = <-p.inputChan
+	line = <-decodedChan
 	assert.Equal(t, "howayou", string(line.content))
 	assert.Equal(t, "", d.lineBuffer.String())
 	d.lineBuffer.Reset()
@@ -211,22 +205,22 @@ func TestDecodeIncomingDataWithSingleByteCustomSequence(t *testing.T) {
 }
 
 func TestDecoderLifeCycle(t *testing.T) {
-	p := NewMockLineParser()
-	d := New(nil, nil, p, contentLenLimit, &NewLineMatcher{}, nil)
+	decodedChan := make(chan *DecodedInput, 10)
+	d := New(nil, decodedChan, nil, nil, nil, nil, contentLenLimit, &NewLineMatcher{}, nil)
 
 	// LineParser should not receive any lines
 	d.Start()
 	select {
-	case <-p.inputChan:
+	case <-decodedChan:
 		assert.Fail(t, "LineParser should not handle anything")
 	default:
 		break
 	}
 
 	// LineParser should not receive any lines
-	p.Stop()
+	d.Stop()
 	select {
-	case <-p.inputChan:
+	case <-decodedChan:
 		break
 	default:
 		assert.Fail(t, "LineParser should be stopped")
@@ -236,7 +230,7 @@ func TestDecoderLifeCycle(t *testing.T) {
 func TestDecoderInputNotDockerHeader(t *testing.T) {
 	inputChan := make(chan *Input)
 	h := NewMockLineParser()
-	d := New(inputChan, nil, h, 100, &NewLineMatcher{}, nil)
+	d := New(inputChan, nil, nil, nil, h, nil, 100, &NewLineMatcher{}, nil)
 	d.Start()
 
 	input := []byte("hello")

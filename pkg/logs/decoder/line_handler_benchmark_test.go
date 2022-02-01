@@ -20,9 +20,10 @@ func benchmarkSingleLineHandler(b *testing.B, logs int) {
 		messages[i] = getDummyMessageWithLF(fmt.Sprintf("This is a log test line to benchmark the logs agent %d", i))
 	}
 
+	inputChan := make(chan *Message, 10)
 	outputChan := make(chan *Message, 10)
-	h := NewSingleLineHandler(outputChan, defaultContentLenLimit)
-	h.Start()
+	h := NewSingleLineHandler(defaultContentLenLimit)
+	h.Start(inputChan, outputChan)
 
 	go func() {
 		for {
@@ -32,7 +33,7 @@ func benchmarkSingleLineHandler(b *testing.B, logs int) {
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		for _, v := range messages {
-			h.inputChan <- v
+			inputChan <- v
 		}
 	}
 }
@@ -43,10 +44,11 @@ func benchmarkAutoMultiLineHandler(b *testing.B, logs int, line string) {
 		messages[i] = getDummyMessageWithLF(fmt.Sprintf("%s %d", line, i))
 	}
 
+	inputChan := make(chan *Message, 10)
 	outputChan := make(chan *Message, 10)
 	source := config.NewLogSource("config", &config.LogsConfig{})
-	h := NewAutoMultilineHandler(outputChan, defaultContentLenLimit, 1000, 0.9, 30*time.Second, 1000*time.Millisecond, source, []*regexp.Regexp{}, &DetectedPattern{})
-	h.Start()
+	h := NewAutoMultilineHandler(defaultContentLenLimit, 1000, 0.9, 30*time.Second, 1000*time.Millisecond, source, []*regexp.Regexp{}, &DetectedPattern{})
+	h.Start(inputChan, outputChan)
 
 	go func() {
 		for {
@@ -67,9 +69,10 @@ func benchmarkMultiLineHandler(b *testing.B, logs int, line string) {
 		messages[i] = getDummyMessageWithLF(fmt.Sprintf("%s %d", line, i))
 	}
 
+	inputChan := make(chan *Message, 10)
 	outputChan := make(chan *Message, 10)
-	h := NewMultiLineHandler(outputChan, regexp.MustCompile(`^[A-Za-z_]+ \d+, \d+ \d+:\d+:\d+ (AM|PM)`), 1000*time.Millisecond, 100)
-	h.Start()
+	h := NewMultiLineHandler(regexp.MustCompile(`^[A-Za-z_]+ \d+, \d+ \d+:\d+:\d+ (AM|PM)`), 1000*time.Millisecond, 100)
+	h.Start(inputChan, outputChan)
 
 	go func() {
 		for {

@@ -88,11 +88,23 @@ type Decoder struct {
 	// Needs to be first to ensure 64 bit alignment
 	linesDecoded int64
 
-	InputChan       chan *Input
-	OutputChan      chan *Message
+	// InputChan represents the input to the decoder: a chunked stream of bytes
+	InputChan chan *Input
+
+	// decodedChan represents the data after it has been broken on newlines
+	decodedChan chan *DecodedInput
+
+	// lineChan represents the data after each line has been parsed into a message
+	lineChan chan *Message
+
+	// OutputChan is the output of the decoder, with any multi-line recognition applied
+	// to the lines in lineChan.
+	OutputChan chan *Message
+
 	matcher         EndLineMatcher
 	lineBuffer      *bytes.Buffer
 	lineParser      LineParser
+	lineHandler     LineHandler
 	contentLenLimit int
 	rawDataLen      int
 
@@ -110,6 +122,8 @@ func InitializeDecoder(source *config.LogSource, parser parsers.Parser) *Decoder
 // NewDecoderWithEndLineMatcher initialize a decoder with given endline strategy.
 func NewDecoderWithEndLineMatcher(source *config.LogSource, parser parsers.Parser, matcher EndLineMatcher, multiLinePattern *regexp.Regexp) *Decoder {
 	inputChan := make(chan *Input)
+	decodedChan := make(chan *DecodedInput)
+	lineChan := make(chan *Message)
 	outputChan := make(chan *Message)
 	lineLimit := defaultContentLenLimit
 	var lineHandler LineHandler
@@ -118,7 +132,7 @@ func NewDecoderWithEndLineMatcher(source *config.LogSource, parser parsers.Parse
 
 	for _, rule := range source.Config.ProcessingRules {
 		if rule.Type == config.MultiLine {
-			lh := NewMultiLineHandler(outputChan, rule.Regex, config.AggregationTimeout(), lineLimit)
+			lh := NewMultiLineHandler(rule.Regex, config.AggregationTimeout(), lineLimit)
 
 			// Since a single source can have multiple file tailers - each with their own decoder instance,
 			// Make sure we keep track of the multiline match count info from all of the decoders so the
@@ -143,25 +157,25 @@ func NewDecoderWithEndLineMatcher(source *config.LogSource, parser parsers.Parse
 				// Save the pattern again for the next rotation
 				detectedPattern.Set(multiLinePattern)
 
-				lineHandler = NewMultiLineHandler(outputChan, multiLinePattern, config.AggregationTimeout(), lineLimit)
+				lineHandler = NewMultiLineHandler(multiLinePattern, config.AggregationTimeout(), lineLimit)
 			} else {
-				lineHandler = buildAutoMultilineHandlerFromConfig(outputChan, lineLimit, source, detectedPattern)
+				lineHandler = buildAutoMultilineHandlerFromConfig(lineLimit, source, detectedPattern)
 			}
 		} else {
-			lineHandler = NewSingleLineHandler(outputChan, lineLimit)
+			lineHandler = NewSingleLineHandler(lineLimit)
 		}
 	}
 
 	if parser.SupportsPartialLine() {
-		lineParser = NewMultiLineParser(config.AggregationTimeout(), parser, lineHandler, lineLimit)
+		lineParser = NewMultiLineParser(config.AggregationTimeout(), parser, lineLimit)
 	} else {
-		lineParser = NewSingleLineParser(parser, lineHandler)
+		lineParser = NewSingleLineParser(parser)
 	}
 
-	return New(inputChan, outputChan, lineParser, lineLimit, matcher, detectedPattern)
+	return New(inputChan, decodedChan, lineChan, outputChan, lineParser, lineHandler, lineLimit, matcher, detectedPattern)
 }
 
-func buildAutoMultilineHandlerFromConfig(outputChan chan *Message, lineLimit int, source *config.LogSource, detectedPattern *DetectedPattern) *AutoMultilineHandler {
+func buildAutoMultilineHandlerFromConfig(lineLimit int, source *config.LogSource, detectedPattern *DetectedPattern) *AutoMultilineHandler {
 	linesToSample := source.Config.AutoMultiLineSampleSize
 	if linesToSample <= 0 {
 		linesToSample = dd_conf.Datadog.GetInt("logs_config.auto_multi_line_default_sample_size")
@@ -183,7 +197,7 @@ func buildAutoMultilineHandlerFromConfig(outputChan chan *Message, lineLimit int
 	}
 
 	matchTimeout := time.Second * dd_conf.Datadog.GetDuration("logs_config.auto_multi_line_default_match_timeout")
-	return NewAutoMultilineHandler(outputChan,
+	return NewAutoMultilineHandler(
 		lineLimit,
 		linesToSample,
 		matchThreshold,
@@ -195,13 +209,16 @@ func buildAutoMultilineHandlerFromConfig(outputChan chan *Message, lineLimit int
 }
 
 // New returns an initialized Decoder
-func New(InputChan chan *Input, OutputChan chan *Message, lineParser LineParser, contentLenLimit int, matcher EndLineMatcher, detectedPattern *DetectedPattern) *Decoder {
+func New(InputChan chan *Input, decodedChan chan *DecodedInput, lineChan chan *Message, OutputChan chan *Message, lineParser LineParser, lineHandler LineHandler, contentLenLimit int, matcher EndLineMatcher, detectedPattern *DetectedPattern) *Decoder {
 	var lineBuffer bytes.Buffer
 	return &Decoder{
 		InputChan:       InputChan,
+		decodedChan:     decodedChan,
+		lineChan:        lineChan,
 		OutputChan:      OutputChan,
 		lineBuffer:      &lineBuffer,
 		lineParser:      lineParser,
+		lineHandler:     lineHandler,
 		contentLenLimit: contentLenLimit,
 		matcher:         matcher,
 		detectedPattern: detectedPattern,
@@ -210,7 +227,8 @@ func New(InputChan chan *Input, OutputChan chan *Message, lineParser LineParser,
 
 // Start starts the Decoder
 func (d *Decoder) Start() {
-	d.lineParser.Start()
+	d.lineParser.Start(d.decodedChan, d.lineChan)
+	d.lineHandler.Start(d.lineChan, d.OutputChan)
 	go d.run()
 }
 
@@ -234,11 +252,13 @@ func (d *Decoder) GetDetectedPattern() *regexp.Regexp {
 
 // run lets the Decoder handle data coming from InputChan
 func (d *Decoder) run() {
+	defer func() {
+		// signal downstream to finish when this goroutine finishes
+		close(d.decodedChan)
+	}()
 	for data := range d.InputChan {
 		d.decodeIncomingData(data.content)
 	}
-	// finish to stop decoder
-	d.lineParser.Stop()
 }
 
 // decodeIncomingData splits raw data based on '\n', creates and processes new lines
@@ -274,7 +294,7 @@ func (d *Decoder) sendLine() {
 	content := make([]byte, d.lineBuffer.Len()-(d.matcher.SeparatorLen()-1))
 	copy(content, d.lineBuffer.Bytes())
 	d.lineBuffer.Reset()
-	d.lineParser.Handle(NewDecodedInput(content, d.rawDataLen))
+	d.decodedChan <- NewDecodedInput(content, d.rawDataLen)
 	d.rawDataLen = 0
 	atomic.AddInt64(&d.linesDecoded, 1)
 }

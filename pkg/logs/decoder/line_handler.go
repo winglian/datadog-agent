@@ -17,7 +17,6 @@ var escapedLineFeed = []byte(`\n`)
 
 // LineHandler handles raw lines to form structured lines
 type LineHandler interface {
-	Handle(input *Message)
-	Start()
+	Start(input chan *Message, output chan *Message)
 	Stop()
 }

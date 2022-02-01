@@ -68,19 +68,21 @@ func TestSingleLineParser(t *testing.T) {
 	h := &MockHandler{make(chan *Message)}
 	p := NewMockFailingParser(header)
 
-	lineParser := NewSingleLineParser(p, h)
-	lineParser.Start()
+	inputChannel := make(chan *DecodedInput)
+	outputChannel := make(chan *Message)
+	lineParser := NewSingleLineParser(p)
+	lineParser.Start(inputChannel, outputChannel)
 
 	line := header
 
 	inputLen := len(line) + 1
-	lineParser.Handle(&DecodedInput{[]byte(line), inputLen})
+	inputChannel <- &DecodedInput{[]byte(line), inputLen}
 	message = <-h.ouputChan
 	assert.Equal(t, "", string(message.Content))
 	assert.Equal(t, inputLen, message.RawDataLen)
 
 	inputLen = len(line+"one message") + 1
-	lineParser.Handle(&DecodedInput{[]byte(line + "one message"), inputLen})
+	inputChannel <- &DecodedInput{[]byte(line + "one message"), inputLen}
 	message = <-h.ouputChan
 	assert.Equal(t, "one message", string(message.Content))
 	assert.Equal(t, inputLen, message.RawDataLen)
@@ -93,10 +95,12 @@ func TestSingleLineParserSendsRawInvalidMessages(t *testing.T) {
 	h := &MockHandler{make(chan *Message)}
 	p := NewMockFailingParser(header)
 
-	lineParser := NewSingleLineParser(p, h)
-	lineParser.Start()
+	inputChannel := make(chan *DecodedInput)
+	outputChannel := make(chan *Message)
+	lineParser := NewSingleLineParser(p)
+	lineParser.Start(inputChannel, outputChannel)
 
-	lineParser.Handle(&DecodedInput{[]byte("one message"), 12})
+	inputChannel <- &DecodedInput{[]byte("one message"), 12}
 	message := <-h.ouputChan
 	assert.Equal(t, "one message", string(message.Content))
 
@@ -109,12 +113,14 @@ func TestMultilineParser(t *testing.T) {
 	timeout := 1000 * time.Millisecond
 	contentLenLimit := 256 * 100
 
-	lineParser := NewMultiLineParser(timeout, p, h, contentLenLimit)
-	lineParser.Start()
+	inputChannel := make(chan *DecodedInput)
+	outputChannel := make(chan *Message)
+	lineParser := NewMultiLineParser(timeout, p, contentLenLimit)
+	lineParser.Start(inputChannel, outputChannel)
 
-	lineParser.Handle(&DecodedInput{[]byte(header + "one "), 11})
-	lineParser.Handle(&DecodedInput{[]byte(header + "long "), 12})
-	lineParser.Handle(&DecodedInput{[]byte(header + "line\\n"), 14})
+	inputChannel <- &DecodedInput{[]byte(header + "one "), 11}
+	inputChannel <- &DecodedInput{[]byte(header + "long "), 12}
+	inputChannel <- &DecodedInput{[]byte(header + "line\\n"), 14}
 
 	message := <-h.ouputChan
 
@@ -130,10 +136,12 @@ func TestMultilineParserTimeout(t *testing.T) {
 	timeout := 100 * time.Millisecond
 	contentLenLimit := 256 * 100
 
-	lineParser := NewMultiLineParser(timeout, p, h, contentLenLimit)
-	lineParser.Start()
+	inputChannel := make(chan *DecodedInput)
+	outputChannel := make(chan *Message)
+	lineParser := NewMultiLineParser(timeout, p, contentLenLimit)
+	lineParser.Start(inputChannel, outputChannel)
 
-	lineParser.Handle(&DecodedInput{[]byte(header + "message"), 14})
+	inputChannel <- &DecodedInput{[]byte(header + "message"), 14}
 
 	message := <-h.ouputChan
 
@@ -152,13 +160,15 @@ func TestMultilineParserLimit(t *testing.T) {
 	var message *Message
 	line := strings.Repeat("a", contentLenLimit)
 
-	lineParser := NewMultiLineParser(timeout, p, h, contentLenLimit)
-	lineParser.Start()
+	inputChannel := make(chan *DecodedInput)
+	outputChannel := make(chan *Message)
+	lineParser := NewMultiLineParser(timeout, p, contentLenLimit)
+	lineParser.Start(inputChannel, outputChannel)
 
 	for i := 0; i < 10; i++ {
-		lineParser.Handle(&DecodedInput{[]byte(header + line), 7 + len(line)})
+		inputChannel <- &DecodedInput{[]byte(header + line), 7 + len(line)}
 	}
-	lineParser.Handle(&DecodedInput{[]byte(header + "aaaa\\n"), 13})
+	inputChannel <- &DecodedInput{[]byte(header + "aaaa\\n"), 13}
 
 	for i := 0; i < 10; i++ {
 		message = <-h.ouputChan
