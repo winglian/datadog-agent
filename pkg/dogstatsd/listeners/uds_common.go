@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
+	"github.com/DataDog/datadog-agent/pkg/dogstatsd/listeners/ratelimit"
 	"github.com/DataDog/datadog-agent/pkg/dogstatsd/packets"
 	"github.com/DataDog/datadog-agent/pkg/dogstatsd/replay"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
@@ -141,7 +142,7 @@ func (l *UDSListener) Listen() {
 	var t2 time.Time
 	log.Infof("dogstatsd-uds: starting to listen on %s", l.conn.LocalAddr())
 	//t := NewTodo()
-	t, err := NewMemThrottle()
+	t, err := ratelimit.BuildMemoryBasedWaiter()
 	if err != nil {
 		log.Error(err)
 	}
@@ -172,7 +173,7 @@ func (l *UDSListener) Listen() {
 
 			n, oobn, _, _, err = l.conn.ReadMsgUnix(packet.Buffer, oobS)
 			if t != nil {
-				_ = t.ThrottleIfLimitReached()
+				_ = t.Wait()
 			}
 			t1 = time.Now()
 
@@ -210,7 +211,7 @@ func (l *UDSListener) Listen() {
 			// Read only datagram contents with no credentials
 			n, _, err = l.conn.ReadFromUnix(packet.Buffer)
 			if t != nil {
-				_ = t.ThrottleIfLimitReached()
+				_ = t.Wait()
 			}
 
 			t1 = time.Now()
