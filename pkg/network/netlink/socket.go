@@ -140,7 +140,7 @@ func (s *Socket) ReceiveAndDiscard() (bool, error) {
 		i += msgLen
 		n -= msgLen
 	}
-	
+
 	return false, nil
 }
 
