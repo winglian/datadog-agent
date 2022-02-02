@@ -71,7 +71,6 @@ func (g *KeyGenerator) GenerateWithTags2(name, hostname string, l, r *tagset.Has
 	return ContextKey(hash), TagsKey(lHash), TagsKey(rHash)
 }
 
-
 // Equals returns whether the two context keys are equal or not.
 func Equals(a, b ContextKey) bool {
 	return a == b

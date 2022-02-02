@@ -16,8 +16,8 @@ import (
 
 // Context holds the elements that form a context, and can be serialized into a context key
 type Context struct {
-	Name string
-	Host string
+	Name       string
+	Host       string
 	taggerTags *tags.Entry
 	metricTags *tags.Entry
 }
@@ -61,7 +61,7 @@ func newContextResolver(cache *tags.Store) *contextResolver {
 
 // trackContext returns the contextKey associated with the context of the metricSample and tracks that context
 func (cr *contextResolver) trackContext(metricSampleContext metrics.MetricSampleContext) ckey.ContextKey {
-	metricSampleContext.GetTags(cr.taggerBuffer, cr.metricBuffer)     // tags here are not sorted and can contain duplicates
+	metricSampleContext.GetTags(cr.taggerBuffer, cr.metricBuffer)                  // tags here are not sorted and can contain duplicates
 	contextKey, taggerKey, metricKey := cr.generateContextKey(metricSampleContext) // the generator will remove duplicates from cr.tagsBuffer (and doesn't mind the order)
 
 	if _, ok := cr.contextsByKey[contextKey]; !ok {

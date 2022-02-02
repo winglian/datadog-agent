@@ -6,8 +6,8 @@
 package ckey
 
 import (
-	"os"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/DataDog/datadog-agent/pkg/tagset"
