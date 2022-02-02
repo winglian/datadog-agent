@@ -121,7 +121,7 @@ func (s *Socket) Receive() ([]netlink.Message, error) {
 // If the NLMSG_DONE flag is found in one of the messages, returns true.
 func (s *Socket) ReceiveAndDiscard() (bool, error) {
 	oob := make([]byte, unix.CmsgSpace(24))
-	n, oobn, err := s.recvmsg(s.recvbuf, oob, 0)
+	n, _, err := s.recvmsg(s.recvbuf, oob, 0)
 	if err != nil {
 		return false, os.NewSyscallError("recvmsg", err)
 	}
@@ -140,15 +140,7 @@ func (s *Socket) ReceiveAndDiscard() (bool, error) {
 		i += msgLen
 		n -= msgLen
 	}
-
-	if oobn > 0 {
-		oob = oob[:oobn]
-		_, err := unix.ParseSocketControlMessage(oob)
-		if err != nil {
-			return false, err
-		}
-	}
-
+	
 	return false, nil
 }
 

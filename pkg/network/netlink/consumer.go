@@ -553,11 +553,6 @@ ReadLoop:
 
 // receive netlink messages and discard them immediately
 func (c *Consumer) receiveAndDiscard() {
-	atomic.StoreInt32(&c.recvLoopRunning, 1)
-	defer func() {
-		atomic.StoreInt32(&c.recvLoopRunning, 0)
-	}()
-
 	for {
 		done, err := c.socket.ReceiveAndDiscard()
 		if err != nil {
