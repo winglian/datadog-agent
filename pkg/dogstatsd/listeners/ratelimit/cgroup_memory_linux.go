@@ -14,34 +14,39 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/util/cgroups"
 )
 
-var cgroupNotSupportedError = errors.New("Not supported")
-
-type cgroupMemoryLimit struct {
+type cgroupMemory struct {
 	reader *cgroups.Reader
 }
 
-func newCgroupMemoryLimit() (*cgroupMemoryLimit, error) {
+func newCgroupMemory() (*cgroupMemory, error) {
 	reader, err := cgroups.NewReader()
 	if err != nil {
 		return nil, err
 	}
-	return &cgroupMemoryLimit{
+	limit := &cgroupMemory{
 		reader: reader,
-	}, nil
+	}
+
+	// make sure a memory limit is defined
+	if _, err := limit.getMemoryLimit(); err != nil {
+		return nil, err
+	}
+
+	return limit, nil
 }
 
-func (c *cgroupMemoryLimit) getMemoryLimits() (uint64, error) {
+func (c *cgroupMemory) getMemoryLimit() (uint64, error) {
 	c.reader.RefreshCgroups(15 * time.Minute)
-	cgroups := c.reader.ListCgroups()
-	if len(cgroups) == 0 {
+	groups := c.reader.ListCgroups()
+	if len(groups) == 0 {
 		return 0, nil
 	}
 	var stats cgroups.MemoryStats
-	if err := cgroups[0].GetMemoryStats(&stats); err != nil {
+	if err := groups[0].GetMemoryStats(&stats); err != nil {
 		return 0, err
 	}
-	if stats.Limit != nil || *stats.Limit == 0 {
-		return 0, errors.New("Cannot get memory limit")
+	if stats.Limit == nil || *stats.Limit == 0 {
+		return 0, errors.New("cannot get memory limit")
 	}
-	return stats.Limit, nil
+	return *stats.Limit, nil
 }

@@ -12,14 +12,12 @@ import (
 	"errors"
 )
 
-type cgroupMemoryLimit struct{}
+type cgroupMemory struct{}
 
-var cgroupNotSupportedError = errors.New("Not supported")
-
-func newCgroupMemoryLimit() (*cgroupMemoryLimit, error) {
-	return nil, cgroupNotSupportedError
+func newCgroupMemory() (*cgroupMemoryLimit, error) {
+	return nil, errors.New("Not supported")
 }
 
-func (c *cgroupMemoryLimit) getMemoryLimits() (uint64, error) {
-	return 0, cgroupNotSupportedError
+func (c *cgroupMemoryLimit) getMemoryLimit() (uint64, error) {
+	return 0, errors.New("Not supported")
 }

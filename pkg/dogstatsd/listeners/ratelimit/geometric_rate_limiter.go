@@ -6,35 +6,31 @@
 package ratelimit
 
 type geometricRateLimiterConfig struct {
-	minValue float32
-	maxValue float32
-	factor   float32
+	minRate float64
+	maxRate float64
+	factor  float64
 }
 
 type geometricRateLimiter struct {
 	tick             int
-	currentRateLimit float32
-	minRate          float32
-	maxRate          float32
-	factor           float32
+	currentRateLimit float64
+	minRate          float64
+	maxRate          float64
+	factor           float64
 }
 
 func newGeometricRateLimiter(config geometricRateLimiterConfig) *geometricRateLimiter {
 	return &geometricRateLimiter{
-		minRate:          config.minValue,
-		maxRate:          config.maxValue,
+		minRate:          config.minRate,
+		maxRate:          config.maxRate,
 		factor:           config.factor,
-		currentRateLimit: config.maxValue,
+		currentRateLimit: config.minRate,
 	}
-}
-
-func (r *geometricRateLimiter) rate() float32 {
-	return r.currentRateLimit
 }
 
 func (r *geometricRateLimiter) limitExceeded() bool {
 	r.tick++
-	if 1/float32(r.tick) >= r.currentRateLimit {
+	if 1/float64(r.tick) <= r.currentRateLimit {
 		r.tick = 0
 		return true
 	}

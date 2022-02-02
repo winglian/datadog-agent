@@ -142,9 +142,15 @@ func (l *UDSListener) Listen() {
 	var t2 time.Time
 	log.Infof("dogstatsd-uds: starting to listen on %s", l.conn.LocalAddr())
 	//t := NewTodo()
-	t, err := ratelimit.BuildMemoryBasedWaiter()
-	if err != nil {
-		log.Error(err)
+
+	var rateLimiter *ratelimit.MemBasedRateLimiter = nil
+	if config.Datadog.GetBool("dogstatsd_mem_based_rate_limiter.enabled") {
+		var err error
+		rateLimiter, err = ratelimit.BuildMemBasedRateLimiter()
+		if err != nil {
+			log.Errorf("Cannot use dogstatsd_mem_based_rate_limiter.enabled:true  %v", err)
+			rateLimiter = nil
+		}
 	}
 	for {
 		var n int
@@ -172,8 +178,8 @@ func (l *UDSListener) Listen() {
 			tlmListener.Observe(float64(t2.Sub(t1).Nanoseconds()), "uds")
 
 			n, oobn, _, _, err = l.conn.ReadMsgUnix(packet.Buffer, oobS)
-			if t != nil {
-				_ = t.Wait()
+			if rateLimiter != nil {
+				_ = rateLimiter.Wait()
 			}
 			t1 = time.Now()
 
@@ -210,8 +216,8 @@ func (l *UDSListener) Listen() {
 
 			// Read only datagram contents with no credentials
 			n, _, err = l.conn.ReadFromUnix(packet.Buffer)
-			if t != nil {
-				_ = t.Wait()
+			if rateLimiter != nil {
+				_ = rateLimiter.Wait()
 			}
 
 			t1 = time.Now()

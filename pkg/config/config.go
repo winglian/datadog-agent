@@ -512,15 +512,17 @@ func InitConfig(config Config) {
 	// Default is 0 - blocking channel
 	config.BindEnvAndSetDefault("dogstatsd_capture_depth", 0)
 
-	config.BindEnvAndSetDefault("soft_memory_limit_low", 0.6)
-	config.BindEnvAndSetDefault("soft_memory_limit_high", 0.8)
-	config.BindEnvAndSetDefault("soft_memory_limit_go_gc", 0)
-	config.BindEnvAndSetDefault("soft_memory_limit_rate_min", 0.01)
-	config.BindEnvAndSetDefault("soft_memory_limit_rate_max", 1)
-	config.BindEnvAndSetDefault("soft_memory_limit_rate_factor", 2)
-	config.BindEnvAndSetDefault("soft_memory_limit_release_rate_min", 0.01)
-	config.BindEnvAndSetDefault("soft_memory_limit_release_rate_max", 0.1)
-	config.BindEnvAndSetDefault("soft_memory_limit_release_rate_factor", 1.5)
+	// To enable the following feature GODEBUG must have `madvdontneed=1`
+	config.BindEnvAndSetDefault("dogstatsd_mem_based_rate_limiter.enabled", false)
+	config.BindEnvAndSetDefault("dogstatsd_mem_based_rate_limiter.low_soft_limit", 0.04)
+	config.BindEnvAndSetDefault("dogstatsd_mem_based_rate_limiter.high_soft_limit", 0.05)
+	config.BindEnvAndSetDefault("dogstatsd_mem_based_rate_limiter.go_gc", 0) // 0 means don't set SetGCPercent
+	config.BindEnvAndSetDefault("dogstatsd_mem_based_rate_limiter.rate_check.min", 0.01)
+	config.BindEnvAndSetDefault("dogstatsd_mem_based_rate_limiter.rate_check.max", 1)
+	config.BindEnvAndSetDefault("dogstatsd_mem_based_rate_limiter.rate_check.factor", 2)
+	config.BindEnvAndSetDefault("dogstatsd_mem_based_rate_limiter.soft_limit_freeos_check.min", 0.01)
+	config.BindEnvAndSetDefault("dogstatsd_mem_based_rate_limiter.soft_limit_freeos_check.max", 0.1)
+	config.BindEnvAndSetDefault("dogstatsd_mem_based_rate_limiter.soft_limit_freeos_check.factor", 1.5)
 
 	config.BindEnv("dogstatsd_mapper_profiles")
 	config.SetEnvKeyTransformer("dogstatsd_mapper_profiles", func(in string) interface{} {

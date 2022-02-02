@@ -8,17 +8,20 @@ package ratelimit
 import (
 	"os"
 
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/DataDog/gopsutil/mem"
 	"github.com/DataDog/gopsutil/process"
 )
 
-type memoryUsageRate struct {
+var _ memoryUsage = (*processMemoryUsage)(nil)
+
+type processMemoryUsage struct {
 	process                   *process.Process
-	optionalCgroupMemoryLimit *cgroupMemoryLimit
+	optionalCgroupMemoryLimit *cgroupMemory
 	totalMemory               uint64
 }
 
-func newMemoryUsageRate() (*memoryUsageRate, error) {
+func newProcessMemoryUsage() (*processMemoryUsage, error) {
 	p, err := process.NewProcess(int32(os.Getpid()))
 	if err != nil {
 		return nil, err
@@ -29,21 +32,19 @@ func newMemoryUsageRate() (*memoryUsageRate, error) {
 		return nil, err
 	}
 
-	var cgroupMemoryLimit *cgroupMemoryLimit = nil
-	if cgroupMemoryLimit, err = newCgroupMemoryLimit(); err != nil {
-		if err != cgroupNotSupportedError {
-			return nil, err
-		}
+	var cgroupMemoryLimit *cgroupMemory = nil
+	if cgroupMemoryLimit, err = newCgroupMemory(); err != nil {
+		log.Info("No cgroup memory limit found")
 		cgroupMemoryLimit = nil
 	}
-	return &memoryUsageRate{
+	return &processMemoryUsage{
 		process:                   p,
 		optionalCgroupMemoryLimit: cgroupMemoryLimit,
 		totalMemory:               memoryStats.Total,
 	}, nil
 }
 
-func (m *memoryUsageRate) rate() (float32, error) {
+func (m *processMemoryUsage) rate() (float64, error) {
 	memory, err := m.process.MemoryInfo()
 	if err != nil {
 		return 0, err
@@ -51,12 +52,12 @@ func (m *memoryUsageRate) rate() (float32, error) {
 	var memoryLimit uint64
 
 	if m.optionalCgroupMemoryLimit != nil {
-		if memoryLimit, err = m.optionalCgroupMemoryLimit.getMemoryLimits(); err != nil {
-			return 0, nil
+		if memoryLimit, err = m.optionalCgroupMemoryLimit.getMemoryLimit(); err != nil {
+			return 0, err
 		}
 	} else {
 		memoryLimit = m.totalMemory
 	}
 
-	return float32(memory.RSS) / float32(memoryLimit), nil
+	return float64(memory.RSS) / float64(memoryLimit), nil
 }
