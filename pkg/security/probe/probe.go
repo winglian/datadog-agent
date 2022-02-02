@@ -3,6 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
+//go:build linux
 // +build linux
 
 package probe
@@ -539,6 +540,27 @@ func (p *Probe) handleEvent(CPU uint64, data []byte) {
 	case model.BPFEventType:
 		if _, err = event.BPF.UnmarshalBinary(data[offset:]); err != nil {
 			log.Errorf("failed to decode bpf event: %s (offset %d, len %d)", err, offset, len(data))
+			return
+		}
+	case model.PTraceEventType:
+		if _, err = event.PTrace.UnmarshalBinary(data[offset:]); err != nil {
+			log.Errorf("failed to decode ptrace event: %s (offset %d, len %d)", err, offset, len(data))
+			return
+		}
+		// resolve tracee process context
+		cacheEntry := event.resolvers.ProcessResolver.Resolve(event.PTrace.PID, event.PTrace.PID)
+		if cacheEntry != nil {
+			event.PTrace.TraceeProcessCacheEntry = cacheEntry
+			event.PTrace.Tracee = cacheEntry.ProcessContext
+		}
+	case model.MMapEventType:
+		if _, err = event.MMap.UnmarshalBinary(data[offset:]); err != nil {
+			log.Errorf("failed to decode mmap event: %s (offset %d, len %d)", err, offset, len(data))
+			return
+		}
+	case model.MProtectEventType:
+		if _, err = event.MProtect.UnmarshalBinary(data[offset:]); err != nil {
+			log.Errorf("failed to decode mprotect event: %s (offset %d, len %d)", err, offset, len(data))
 			return
 		}
 	default:

@@ -3,12 +3,13 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
+//go:build docker && !kubelet
 // +build docker,!kubelet
 
 package docker
 
 // ContainsADIdentifier returns true if the container contains an autodiscovery identifier.
 func ContainsADIdentifier(c *Container) bool {
-	_, exists := c.container.Labels[configPath]
+	_, exists := c.container.Config.Labels[configPath]
 	return exists
 }

@@ -20,6 +20,7 @@ import (
 	cmdconfig "github.com/DataDog/datadog-agent/cmd/agent/common/commands/config"
 	"github.com/DataDog/datadog-agent/cmd/manager"
 	"github.com/DataDog/datadog-agent/cmd/process-agent/api"
+	sysconfig "github.com/DataDog/datadog-agent/cmd/system-probe/config"
 	apiutil "github.com/DataDog/datadog-agent/pkg/api/util"
 	ddconfig "github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/config/settings"
@@ -79,13 +80,13 @@ var (
 func getSettingsClient(_ *cobra.Command, _ []string) (settings.Client, error) {
 	// Set up the config so we can get the port later
 	// We set this up differently from the main process-agent because this way is quieter
-	cfg := config.NewDefaultAgentConfig(false)
+	cfg := config.NewDefaultAgentConfig()
 	if opts.configPath != "" {
 		if err := config.LoadConfigIfExists(opts.configPath); err != nil {
 			return nil, err
 		}
 	}
-	err := cfg.LoadProcessYamlConfig(opts.configPath)
+	err := cfg.LoadProcessYamlConfig(opts.configPath, false)
 	if err != nil {
 		return nil, err
 	}
@@ -150,9 +151,10 @@ func versionString(sep string) string {
 
 const (
 	agent6DisabledMessage = `process-agent not enabled.
-Set env var DD_PROCESS_AGENT_ENABLED=true or add
+Set env var DD_PROCESS_CONFIG_PROCESS_COLLECTION_ENABLED=true or add
 process_config:
-  enabled: "true"
+  process_collection:
+    enabled: true
 to your datadog.yaml file.
 Exiting.`
 )
@@ -181,6 +183,10 @@ func runAgent(exit chan struct{}) {
 		}()
 	}
 
+	// We need to load in the system probe environment variables before we load the config, otherwise an
+	// "Unknown environment variable" warning will show up whenever valid system probe environment variables are defined.
+	ddconfig.InitSystemProbeConfig(ddconfig.Datadog)
+
 	// `GetContainers` will panic when running in docker if the config hasn't called `DetectFeatures`.
 	// `LoadConfigIfExists` does the job of loading the config and calling `DetectFeatures` so that we can detect containers.
 	if err := config.LoadConfigIfExists(opts.configPath); err != nil {
@@ -188,11 +194,20 @@ func runAgent(exit chan struct{}) {
 		cleanupAndExit(1)
 	}
 
+	// For system probe, there is an additional config file that is shared with the system-probe
+	syscfg, err := sysconfig.Merge(opts.sysProbeConfigPath)
+	if err != nil {
+		_ = log.Critical(err)
+		cleanupAndExit(1)
+	}
+
+	config.InitRuntimeSettings()
+
 	// Note: This only considers container sources that are already setup. It's possible that container sources may
 	//       need a few minutes to be ready on newly provisioned hosts.
-	_, err := util.GetContainers()
+	_, err = util.GetContainers()
 	canAccessContainers := err == nil
-	cfg, err := config.NewAgentConfig(loggerName, opts.configPath, opts.sysProbeConfigPath, canAccessContainers)
+	cfg, err := config.NewAgentConfig(loggerName, opts.configPath, syscfg, canAccessContainers)
 	if err != nil {
 		log.Criticalf("Error parsing config: %s", err)
 		cleanupAndExit(1)
@@ -239,7 +254,7 @@ func runAgent(exit chan struct{}) {
 	}
 
 	// Exit if agent is not enabled and we're not debugging a check.
-	if !cfg.Enabled && opts.check == "" {
+	if len(cfg.EnabledChecks) == 0 && opts.check == "" {
 		log.Infof(agent6DisabledMessage)
 
 		// a sleep is necessary to ensure that supervisor registers this process as "STARTED"
