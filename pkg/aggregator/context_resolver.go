@@ -22,14 +22,6 @@ type Context struct {
 	metricTags *tags.Entry
 }
 
-func newContext(name string, host string, tags *tags.Entry) *Context {
-	return &Context{
-		Name: name,
-		Host: host,
-		tags: tags,
-	}
-}
-
 // Tags returns tags for the context.
 func (c *Context) Tags() tagset.CompositeTags {
 	return tagset.NewCompositeTags(c.taggerTags.Tags(), c.metricTags.Tags())
