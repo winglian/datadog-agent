@@ -25,6 +25,7 @@ var (
 	datadogAgentEmbeddedPath = "/opt/datadog-agent/embedded"
 	clangBinPath             = filepath.Join(datadogAgentEmbeddedPath, "bin/clang")
 	llcBinPath               = filepath.Join(datadogAgentEmbeddedPath, "bin/llc")
+	embeddedIncludePath      = filepath.Join(datadogAgentEmbeddedPath, "include")
 	defaultFlags             = []string{
 		"-D__KERNEL__",
 		"-DCONFIG_64BIT",
@@ -69,6 +70,7 @@ func CompileToObjectFile(in io.Reader, outputFile string, cflags []string, heade
 			fmt.Sprintf("-isystem%s/include/generated/uapi", d),
 		)
 	}
+	cflags = append(cflags, fmt.Sprintf("-isystem%s", embeddedIncludePath))
 	cflags = append(cflags, "-c", "-x", "c", "-o", "-", "-")
 
 	var clangOut, clangErr, llcOut, llcErr bytes.Buffer
