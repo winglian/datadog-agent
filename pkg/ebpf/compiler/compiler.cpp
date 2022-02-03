@@ -293,6 +293,12 @@ ClangCompiler::~ClangCompiler()
 const char * getBPFTriple()
 {
     auto triple = llvm::Triple("bpf");
-    std::string* retval = new std::string(triple.getTriple());
+    std::string err;
+    auto target = llvm::TargetRegistry::lookupTarget(triple.getTriple(), err);
+    if (!target) {
+        return nullptr;
+    }
+    //std::string* retval = new std::string(ClangCompiler::getArch());
+    std::string* retval = new std::string(target->getName());
     return retval->c_str();
 }

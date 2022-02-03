@@ -64,11 +64,13 @@ func (e *EBPFCompiler) CompileToObjectFile(in io.Reader, outputFile string, cfla
 	var clangErr bytes.Buffer
 
 	targetC := C.get_bpf_triple()
-	defer C.free(unsafe.Pointer(targetC))
+	//if (targetC) defer C.free(unsafe.Pointer(targetC))
 
 	cflags = append(defaultCflags, cflags...)
 	cflags = append(cflags, e.kernelCflags...)
 	cflags = append(cflags, "-target", C.GoString(targetC), "-x", "c", "-o", outputFile, "-")
+
+	log.Infof("*** Target: %s", C.GoString(targetC))
 
 	command := exec.Command(clangBinPath, cflags...)
 	command.Stdout = &clangOut
