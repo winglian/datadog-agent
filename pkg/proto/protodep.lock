@@ -39,7 +39,7 @@ proto_outdir = "./protodep"
 
 [[dependencies]]
   target = "github.com/DataDog/agent-payload"
-  revision = "8270b30bcf2a1ff78e283f11735e61137710ce7a"
+  revision = "ec69f346dfe0d46e6527b2d975639648a9bd72ce"
   branch = ""
   path = "DataDog/agent-payload"
   protocol = ""

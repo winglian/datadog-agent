@@ -56,7 +56,7 @@ message CollectorProcDiscovery {
 message CollectorConnections {
 	reserved 1, 4, 13, 32, 33;
 	// Please update when adding fields
-	// next identifier:  38
+	// next identifier:  40
 
 	string hostName = 2;
 	string networkId = 12;
@@ -77,12 +77,20 @@ message CollectorConnections {
 	// Mapping of processes running in each container
 	map<int32, string> containerForPid = 10;
 
+	// encoded bytes here are use to store a tags []string
+	// the tags encoder is more space efficient than protobuf
 	bytes encodedTags = 11;
 
 
+	// All tags indexed by Connection.tags
+	bytes encodedConnectionsTags = 38;
+
 	ContainerHostType containerHostType = 15;
 
-	CollectorConnectionsTelemetry connTelemetry = 16;
+	// For now, we'll keep emitting telemetry from agents < 7.35
+	CollectorConnectionsTelemetry connTelemetryPre735 = 16;
+
+	map<string,int64> connTelemetry = 39;
 
 	// OS Telemetry
 	string architecture = 17;
@@ -218,6 +226,7 @@ message CollectorNode {
 	int32 groupSize = 4;
 	repeated Node nodes = 5;
 	repeated string tags = 6;
+	map<string, Host> hostAliasMapping = 7;
 }
 
 message CollectorCluster {
@@ -623,7 +632,7 @@ enum EphemeralPortState {
 message Connection {
 	reserved 2, 3, 4, 7, 8, 9, 13, 14, 15, 35;
 	// Please update when adding fields
-	// next identifier:  44
+	// next identifier:  46
 
 
 	int32 pid = 1;
@@ -684,16 +693,25 @@ message Connection {
 
 	// serialized HTTPAggregations object summarizing all http transactions recorded for this connection, organized by request path
 	bytes httpAggregations = 37;
+
+	// The stored values corresponds to an index into the `Connections.tags` field
+	repeated uint32 tags = 44;
+
+	// the tags index of encodedConnectionsTags (from process.tagsV2.Encode())
+	int32 tagsIdx = 45;
 }
 
 message Connections {
 	repeated Connection conns = 1;
 	map<string, DNSEntry> dns  = 2;
-	ConnectionsTelemetry connTelemetry = 3;
+	// For now, we'll keep emitting telemetry from agents < 7.35
+	ConnectionsTelemetry connTelemetryPre735 = 3;
 	repeated string domains = 4;
 	repeated Route routes = 5;
 	map<string, RuntimeCompilationTelemetry> compilationTelemetryByAsset = 6;
 	AgentConfiguration agentConfiguration = 7;
+	repeated string tags = 8;
+	map<string, int64> connTelemetry = 9;
 }
 
 message Addr {
@@ -958,6 +976,7 @@ message Deployment {
 	int32 availableReplicas = 11;
 	int32 unavailableReplicas = 12;
 	string conditionMessage = 13;
+	repeated ResourceRequirements resourceRequirements = 16;
 	bytes yaml = 14;
 	repeated string tags = 15;
 }
@@ -973,6 +992,7 @@ message ReplicaSet {
 	int32 fullyLabeledReplicas = 5;
 	int32 readyReplicas = 6;
 	int32 availableReplicas = 7;
+	repeated ResourceRequirements resourceRequirements = 10;
 	bytes yaml = 8;
 	repeated string tags = 9;
 }
@@ -1110,6 +1130,7 @@ message DaemonSetSpec {
 	string maxUnavailable = 3; // int or str
 	int32 minReadySeconds = 4;
 	int32 revisionHistoryLimit = 5;
+	repeated ResourceRequirements resourceRequirements = 6;
 }
 
 // reference https://github.com/kubernetes/kubernetes/blob/cb19b56831d54d1d31249949318ef0b07bf00df9/staging/src/k8s.io/api/apps/v1/generated.proto#L152
@@ -1140,6 +1161,7 @@ message StatefulSetSpec {
 	string podManagementPolicy = 4;
 	string updateStrategy = 5;
 	int32 partition = 6;
+	repeated ResourceRequirements resourceRequirements = 7;
 }
 
 // reference https://github.com/kubernetes/kubernetes/blob/cb19b56831d54d1d31249949318ef0b07bf00df9/staging/src/k8s.io/api/apps/v1/generated.proto#L647
@@ -1253,7 +1275,7 @@ message PolicyRule {
 	repeated string nonResourceURLs = 5;
 }
 
-// refrence https://github.com/kubernetes/kubernetes/blob/cb19b56831d54d1d31249949318ef0b07bf00df9/staging/src/k8s.io/api/rbac/v1/generated.proto#L180
+// reference https://github.com/kubernetes/kubernetes/blob/cb19b56831d54d1d31249949318ef0b07bf00df9/staging/src/k8s.io/api/rbac/v1/generated.proto#L180
 message Subject {
 	string kind = 1;
 	string apiGroup = 2;
@@ -1417,6 +1439,8 @@ enum KernelHeaderFetchResult {
 	DownloadSuccess = 5;
 	HostVersionErr = 6;
 	DownloadFailure = 7;
+	ValidationFailure = 8;
+	ReposDirAccessFailure = 9;
 }
 
 message RuntimeCompilationTelemetry {
