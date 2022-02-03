@@ -40,6 +40,7 @@
     - $S3_CP_CMD $SRC_PATH/pkg/ebpf/bytecode/build/runtime/oom-kill.c $S3_ARTIFACTS_URI/oom-kill.c.$ARCH
     - $S3_CP_CMD $SRC_PATH/pkg/ebpf/bytecode/build/runtime/tcp-queue-length.c $S3_ARTIFACTS_URI/tcp-queue-length.c.$ARCH
     - $S3_CP_CMD $DATADOG_AGENT_EMBEDDED_PATH/bin/clang $S3_ARTIFACTS_URI/clang.$ARCH
+    - $S3_CP_CMD $DATADOG_AGENT_EMBEDDED_PATH/bin/llc $S3_ARTIFACTS_URI/llc.$ARCH
 
 build_system-probe-x64:
   stage: binary_build
