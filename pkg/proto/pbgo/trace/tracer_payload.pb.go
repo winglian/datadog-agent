@@ -411,7 +411,7 @@ func (this *TraceChunk) GoString() string {
 		s = append(s, "Spans: "+fmt.Sprintf("%#v", this.Spans)+",\n")
 	}
 	keysForTags := make([]string, 0, len(this.Tags))
-	for k, _ := range this.Tags {
+	for k := range this.Tags {
 		keysForTags = append(keysForTags, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForTags)
@@ -442,7 +442,7 @@ func (this *TracerPayload) GoString() string {
 		s = append(s, "Chunks: "+fmt.Sprintf("%#v", this.Chunks)+",\n")
 	}
 	keysForTags := make([]string, 0, len(this.Tags))
-	for k, _ := range this.Tags {
+	for k := range this.Tags {
 		keysForTags = append(keysForTags, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForTags)
@@ -773,7 +773,7 @@ func (this *TraceChunk) String() string {
 	}
 	repeatedStringForSpans += "}"
 	keysForTags := make([]string, 0, len(this.Tags))
-	for k, _ := range this.Tags {
+	for k := range this.Tags {
 		keysForTags = append(keysForTags, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForTags)
@@ -802,7 +802,7 @@ func (this *TracerPayload) String() string {
 	}
 	repeatedStringForChunks += "}"
 	keysForTags := make([]string, 0, len(this.Tags))
-	for k, _ := range this.Tags {
+	for k := range this.Tags {
 		keysForTags = append(keysForTags, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForTags)

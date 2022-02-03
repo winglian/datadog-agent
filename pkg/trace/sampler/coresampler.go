@@ -9,9 +9,9 @@ import (
 	"math"
 	"time"
 
+	pb "github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace"
 	"github.com/DataDog/datadog-agent/pkg/trace/atomic"
 	"github.com/DataDog/datadog-agent/pkg/trace/metrics"
-	pb "github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace"
 	"github.com/DataDog/datadog-agent/pkg/trace/watchdog"
 )
 

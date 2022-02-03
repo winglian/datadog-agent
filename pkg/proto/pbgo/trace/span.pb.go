@@ -288,7 +288,7 @@ func (this *Span) GoString() string {
 	s = append(s, "Duration: "+fmt.Sprintf("%#v", this.Duration)+",\n")
 	s = append(s, "Error: "+fmt.Sprintf("%#v", this.Error)+",\n")
 	keysForMeta := make([]string, 0, len(this.Meta))
-	for k, _ := range this.Meta {
+	for k := range this.Meta {
 		keysForMeta = append(keysForMeta, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForMeta)
@@ -301,7 +301,7 @@ func (this *Span) GoString() string {
 		s = append(s, "Meta: "+mapStringForMeta+",\n")
 	}
 	keysForMetrics := make([]string, 0, len(this.Metrics))
-	for k, _ := range this.Metrics {
+	for k := range this.Metrics {
 		keysForMetrics = append(keysForMetrics, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForMetrics)
@@ -524,7 +524,7 @@ func (this *Span) String() string {
 		return "nil"
 	}
 	keysForMeta := make([]string, 0, len(this.Meta))
-	for k, _ := range this.Meta {
+	for k := range this.Meta {
 		keysForMeta = append(keysForMeta, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForMeta)
@@ -534,7 +534,7 @@ func (this *Span) String() string {
 	}
 	mapStringForMeta += "}"
 	keysForMetrics := make([]string, 0, len(this.Metrics))
-	for k, _ := range this.Metrics {
+	for k := range this.Metrics {
 		keysForMetrics = append(keysForMetrics, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForMetrics)

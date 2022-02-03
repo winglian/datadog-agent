@@ -8,8 +8,8 @@ package filters
 import (
 	"strconv"
 
-	"github.com/DataDog/datadog-agent/pkg/trace/config"
 	pb "github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace"
+	"github.com/DataDog/datadog-agent/pkg/trace/config"
 )
 
 // Replacer is a filter which replaces tag values based on its

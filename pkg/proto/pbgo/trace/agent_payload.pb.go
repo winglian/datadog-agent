@@ -222,7 +222,7 @@ func (this *AgentPayload) GoString() string {
 		s = append(s, "TracerPayloads: "+fmt.Sprintf("%#v", this.TracerPayloads)+",\n")
 	}
 	keysForTags := make([]string, 0, len(this.Tags))
-	for k, _ := range this.Tags {
+	for k := range this.Tags {
 		keysForTags = append(keysForTags, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForTags)
@@ -405,7 +405,7 @@ func (this *AgentPayload) String() string {
 	}
 	repeatedStringForTracerPayloads += "}"
 	keysForTags := make([]string, 0, len(this.Tags))
-	for k, _ := range this.Tags {
+	for k := range this.Tags {
 		keysForTags = append(keysForTags, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForTags)
