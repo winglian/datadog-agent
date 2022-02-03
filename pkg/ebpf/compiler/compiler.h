@@ -61,4 +61,6 @@ private:
         bool inMemory);
 };
 
+const char * getBPFTriple();
+
 #endif

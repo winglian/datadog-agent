@@ -24,14 +24,31 @@ package compiler
 import "C"
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 	"unsafe"
 
 	"github.com/DataDog/datadog-agent/pkg/util/kernel"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
+)
+
+var (
+	datadogAgentEmbeddedPath = "/opt/datadog-agent/embedded"
+	defaultCflags            = []string{
+		"-O2",
+		"-D__KERNEL__",
+		"-fno-color-diagnostics",
+		"-fno-unwind-tables",
+		"-fno-asynchronous-unwind-tables",
+		"-fno-stack-protector",
+		"-nostdinc",
+		"-isystem/virtual/lib/clang/include",
+	}
 )
 
 type EBPFCompiler struct {
@@ -41,21 +58,37 @@ type EBPFCompiler struct {
 	kernelCflags []string
 }
 
+func (e *EBPFCompiler) CompileToObjectFile(in io.Reader, outputFile string, cflags []string) error {
+	clangBinPath := filepath.Join(datadogAgentEmbeddedPath, "bin/clang")
+	var clangOut bytes.Buffer
+	var clangErr bytes.Buffer
+
+	targetC := C.get_bpf_triple()
+	defer C.free(unsafe.Pointer(targetC))
+
+	cflags = append(defaultCflags, cflags...)
+	cflags = append(cflags, e.kernelCflags...)
+	cflags = append(cflags, "-target", C.GoString(targetC), "-x", "c", "-o", outputFile, "-")
+
+	command := exec.Command(clangBinPath, cflags...)
+	command.Stdout = &clangOut
+	command.Stderr = &clangErr
+	command.Stdin = in
+
+	err := command.Run()
+	log.Infof("%s", clangOut.String())
+	if err != nil {
+		log.Errorf("clang error: %s", clangErr.String())
+	}
+
+	return err
+}
+
 func (e *EBPFCompiler) CompileFileToObjectFile(inputFile, outputFile string, cflags []string) error {
 	inputC := C.CString(inputFile)
 	defer C.free(unsafe.Pointer(inputC))
 
 	return e.compile(inputC, outputFile, cflags, false)
-}
-
-func (e *EBPFCompiler) CompileToObjectFile(in io.Reader, outputFile string, cflags []string) error {
-	inputBuf, err := ioutil.ReadAll(in)
-	if err != nil {
-		return fmt.Errorf("error reading input: %w", err)
-	}
-	inputC := (*C.char)(unsafe.Pointer(&inputBuf[0]))
-
-	return e.compile(inputC, outputFile, cflags, true)
 }
 
 func (e *EBPFCompiler) compile(inputC *C.char, outputFile string, cflags []string, inMemory bool) error {

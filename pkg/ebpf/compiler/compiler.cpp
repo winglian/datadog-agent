@@ -289,3 +289,10 @@ const std::string& ClangCompiler::getErrors() const
 ClangCompiler::~ClangCompiler()
 {
 }
+
+const char * getBPFTriple()
+{
+    auto triple = llvm::Triple("bpf");
+    std::string* retval = new std::string(triple.getTriple());
+    return retval->c_str();
+}

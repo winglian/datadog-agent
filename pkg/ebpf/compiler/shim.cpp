@@ -55,4 +55,9 @@ void delete_bpf_compiler(bpf_compiler *compiler)
     delete compiler;
 }
 
+const char * get_bpf_triple()
+{
+    return getBPFTriple();
+}
+
 }
