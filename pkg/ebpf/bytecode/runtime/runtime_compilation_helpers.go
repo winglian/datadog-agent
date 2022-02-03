@@ -12,34 +12,32 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/ebpf"
 	"github.com/DataDog/datadog-agent/pkg/ebpf/compiler"
-	"github.com/DataDog/datadog-agent/pkg/security/log"
 	"github.com/DataDog/datadog-agent/pkg/security/metrics"
 	"github.com/DataDog/datadog-agent/pkg/util/kernel"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/DataDog/datadog-agent/pkg/version"
 	"github.com/DataDog/datadog-go/statsd"
 )
 
-var (
-	defaultFlags = []string{
-		"-DCONFIG_64BIT",
-		"-D__BPF_TRACING__",
-		`-DKBUILD_MODNAME="ddsysprobe"`,
-		"-Wno-unused-value",
-		"-Wno-pointer-sign",
-		"-Wno-compare-distinct-pointer-types",
-		"-Wunused",
-		"-Wall",
-		"-Werror",
-	}
-)
-
-func ComputeFlagsAndHash(additionalFlags []string) ([]string, string) {
-	flags := make([]string, len(defaultFlags)+len(additionalFlags))
-	copy(flags, defaultFlags)
-	copy(flags[len(defaultFlags):], additionalFlags)
-
-	flagHash := hashFlags(flags)
-	return flags, flagHash
+var defaultFlags = []string{
+	"-D__KERNEL__",
+	"-DCONFIG_64BIT",
+	"-D__BPF_TRACING__",
+	`-DKBUILD_MODNAME="ddsysprobe"`,
+	"-Wno-unused-value",
+	"-Wno-pointer-sign",
+	"-Wno-compare-distinct-pointer-types",
+	"-Wunused",
+	"-Wall",
+	"-Werror",
+	"-emit-llvm",
+	"-O2",
+	"-fno-stack-protector",
+	"-fno-color-diagnostics",
+	"-fno-unwind-tables",
+	"-fno-asynchronous-unwind-tables",
+	"-fno-jump-tables",
+	"-nostdinc",
 }
 
 func hashFlags(flags []string) string {
@@ -145,9 +143,8 @@ func (rc *RuntimeCompiler) CompileObjectFile(config *ebpf.Config, cflags []strin
 		return nil, fmt.Errorf("unable to create compiler output directory %s: %w", config.RuntimeCompilerOutputDir, err)
 	}
 
-	flags, flagHash := ComputeFlagsAndHash(cflags)
-
-	outputFile, err := provider.GetOutputFilePath(config, kv, flagHash, &rc.telemetry)
+	flags := append(defaultFlags, cflags...)
+	outputFile, err := provider.GetOutputFilePath(config, kv, hashFlags(flags), &rc.telemetry)
 	if err != nil {
 		return nil, err
 	}
@@ -163,14 +160,7 @@ func (rc *RuntimeCompiler) CompileObjectFile(config *ebpf.Config, cflags []strin
 			rc.telemetry.compilationResult = headerFetchErr
 			return nil, fmt.Errorf("unable to find kernel headers: %w", err)
 		}
-		comp, err := compiler.NewEBPFCompiler(dirs, config.BPFDebug)
-		if err != nil {
-			rc.telemetry.compilationResult = newCompilerErr
-			return nil, fmt.Errorf("failed to create compiler: %w", err)
-		}
-		defer comp.Close()
-
-		if err := comp.CompileToObjectFile(inputReader, outputFile, flags); err != nil {
+		if err := compiler.CompileToObjectFile(inputReader, outputFile, cflags, dirs); err != nil {
 			rc.telemetry.compilationResult = compilationErr
 			return nil, fmt.Errorf("failed to compile runtime version of %s: %s", inputFileName, err)
 		}
