@@ -464,25 +464,16 @@ def generate_protobuf(ctx):
             output_generator = "--go_out=plugins=grpc:"
             if pkg in PACKAGE_PLUGINS:
                 output_generator = PACKAGE_PLUGINS[pkg]
+
+            targets = ' '.join(files)
             ctx.run(
-                "protoc -I{include_path} -I{include_protodep} {output_generator}{out_path} {targets}".format(
-                    include_path=proto_root,
-                    include_protodep=protodep_root,
-                    output_generator=output_generator,
-                    out_path=repo_root,
-                    targets=' '.join(files),
-                )
+                f"protoc -I{proto_root} -I{protodep_root} {output_generator}{out_path} {targets}"
             )
 
             if grpc_gateway:
                 # grpc-gateway logic
                 ctx.run(
-                    "protoc -I{include_path} -I{include_protodep} --grpc-gateway_out=logtostderr=true:{out_path} {targets}".format(
-                        include_path=proto_root,
-                        include_protodep=protodep_root,
-                        out_path=repo_root,
-                        targets=' '.join(files),
-                    )
+                    f"protoc -I{proto_root} -I{protodep_root} --grpc-gateway_out=logtostderr=true:{repo_root} {targets}"
                 )
 
         # mockgen
@@ -495,9 +486,7 @@ def generate_protobuf(ctx):
 
         # TODO: this should be parametrized
         ctx.run(
-            "mockgen -source={in_path}/core/api.pb.go -destination={out_path}/core/api_mockgen.pb.go".format(
-                in_path=pbgo_dir, out_path=mockgen_out
-            )
+            f"mockgen -source={pbgo_dir}/core/api.pb.go -destination={mockgen_out}/core/api_mockgen.pb.go"
         )
 
     # generate messagepack marshallers
@@ -506,13 +495,7 @@ def generate_protobuf(ctx):
             dst = os.path.splitext(os.path.basename(src))[0]  # .go
             dst = os.path.splitext(dst)[0]  # .pb
             ctx.run(
-                "msgp -file {in_path}/{pkg}/{src} -o={out_path}/{pkg}/{dst}_gen.go".format(
-                    pkg=pkg,
-                    src=src,
-                    dst=dst,
-                    in_path=pbgo_dir,
-                    out_path=pbgo_dir,
-                )
+                f"msgp -file {pbgo_dir}/{pkg}/{src} -o={pbgo_dir}/{pkg}/{dst}_gen.go"
             )
 
 
