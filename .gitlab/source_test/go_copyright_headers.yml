@@ -11,4 +11,3 @@ go_copyright_headers:
     - python3 -m pip install -r requirements.txt
   script:
     - inv lint-copyright
-s
