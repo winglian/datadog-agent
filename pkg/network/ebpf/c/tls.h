@@ -92,6 +92,7 @@ int socket__proto_tls(struct __sk_buff* skb) {
 
     /* we got TLS */
     if (tls_hdr.app == TLS_APPLICATION_DATA) {
+        log_debug("TLS classified %d %d\n", tup.sport, tup.dport);
         tls->handshake_done = 1;
         add_tags_tuple(&tup, TLS);
         increment_classifier_telemetry_count(tls_flow_classified);

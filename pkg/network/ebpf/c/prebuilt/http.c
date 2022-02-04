@@ -55,6 +55,9 @@ int socket__http_filter(struct __sk_buff* skb) {
     // for more context please refer to http-types.h comment on `owned_by_src_port` field
     http.owned_by_src_port = http.tup.sport;
     normalize_tuple(&http.tup);
+    if ((http.tup.sport == HTTPS_PORT || http.tup.dport == HTTPS_PORT) && (skb_info.tcp_flags & TCPHDR_FIN)) {
+        log_debug("TLS FIN %d %d %d\n", http.owned_by_src_port, http.tup.sport, http.tup.dport);
+    }
 
     read_into_buffer_skb((char *)http.request_fragment, skb, &skb_info);
     http_process(&http, &skb_info);
