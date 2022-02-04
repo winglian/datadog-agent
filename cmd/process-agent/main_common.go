@@ -256,6 +256,7 @@ func runAgent(exit chan struct{}) {
 	canAccessContainers := err == nil
 
 	enabledChecks := getChecks(syscfg, cfg.Orchestrator, canAccessContainers)
+	setupChecks(enabledChecks)
 
 	// Exit if agent is not enabled and we're not debugging a check.
 	if len(enabledChecks) == 0 && opts.check == "" {
