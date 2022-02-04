@@ -9,6 +9,7 @@ import (
 	"time"
 
 	model "github.com/DataDog/agent-payload/v5/process"
+	ddconfig "github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/process/config"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
 	"github.com/DataDog/datadog-agent/pkg/util/containers"
@@ -18,17 +19,40 @@ import (
 )
 
 // RTContainer is a singleton RTContainerCheck.
-var RTContainer = &RTContainerCheck{}
+var RTContainer = &RTContainerCheck{
+	maxBatchSize: ddconfig.DefaultProcessMaxPerMessage,
+}
+
+// RTContainerCheckOption is a config option callback for the RTContainerCheck. It's used to set up check properties
+type RTContainerCheckOption func(p *RTContainerCheck)
 
 // RTContainerCheck collects numeric statistics about live ctrList.
 type RTContainerCheck struct {
 	sysInfo   *model.SystemInfo
 	lastRates map[string]util.ContainerRateMetrics
 	lastRun   time.Time
+
+	options      []RTContainerCheckOption
+	maxBatchSize int
+}
+
+func (r *RTContainerCheck) AddRTContainerCheckOptions(options ...RTContainerCheckOption) {
+	r.options = append(r.options, options...)
+}
+
+func SetRTContainerCheckMaxBatchSize(size int) RTContainerCheckOption {
+	return func(r *RTContainerCheck) {
+		r.maxBatchSize = size
+	}
 }
 
 // Init initializes a RTContainerCheck instance.
 func (r *RTContainerCheck) Init(_ *config.AgentConfig, sysInfo *model.SystemInfo) {
+	// Initialize custom settings
+	for _, o := range r.options {
+		o(r)
+	}
+
 	r.sysInfo = sysInfo
 }
 
@@ -63,8 +87,8 @@ func (r *RTContainerCheck) Run(cfg *config.AgentConfig, groupID int32) ([]model.
 		return nil, nil
 	}
 
-	groupSize := len(ctrList) / MaxBatchSize
-	if len(ctrList)%MaxBatchSize != 0 {
+	groupSize := len(ctrList) / r.maxBatchSize
+	if len(ctrList)%r.maxBatchSize != 0 {
 		groupSize++
 	}
 	chunked := fmtContainerStats(ctrList, r.lastRates, r.lastRun, groupSize)

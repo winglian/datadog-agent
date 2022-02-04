@@ -11,6 +11,7 @@ import (
 	"time"
 
 	model "github.com/DataDog/agent-payload/v5/process"
+	ddconfig "github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/process/config"
 	"github.com/DataDog/datadog-agent/pkg/process/statsd"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
@@ -25,7 +26,12 @@ import (
 )
 
 // Container is a singleton ContainerCheck.
-var Container = &ContainerCheck{}
+var Container = &ContainerCheck{
+	maxBatchSize: ddconfig.DefaultProcessMaxPerMessage,
+}
+
+// ContainerCheckOption is a config option callback for the ContainerCheck. It's used to set up check properties
+type ContainerCheckOption func(p *ContainerCheck)
 
 // ContainerCheck is a check that returns container metadata and stats.
 type ContainerCheck struct {
@@ -38,10 +44,28 @@ type ContainerCheck struct {
 	networkID       string
 
 	containerFailedLogLimit *util.LogLimit
+
+	options      []ContainerCheckOption
+	maxBatchSize int
+}
+
+func (c *ContainerCheck) AddContainerCheckOptions(options ...ContainerCheckOption) {
+	c.options = append(c.options, options...)
+}
+
+func SetContainerCheckMaxBatchSize(size int) ContainerCheckOption {
+	return func(c *ContainerCheck) {
+		c.maxBatchSize = size
+	}
 }
 
 // Init initializes a ContainerCheck instance.
 func (c *ContainerCheck) Init(cfg *config.AgentConfig, info *model.SystemInfo) {
+	// Initialize custom settings
+	for _, o := range c.options {
+		o(c)
+	}
+
 	c.sysInfo = info
 
 	networkID, err := cloudproviders.GetNetworkID(context.TODO())
@@ -95,11 +119,11 @@ func (c *ContainerCheck) Run(cfg *config.AgentConfig, groupID int32) ([]model.Me
 		return nil, nil
 	}
 
-	groupSize := len(ctrList) / MaxBatchSize
-	if len(ctrList)%MaxBatchSize != 0 {
+	groupSize := len(ctrList) / c.maxBatchSize
+	if len(ctrList)%c.maxBatchSize != 0 {
 		groupSize++
 	}
-	chunked := chunkContainers(ctrList, c.lastRates, c.lastRun, groupSize, MaxBatchSize)
+	chunked := chunkContainers(ctrList, c.lastRates, c.lastRun, groupSize, c.maxBatchSize)
 	messages := make([]model.MessageBody, 0, groupSize)
 	totalContainers := float64(0)
 	for i := 0; i < groupSize; i++ {

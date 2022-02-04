@@ -7,6 +7,7 @@ package checks
 
 import (
 	"fmt"
+	ddconfig "github.com/DataDog/datadog-agent/pkg/config"
 	"time"
 
 	model "github.com/DataDog/agent-payload/v5/process"
@@ -15,7 +16,12 @@ import (
 )
 
 // ProcessDiscovery is a ProcessDiscoveryCheck singleton. ProcessDiscovery should not be instantiated elsewhere.
-var ProcessDiscovery = &ProcessDiscoveryCheck{}
+var ProcessDiscovery = &ProcessDiscoveryCheck{
+	maxBatchSize: ddconfig.DefaultProcessMaxPerMessage,
+}
+
+// ProcessDiscoveryCheckOption is a config option callback for the ProcessDiscoveryCheck. It's used to set up check properties
+type ProcessDiscoveryCheckOption func(d *ProcessDiscoveryCheck)
 
 // ProcessDiscoveryCheck is a check that gathers basic process metadata.
 // It uses its own ProcessDiscovery payload.
@@ -24,10 +30,28 @@ type ProcessDiscoveryCheck struct {
 	probe      procutil.Probe
 	info       *model.SystemInfo
 	initCalled bool
+
+	options      []ProcessDiscoveryCheckOption
+	maxBatchSize int
+}
+
+func (d *ProcessDiscoveryCheck) AddProcessDiscoveryCheckOptions(options ...ProcessDiscoveryCheckOption) {
+	d.options = append(d.options, options...)
+}
+
+func SetProcessDiscoveryCheckMaxBatchSize(size int) ProcessDiscoveryCheckOption {
+	return func(d *ProcessDiscoveryCheck) {
+		d.maxBatchSize = size
+	}
 }
 
 // Init initializes the ProcessDiscoveryCheck. It is a runtime error to call Run without first having called Init.
 func (d *ProcessDiscoveryCheck) Init(_ *config.AgentConfig, info *model.SystemInfo) {
+	// Initialize custom settings
+	for _, o := range d.options {
+		o(d)
+	}
+
 	d.info = info
 	d.initCalled = true
 	d.probe = getProcessProbe()
@@ -57,7 +81,7 @@ func (d *ProcessDiscoveryCheck) Run(cfg *config.AgentConfig, groupID int32) ([]m
 		NumCpus:     calculateNumCores(d.info),
 		TotalMemory: d.info.TotalMemory,
 	}
-	procDiscoveryChunks := chunkProcessDiscoveries(pidMapToProcDiscoveries(procs), MaxBatchSize)
+	procDiscoveryChunks := chunkProcessDiscoveries(pidMapToProcDiscoveries(procs), d.maxBatchSize)
 	payload := make([]model.MessageBody, len(procDiscoveryChunks))
 	for i, procDiscoveryChunk := range procDiscoveryChunks {
 		payload[i] = &model.CollectorProcDiscovery{

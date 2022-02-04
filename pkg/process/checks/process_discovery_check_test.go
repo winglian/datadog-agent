@@ -15,7 +15,10 @@ import (
 
 func TestProcessDiscoveryCheck(t *testing.T) {
 	cfg := &config.AgentConfig{}
-	MaxBatchSize = 10
+	check := &ProcessDiscoveryCheck{}
+
+	maxBatchSize := 10
+	check.AddProcessDiscoveryCheckOptions(SetProcessDiscoveryCheckMaxBatchSize(maxBatchSize))
 	ProcessDiscovery.Init(cfg, &model.SystemInfo{
 		Cpus:        []*model.CPUInfo{{Number: 0}},
 		TotalMemory: 0,
@@ -32,9 +35,9 @@ func TestProcessDiscoveryCheck(t *testing.T) {
 		for _, proc := range collectorProcDiscovery.ProcessDiscoveries {
 			assert.Empty(t, proc.Host)
 		}
-		if len(collectorProcDiscovery.ProcessDiscoveries) > MaxBatchSize {
+		if len(collectorProcDiscovery.ProcessDiscoveries) > maxBatchSize {
 			t.Errorf("Expected less than %d messages in chunk, got %d",
-				MaxBatchSize, len(collectorProcDiscovery.ProcessDiscoveries))
+				maxBatchSize, len(collectorProcDiscovery.ProcessDiscoveries))
 		}
 	}
 }

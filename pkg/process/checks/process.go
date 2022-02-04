@@ -12,6 +12,7 @@ import (
 	"time"
 
 	model "github.com/DataDog/agent-payload/v5/process"
+	ddconfig "github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/process/config"
 	"github.com/DataDog/datadog-agent/pkg/process/net"
 	"github.com/DataDog/datadog-agent/pkg/process/procutil"
@@ -26,7 +27,10 @@ import (
 const emptyCtrID = ""
 
 // Process is a singleton ProcessCheck.
-var Process = &ProcessCheck{}
+var Process = &ProcessCheck{
+	maxBatchSize:         ddconfig.DefaultProcessMaxPerMessage,
+	maxCtrProcsBatchSize: ddconfig.DefaultProcessMaxCtrProcsPerMessage,
+}
 
 var _ CheckWithRealTime = (*ProcessCheck)(nil)
 
@@ -34,6 +38,9 @@ var errEmptyCPUTime = errors.New("empty CPU time information returned")
 
 // ctrProcMsgFactory builds a CollectorProc
 type ctrProcMsgFactory func([]*model.Process, ...*model.Container) *model.CollectorProc
+
+// ProcessCheckOption is a config option callback for the ProcessCheck. It's used to set up check properties
+type ProcessCheckOption func(p *ProcessCheck)
 
 // ProcessCheck collects full state, including cmdline args and related metadata,
 // for live and running processes. The instance will store some state between
@@ -65,10 +72,35 @@ type ProcessCheck struct {
 
 	// SysprobeProcessModuleEnabled tells the process check wheither to use the RemoteSystemProbeUtil to gather privileged process stats
 	SysprobeProcessModuleEnabled bool
+
+	options              []ProcessCheckOption
+	maxBatchSize         int
+	maxCtrProcsBatchSize int
+}
+
+func (p *ProcessCheck) AddProcessCheckOptions(options ...ProcessCheckOption) {
+	p.options = append(p.options, options...)
+}
+
+func SetProcessCheckMaxBatchSize(size int) ProcessCheckOption {
+	return func(p *ProcessCheck) {
+		p.maxBatchSize = size
+	}
+}
+
+func SetProcessCheckMaxCtrProcsBatchSize(size int) ProcessCheckOption {
+	return func(p *ProcessCheck) {
+		p.maxCtrProcsBatchSize = size
+	}
 }
 
 // Init initializes the singleton ProcessCheck.
 func (p *ProcessCheck) Init(_ *config.AgentConfig, info *model.SystemInfo) {
+	// Initialize custom settings
+	for _, o := range p.options {
+		o(p)
+	}
+
 	p.sysInfo = info
 	p.probe = getProcessProbe()
 
@@ -175,7 +207,7 @@ func (p *ProcessCheck) run(cfg *config.AgentConfig, groupID int32, collectRealTi
 
 	ctrs := fmtContainers(ctrList, p.lastCtrRates, p.lastRun)
 
-	messages, totalProcs, totalContainers := createProcCtrMessages(procsByCtr, ctrs, cfg, MaxBatchSize, MaxCtrProcsBatchSize, p.sysInfo, groupID, p.networkID)
+	messages, totalProcs, totalContainers := createProcCtrMessages(procsByCtr, ctrs, cfg, p.maxBatchSize, p.maxCtrProcsBatchSize, p.sysInfo, groupID, p.networkID)
 
 	// Store the last state for comparison on the next run.
 	// Note: not storing the filtered in case there are new processes that haven't had a chance to show up twice.
@@ -194,7 +226,7 @@ func (p *ProcessCheck) run(cfg *config.AgentConfig, groupID int32, collectRealTi
 
 		if p.realtimeLastProcs != nil {
 			// TODO: deduplicate chunking with RT collection
-			chunkedStats := fmtProcessStats(cfg, MaxBatchSize, stats, p.realtimeLastProcs, ctrList, cpuTimes[0], p.realtimeLastCPUTime, p.realtimeLastRun, connsByPID)
+			chunkedStats := fmtProcessStats(cfg, p.maxBatchSize, stats, p.realtimeLastProcs, ctrList, cpuTimes[0], p.realtimeLastCPUTime, p.realtimeLastRun, connsByPID)
 			groupSize := len(chunkedStats)
 			chunkedCtrStats := fmtContainerStats(ctrList, p.realtimeLastCtrRates, p.realtimeLastRun, groupSize)
 

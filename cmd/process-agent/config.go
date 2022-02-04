@@ -56,3 +56,46 @@ func getChecks(sysCfg *sysconfig.Config, oCfg *oconfig.OrchestratorConfig, canAc
 
 	return
 }
+
+func setupChecks(procChecks []checks.Check) {
+	batchSize := ddconfig.Datadog.GetInt("process_config.max_per_message")
+	if batchSize <= 0 {
+		log.Warnf("Invalid item count per message (<= 0), using default value of %d", ddconfig.DefaultProcessMaxPerMessage)
+		batchSize = ddconfig.DefaultProcessMaxPerMessage
+	} else if batchSize > ddconfig.DefaultProcessMaxPerMessage {
+		log.Warnf("Overriding the configured max of item count per message because it exceeds maximum limit of %d", ddconfig.DefaultProcessMaxPerMessage)
+		batchSize = ddconfig.DefaultProcessMaxPerMessage
+	}
+
+	ctrProcsBatchSize := ddconfig.Datadog.GetInt("process_config.max_ctr_procs_per_message")
+	if ctrProcsBatchSize <= 0 {
+		log.Warnf("Invalid max container processes count per message (<= 0), using default value of %d", ddconfig.DefaultProcessMaxCtrProcsPerMessage)
+		ctrProcsBatchSize = ddconfig.DefaultProcessMaxCtrProcsPerMessage
+	} else if ctrProcsBatchSize > ddconfig.ProcessMaxCtrProcsPerMessageLimit {
+		log.Warnf("Overriding the configured max of container processes count per message because it exceeds maximum limit of %d", ddconfig.ProcessMaxCtrProcsPerMessageLimit)
+		ctrProcsBatchSize = ddconfig.DefaultProcessMaxCtrProcsPerMessage
+	}
+
+	for _, check := range procChecks {
+		switch c := check.(type) {
+		case *checks.ProcessCheck:
+			c.AddProcessCheckOptions(
+				checks.SetProcessCheckMaxBatchSize(batchSize),
+				checks.SetProcessCheckMaxCtrProcsBatchSize(ctrProcsBatchSize),
+			)
+		case *checks.ContainerCheck:
+			c.AddContainerCheckOptions(
+				checks.SetContainerCheckMaxBatchSize(batchSize),
+			)
+		case *checks.RTContainerCheck:
+			c.AddRTContainerCheckOptions(
+				checks.SetRTContainerCheckMaxBatchSize(batchSize),
+			)
+		case *checks.ProcessDiscoveryCheck:
+			c.AddProcessDiscoveryCheckOptions(
+				checks.SetProcessDiscoveryCheckMaxBatchSize(batchSize),
+			)
+		}
+
+	}
+}
