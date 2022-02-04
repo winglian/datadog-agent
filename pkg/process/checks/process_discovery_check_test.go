@@ -25,7 +25,7 @@ func TestProcessDiscoveryCheck(t *testing.T) {
 	})
 
 	// Test check runs without error
-	result, err := ProcessDiscovery.Run(cfg, 0)
+	result, err := check.Run(cfg, 0)
 	assert.NoError(t, err)
 
 	// Test that result has the proper number of chunks, and that those chunks are of the correct type
