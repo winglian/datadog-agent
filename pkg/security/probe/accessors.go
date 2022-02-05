@@ -126,7 +126,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "bpf.prog.helpers":
 		return &eval.IntArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []int {
 
 				result := make([]int, len((*Event)(ctx.Object).ResolveHelpers(&(*Event)(ctx.Object).BPF.Program)))
@@ -571,7 +570,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "container.tags":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 
 				return (*Event)(ctx.Object).ResolveContainerTags(&(*Event)(ctx.Object).ContainerContext)
@@ -592,7 +590,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "exec.args_flags":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 
 				return (*Event)(ctx.Object).ResolveProcessArgsFlags(&(*Event)(ctx.Object).Exec.Process)
@@ -603,7 +600,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "exec.args_options":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 
 				return (*Event)(ctx.Object).ResolveProcessArgsOptions(&(*Event)(ctx.Object).Exec.Process)
@@ -624,7 +620,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "exec.argv":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 
 				return (*Event)(ctx.Object).ResolveProcessArgv(&(*Event)(ctx.Object).Exec.Process)
@@ -725,7 +720,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "exec.envp":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 
 				return (*Event)(ctx.Object).ResolveProcessEnvp(&(*Event)(ctx.Object).Exec.Process)
@@ -736,7 +730,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "exec.envs":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 
 				return (*Event)(ctx.Object).ResolveProcessEnvs(&(*Event)(ctx.Object).Exec.Process)
@@ -2068,7 +2061,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "process.ancestors.args_flags":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 				if ptr := ctx.Cache[field]; ptr != nil {
 					if result := (*[]string)(ptr); result != nil {
@@ -2100,7 +2092,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "process.ancestors.args_options":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 				if ptr := ctx.Cache[field]; ptr != nil {
 					if result := (*[]string)(ptr); result != nil {
@@ -2163,7 +2154,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "process.ancestors.argv":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 				if ptr := ctx.Cache[field]; ptr != nil {
 					if result := (*[]string)(ptr); result != nil {
@@ -2474,7 +2464,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "process.ancestors.envp":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 				if ptr := ctx.Cache[field]; ptr != nil {
 					if result := (*[]string)(ptr); result != nil {
@@ -2506,7 +2495,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "process.ancestors.envs":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 				if ptr := ctx.Cache[field]; ptr != nil {
 					if result := (*[]string)(ptr); result != nil {
@@ -3447,7 +3435,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "process.args_flags":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 
 				return (*Event)(ctx.Object).ResolveProcessArgsFlags(&(*Event)(ctx.Object).ProcessContext.Process)
@@ -3458,7 +3445,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "process.args_options":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 
 				return (*Event)(ctx.Object).ResolveProcessArgsOptions(&(*Event)(ctx.Object).ProcessContext.Process)
@@ -3479,7 +3465,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "process.argv":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 
 				return (*Event)(ctx.Object).ResolveProcessArgv(&(*Event)(ctx.Object).ProcessContext.Process)
@@ -3580,7 +3565,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "process.envp":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 
 				return (*Event)(ctx.Object).ResolveProcessEnvp(&(*Event)(ctx.Object).ProcessContext.Process)
@@ -3591,7 +3575,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "process.envs":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 
 				return (*Event)(ctx.Object).ResolveProcessEnvs(&(*Event)(ctx.Object).ProcessContext.Process)
@@ -3943,7 +3926,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "ptrace.tracee.ancestors.args_flags":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 				if ptr := ctx.Cache[field]; ptr != nil {
 					if result := (*[]string)(ptr); result != nil {
@@ -3975,7 +3957,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "ptrace.tracee.ancestors.args_options":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 				if ptr := ctx.Cache[field]; ptr != nil {
 					if result := (*[]string)(ptr); result != nil {
@@ -4038,7 +4019,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "ptrace.tracee.ancestors.argv":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 				if ptr := ctx.Cache[field]; ptr != nil {
 					if result := (*[]string)(ptr); result != nil {
@@ -4349,7 +4329,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "ptrace.tracee.ancestors.envp":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 				if ptr := ctx.Cache[field]; ptr != nil {
 					if result := (*[]string)(ptr); result != nil {
@@ -4381,7 +4360,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "ptrace.tracee.ancestors.envs":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 				if ptr := ctx.Cache[field]; ptr != nil {
 					if result := (*[]string)(ptr); result != nil {
@@ -5322,7 +5300,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "ptrace.tracee.args_flags":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 
 				return (*Event)(ctx.Object).ResolveProcessArgsFlags(&(*Event)(ctx.Object).PTrace.Tracee.Process)
@@ -5333,7 +5310,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "ptrace.tracee.args_options":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 
 				return (*Event)(ctx.Object).ResolveProcessArgsOptions(&(*Event)(ctx.Object).PTrace.Tracee.Process)
@@ -5354,7 +5330,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "ptrace.tracee.argv":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 
 				return (*Event)(ctx.Object).ResolveProcessArgv(&(*Event)(ctx.Object).PTrace.Tracee.Process)
@@ -5455,7 +5430,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "ptrace.tracee.envp":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 
 				return (*Event)(ctx.Object).ResolveProcessEnvp(&(*Event)(ctx.Object).PTrace.Tracee.Process)
@@ -5466,7 +5440,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 
 	case "ptrace.tracee.envs":
 		return &eval.StringArrayEvaluator{
-
 			EvalFnc: func(ctx *eval.Context) []string {
 
 				return (*Event)(ctx.Object).ResolveProcessEnvs(&(*Event)(ctx.Object).PTrace.Tracee.Process)
