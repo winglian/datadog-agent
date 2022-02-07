@@ -28,15 +28,11 @@ import (
 	"github.com/vishvananda/netns"
 )
 
-const (
-	natPort    = 5432
-	nonNatPort = 9876
-)
-
 // keep this test for netlink only, because eBPF listens to all namespaces all the time.
 func TestConnTrackerCrossNamespaceAllNsDisabled(t *testing.T) {
+	srvPort, natPort := nettestutil.RandomPortPair()
 	defer testutil.TeardownCrossNsDNAT(t)
-	testutil.SetupCrossNsDNAT(t)
+	testutil.SetupCrossNsDNAT(t, natPort, srvPort)
 
 	cfg := config.New()
 	cfg.ConntrackMaxStateSize = 100
@@ -46,8 +42,8 @@ func TestConnTrackerCrossNamespaceAllNsDisabled(t *testing.T) {
 	require.NoError(t, err)
 	time.Sleep(time.Second)
 
-	closer := nettestutil.StartServerTCPNs(t, net.ParseIP("2.2.2.4"), 8080, "test")
-	laddr := nettestutil.PingTCP(t, net.ParseIP("2.2.2.4"), 80).LocalAddr().(*net.TCPAddr)
+	closer := nettestutil.StartServerTCPNs(t, net.ParseIP("2.2.2.4"), srvPort, "test")
+	laddr := nettestutil.PingTCP(t, net.ParseIP("2.2.2.4"), natPort).LocalAddr().(*net.TCPAddr)
 	defer closer.Close()
 
 	testNs, err := netns.GetFromName("test")
@@ -63,7 +59,7 @@ func TestConnTrackerCrossNamespaceAllNsDisabled(t *testing.T) {
 			Source: util.AddressFromNetIP(laddr.IP),
 			SPort:  uint16(laddr.Port),
 			Dest:   util.AddressFromString("2.2.2.4"),
-			DPort:  uint16(80),
+			DPort:  uint16(natPort),
 			Type:   network.TCP,
 			NetNS:  testIno,
 		},
@@ -118,11 +114,15 @@ func testMessageDump(t *testing.T, f *os.File, serverIP, clientIP net.IP) {
 		close(writeDone)
 	}()
 
-	tcpServer := nettestutil.StartServerTCP(t, serverIP, natPort)
+	tcpServer := nettestutil.StartServerTCP(t, serverIP, 0)
 	defer tcpServer.Close()
+	natPort, err := nettestutil.ListenerPort(tcpServer)
+	require.NoError(t, err)
 
-	udpServer := nettestutil.StartServerUDP(t, serverIP, nonNatPort)
+	udpServer := nettestutil.StartServerUDP(t, serverIP, 0)
 	defer udpServer.Close()
+	nonNatPort, err := nettestutil.ListenerPort(tcpServer)
+	require.NoError(t, err)
 
 	for i := 0; i < 100; i++ {
 		nettestutil.PingTCP(t, clientIP, natPort)

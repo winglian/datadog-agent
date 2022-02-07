@@ -9,6 +9,7 @@
 package testutil
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -112,7 +113,7 @@ func TeardownVethPair(t *testing.T) {
 
 // SetupCrossNsDNAT sets up a network namespace, named "test", a veth pair, and a NAT
 // rule in the "test" network namespace
-func SetupCrossNsDNAT(t *testing.T) {
+func SetupCrossNsDNAT(t *testing.T, srcPort, dstPort int) {
 	SetupVethPair(t)
 
 	cmds := []string{
@@ -121,8 +122,8 @@ func SetupCrossNsDNAT(t *testing.T) {
 		//rule that uses connection tracking
 		"iptables -I INPUT 1 -m conntrack --ctstate NEW,RELATED,ESTABLISHED -j ACCEPT",
 
-		"ip netns exec test iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port 8080",
-		"ip netns exec test iptables -A PREROUTING -t nat -p udp --dport 80 -j REDIRECT --to-port 8080",
+		fmt.Sprintf("ip netns exec test iptables -A PREROUTING -t nat -p tcp --dport %d -j REDIRECT --to-port %d", srcPort, dstPort),
+		fmt.Sprintf("ip netns exec test iptables -A PREROUTING -t nat -p udp --dport %d -j REDIRECT --to-port %d", srcPort, dstPort),
 	}
 	nettestutil.RunCommands(t, cmds, false)
 }

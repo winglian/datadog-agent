@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"testing"
 
 	"github.com/DataDog/datadog-agent/pkg/process/util"
@@ -21,11 +22,11 @@ import (
 
 // StartServerTCPNs is identical to StartServerTCP, but it operates with the
 // network namespace provided by name.
-func StartServerTCPNs(t *testing.T, ip net.IP, port int, ns string) io.Closer {
+func StartServerTCPNs(t *testing.T, ip net.IP, port int, ns string) net.Listener {
 	h, err := netns.GetFromName(ns)
 	require.NoError(t, err)
 
-	var closer io.Closer
+	var closer net.Listener
 	_ = util.WithNS("/proc", h, func() error {
 		closer = StartServerTCP(t, ip, port)
 		return nil
@@ -37,7 +38,7 @@ func StartServerTCPNs(t *testing.T, ip net.IP, port int, ns string) io.Closer {
 // StartServerTCP starts a TCP server listening at provided IP address and port.
 // It will respond to any connection with "hello" and then close the connection.
 // It returns an io.Closer that should be Close'd when you are finished with it.
-func StartServerTCP(t *testing.T, ip net.IP, port int) io.Closer {
+func StartServerTCP(t *testing.T, ip net.IP, port int) net.Listener {
 	ch := make(chan struct{})
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	network := "tcp"
@@ -111,4 +112,13 @@ func StartServerUDP(t *testing.T, ip net.IP, port int) io.Closer {
 	<-ch
 
 	return l
+}
+
+// ListenerPort returns the port net.Listener is listening on
+func ListenerPort(l net.Listener) (int, error) {
+	_, port, err := net.SplitHostPort(l.Addr().String())
+	if err != nil {
+		return 0, err
+	}
+	return strconv.Atoi(port)
 }
