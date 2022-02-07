@@ -8,4 +8,4 @@ go_copyright_headers:
   before_script:
     - python3 -m pip install -r requirements.txt
   script:
-    - inv lint-copyright
+    - inv lint-copyrights
