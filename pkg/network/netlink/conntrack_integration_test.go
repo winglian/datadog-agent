@@ -21,19 +21,21 @@ import (
 )
 
 func TestConntrackExists(t *testing.T) {
-	defer testutil.TeardownCrossNsDNAT(t)
-	testutil.SetupCrossNsDNAT(t)
+	srvPort, natPort := nettestutil.RandomPortPair()
 
-	tcpCloser := nettestutil.StartServerTCPNs(t, net.ParseIP("2.2.2.4"), 8080, "test")
+	defer testutil.TeardownCrossNsDNAT(t)
+	testutil.SetupCrossNsDNAT(t, natPort, srvPort)
+
+	tcpCloser := nettestutil.StartServerTCPNs(t, net.ParseIP("2.2.2.4"), srvPort, "test")
 	defer tcpCloser.Close()
 
-	udpCloser := nettestutil.StartServerUDPNs(t, net.ParseIP("2.2.2.4"), 8080, "test")
+	udpCloser := nettestutil.StartServerUDPNs(t, net.ParseIP("2.2.2.4"), srvPort, "test")
 	defer udpCloser.Close()
 
-	tcpConn := nettestutil.PingTCP(t, net.ParseIP("2.2.2.4"), 80)
+	tcpConn := nettestutil.PingTCP(t, net.ParseIP("2.2.2.4"), natPort)
 	defer tcpConn.Close()
 
-	udpConn := nettestutil.PingUDP(t, net.ParseIP("2.2.2.4"), 80)
+	udpConn := nettestutil.PingUDP(t, net.ParseIP("2.2.2.4"), natPort)
 	defer udpConn.Close()
 
 	testNs, err := netns.GetFromName("test")
@@ -50,15 +52,17 @@ func TestConntrackExists(t *testing.T) {
 	tcpLaddr := tcpConn.LocalAddr().(*net.TCPAddr)
 	udpLaddr := udpConn.LocalAddr().(*net.UDPAddr)
 	// test a combination of (tcp, udp) x (root ns, test ns)
-	testConntrackExists(t, tcpLaddr.IP.String(), tcpLaddr.Port, "tcp", testNs, ctrks)
-	testConntrackExists(t, udpLaddr.IP.String(), udpLaddr.Port, "udp", testNs, ctrks)
+	testConntrackExists(t, tcpLaddr.IP.String(), tcpLaddr.Port, natPort, srvPort, "tcp", testNs, ctrks)
+	testConntrackExists(t, udpLaddr.IP.String(), udpLaddr.Port, natPort, srvPort, "udp", testNs, ctrks)
 }
 
 func TestConntrackExistsRootDNAT(t *testing.T) {
+	srvPort, natPort := nettestutil.RandomPortPair()
+
 	defer testutil.TeardownCrossNsDNAT(t)
-	testutil.SetupCrossNsDNAT(t)
+	testutil.SetupCrossNsDNAT(t, natPort, srvPort)
 	defer nettestutil.RunCommands(t, []string{
-		"iptables --table nat --delete CLUSTERIPS --destination 10.10.1.1 --protocol tcp --match tcp --dport 80 --jump DNAT --to-destination 2.2.2.4:80",
+		fmt.Sprintf("iptables --table nat --delete CLUSTERIPS --destination 10.10.1.1 --protocol tcp --match tcp --dport %d --jump DNAT --to-destination 2.2.2.4:%d", natPort, natPort),
 		"iptables --table nat --delete PREROUTING --jump CLUSTERIPS",
 		"iptables --table nat --delete OUTPUT --jump CLUSTERIPS",
 		"iptables --table nat --delete-chain CLUSTERIPS",
@@ -67,7 +71,7 @@ func TestConntrackExistsRootDNAT(t *testing.T) {
 		"iptables --table nat --new-chain CLUSTERIPS",
 		"iptables --table nat --append PREROUTING --jump CLUSTERIPS",
 		"iptables --table nat --append OUTPUT --jump CLUSTERIPS",
-		"iptables --table nat --append CLUSTERIPS --destination 10.10.1.1 --protocol tcp --match tcp --dport 80 --jump DNAT --to-destination 2.2.2.4:80",
+		fmt.Sprintf("iptables --table nat --append CLUSTERIPS --destination 10.10.1.1 --protocol tcp --match tcp --dport %d --jump DNAT --to-destination 2.2.2.4:%d", natPort, natPort),
 	}, false)
 
 	testNs, err := netns.GetFromName("test")
@@ -79,10 +83,10 @@ func TestConntrackExistsRootDNAT(t *testing.T) {
 	defer rootNs.Close()
 
 	destIP := "10.10.1.1"
-	destPort := 80
+	destPort := natPort
 	var tcpCloser io.Closer
 	_ = util.WithNS("/proc", testNs, func() error {
-		tcpCloser = nettestutil.StartServerTCP(t, net.ParseIP("2.2.2.4"), 8080)
+		tcpCloser = nettestutil.StartServerTCP(t, net.ParseIP("2.2.2.4"), srvPort)
 		return nil
 	})
 	defer tcpCloser.Close()
@@ -112,7 +116,7 @@ func TestConntrackExistsRootDNAT(t *testing.T) {
 	assert.False(t, exists)
 }
 
-func testConntrackExists(t *testing.T, laddrIP string, laddrPort int, proto string, testNs netns.NsHandle, ctrks map[int]Conntrack) {
+func testConntrackExists(t *testing.T, laddrIP string, laddrPort int, natPort int, srvPort int, proto string, testNs netns.NsHandle, ctrks map[int]Conntrack) {
 	rootNs, err := util.GetRootNetNamespace("/proc")
 	require.NoError(t, err)
 	defer rootNs.Close()
@@ -131,7 +135,7 @@ func testConntrackExists(t *testing.T, laddrIP string, laddrPort int, proto stri
 			desc: fmt.Sprintf("net ns 0, origin exists, proto %s", proto),
 			c: Con{
 				Con: ct.Con{
-					Origin: newIPTuple(laddrIP, "2.2.2.4", uint16(laddrPort), 80, ipProto),
+					Origin: newIPTuple(laddrIP, "2.2.2.4", uint16(laddrPort), uint16(natPort), ipProto),
 				},
 			},
 			exists: true,
@@ -141,7 +145,7 @@ func testConntrackExists(t *testing.T, laddrIP string, laddrPort int, proto stri
 			desc: fmt.Sprintf("net ns 0, reply exists, proto %s", proto),
 			c: Con{
 				Con: ct.Con{
-					Reply: newIPTuple("2.2.2.4", laddrIP, 80, uint16(laddrPort), ipProto),
+					Reply: newIPTuple("2.2.2.4", laddrIP, uint16(natPort), uint16(laddrPort), ipProto),
 				},
 			},
 			exists: true,
@@ -151,7 +155,7 @@ func testConntrackExists(t *testing.T, laddrIP string, laddrPort int, proto stri
 			desc: fmt.Sprintf("net ns 0, origin does not exist, proto %s", proto),
 			c: Con{
 				Con: ct.Con{
-					Origin: newIPTuple(laddrIP, "2.2.2.3", uint16(laddrPort), 80, ipProto),
+					Origin: newIPTuple(laddrIP, "2.2.2.3", uint16(laddrPort), uint16(natPort), ipProto),
 				},
 			},
 			exists: false,
@@ -161,7 +165,7 @@ func testConntrackExists(t *testing.T, laddrIP string, laddrPort int, proto stri
 			desc: fmt.Sprintf("net ns %d, origin exists, proto %s", int(testNs), proto),
 			c: Con{
 				Con: ct.Con{
-					Origin: newIPTuple(laddrIP, "2.2.2.4", uint16(laddrPort), 80, ipProto),
+					Origin: newIPTuple(laddrIP, "2.2.2.4", uint16(laddrPort), uint16(natPort), ipProto),
 				},
 			},
 			exists: true,
@@ -171,7 +175,7 @@ func testConntrackExists(t *testing.T, laddrIP string, laddrPort int, proto stri
 			desc: fmt.Sprintf("net ns %d, reply exists, proto %s", int(testNs), proto),
 			c: Con{
 				Con: ct.Con{
-					Reply: newIPTuple("2.2.2.4", laddrIP, 8080, uint16(laddrPort), ipProto),
+					Reply: newIPTuple("2.2.2.4", laddrIP, uint16(srvPort), uint16(laddrPort), ipProto),
 				},
 			},
 			exists: true,
@@ -181,7 +185,7 @@ func testConntrackExists(t *testing.T, laddrIP string, laddrPort int, proto stri
 			desc: fmt.Sprintf("net ns %d, origin does not exist, proto %s", int(testNs), proto),
 			c: Con{
 				Con: ct.Con{
-					Origin: newIPTuple(laddrIP, "2.2.2.3", uint16(laddrPort), 80, ipProto),
+					Origin: newIPTuple(laddrIP, "2.2.2.3", uint16(laddrPort), uint16(natPort), ipProto),
 				},
 			},
 			exists: false,

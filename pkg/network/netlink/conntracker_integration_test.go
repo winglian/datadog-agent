@@ -24,8 +24,9 @@ import (
 
 // keep this test for netlink only, because eBPF listens to all namespaces all the time.
 func TestConnTrackerCrossNamespaceAllNsDisabled(t *testing.T) {
+	srvPort, natPort := nettestutil.RandomPortPair()
 	defer testutil.TeardownCrossNsDNAT(t)
-	testutil.SetupCrossNsDNAT(t)
+	testutil.SetupCrossNsDNAT(t, natPort, srvPort)
 
 	cfg := config.New()
 	cfg.ConntrackMaxStateSize = 100
@@ -35,8 +36,8 @@ func TestConnTrackerCrossNamespaceAllNsDisabled(t *testing.T) {
 	require.NoError(t, err)
 	time.Sleep(time.Second)
 
-	closer := nettestutil.StartServerTCPNs(t, net.ParseIP("2.2.2.4"), 8080, "test")
-	laddr := nettestutil.PingTCP(t, net.ParseIP("2.2.2.4"), 80).LocalAddr().(*net.TCPAddr)
+	closer := nettestutil.StartServerTCPNs(t, net.ParseIP("2.2.2.4"), srvPort, "test")
+	laddr := nettestutil.PingTCP(t, net.ParseIP("2.2.2.4"), natPort).LocalAddr().(*net.TCPAddr)
 	defer closer.Close()
 
 	testNs, err := netns.GetFromName("test")
@@ -52,7 +53,7 @@ func TestConnTrackerCrossNamespaceAllNsDisabled(t *testing.T) {
 			Source: util.AddressFromNetIP(laddr.IP),
 			SPort:  uint16(laddr.Port),
 			Dest:   util.AddressFromString("2.2.2.4"),
-			DPort:  uint16(80),
+			DPort:  uint16(natPort),
 			Type:   network.TCP,
 			NetNS:  testIno,
 		},

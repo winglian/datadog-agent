@@ -16,11 +16,11 @@ import (
 
 // StartServerTCPNs is identical to StartServerTCP, but it operates with the
 // network namespace provided by name.
-func StartServerTCPNs(t *testing.T, ip net.IP, port int, ns string) io.Closer {
+func StartServerTCPNs(t *testing.T, ip net.IP, port int, ns string) net.Listener {
 	h, err := netns.GetFromName(ns)
 	require.NoError(t, err)
 
-	var closer io.Closer
+	var closer net.Listener
 	_ = util.WithNS("/proc", h, func() error {
 		closer = StartServerTCP(t, ip, port)
 		return nil
