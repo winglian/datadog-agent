@@ -1,0 +1,10 @@
+--- llvm-config.h	2022-02-07 22:02:56.149953000 +0000
++++ llvm-config-patched.h	2022-02-07 22:06:49.815267000 +0000
+@@ -14,6 +14,8 @@
+ #ifndef LLVM_CONFIG_H
+ #define LLVM_CONFIG_H
+
++#include "wrapper.h"
++
+ /* Define if LLVM_ENABLE_DUMP is enabled */
+ /* #undef LLVM_ENABLE_DUMP */

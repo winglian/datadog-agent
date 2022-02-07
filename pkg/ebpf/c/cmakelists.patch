@@ -1,0 +1,8 @@
+--- CMakeLists.txt	2022-02-08 16:42:49.303373000 +0000
++++ CMakeLists-patched.txt	2022-02-08 16:44:11.360399000 +0000
+@@ -1,4 +1,5 @@
+ add_llvm_component_library(LLVMCodeGen
++  wrapper.cpp
+   AggressiveAntiDepBreaker.cpp
+   AllocationOrder.cpp
+   Analysis.cpp
