@@ -49,7 +49,7 @@ func (l *tracePipeLogger) Start() {
 			case event := <-channelEvents:
 				l.handleEvent(event)
 			case err := <-channelErrors:
-				l.t.Error(err)
+				l.t.Logf("trace_pipe error: %s", err)
 			}
 		}
 	}()
