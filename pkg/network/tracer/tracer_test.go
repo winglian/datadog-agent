@@ -49,7 +49,7 @@ var (
 const runtimeCompilationEnvVar = "DD_TESTS_RUNTIME_COMPILED"
 
 func TestMain(m *testing.M) {
-	log.SetupLogger(seelog.Default, "debug")
+	log.SetupLogger(seelog.Default, "warn")
 	cfg := testConfig()
 	if cfg.EnableRuntimeCompiler {
 		fmt.Println("RUNTIME COMPILER ENABLED")
