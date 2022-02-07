@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"testing"
 
 	"github.com/DataDog/datadog-agent/pkg/process/util"
@@ -31,7 +32,7 @@ func StartServerTCPNs(t *testing.T, ip net.IP, port int, ns string) io.Closer {
 // StartServerTCP starts a TCP server listening at provided IP address and port.
 // It will respond to any connection with "hello" and then close the connection.
 // It returns an io.Closer that should be Close'd when you are finished with it.
-func StartServerTCP(t *testing.T, ip net.IP, port int) io.Closer {
+func StartServerTCP(t *testing.T, ip net.IP, port int) net.Listener {
 	ch := make(chan struct{})
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	network := "tcp"
@@ -105,4 +106,12 @@ func StartServerUDP(t *testing.T, ip net.IP, port int) io.Closer {
 	<-ch
 
 	return l
+}
+
+func ListenerPort(l net.Listener) (int, error) {
+	_, port, err := net.SplitHostPort(l.Addr().String())
+	if err != nil {
+		return 0, err
+	}
+	return strconv.Atoi(port)
 }

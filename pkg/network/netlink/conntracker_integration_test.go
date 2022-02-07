@@ -22,11 +22,6 @@ import (
 	"github.com/vishvananda/netns"
 )
 
-const (
-	natPort    = 5432
-	nonNatPort = 9876
-)
-
 // keep this test for netlink only, because eBPF listens to all namespaces all the time.
 func TestConnTrackerCrossNamespaceAllNsDisabled(t *testing.T) {
 	defer testutil.TeardownCrossNsDNAT(t)
@@ -112,11 +107,15 @@ func testMessageDump(t *testing.T, f *os.File, serverIP, clientIP net.IP) {
 		close(writeDone)
 	}()
 
-	tcpServer := nettestutil.StartServerTCP(t, serverIP, natPort)
+	tcpServer := nettestutil.StartServerTCP(t, serverIP, 0)
 	defer tcpServer.Close()
+	natPort, err := nettestutil.ListenerPort(tcpServer)
+	require.NoError(t, err)
 
-	udpServer := nettestutil.StartServerUDP(t, serverIP, nonNatPort)
+	udpServer := nettestutil.StartServerUDP(t, serverIP, 0)
 	defer udpServer.Close()
+	nonNatPort, err := nettestutil.ListenerPort(tcpServer)
+	require.NoError(t, err)
 
 	for i := 0; i < 100; i++ {
 		nettestutil.PingTCP(t, clientIP, natPort)

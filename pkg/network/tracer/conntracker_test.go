@@ -19,11 +19,6 @@ import (
 	"github.com/vishvananda/netns"
 )
 
-const (
-	natPort    = 5432
-	nonNatPort = 9876
-)
-
 func TestConntrackers(t *testing.T) {
 	conntrackers := []struct {
 		name   string
@@ -93,10 +88,16 @@ func setupNetlinkConntracker(cfg *config.Config) (netlink.Conntracker, error) {
 }
 
 func testConntracker(t *testing.T, serverIP, clientIP net.IP, ct netlink.Conntracker) {
-	srv1 := nettestutil.StartServerTCP(t, serverIP, natPort)
+	srv1 := nettestutil.StartServerTCP(t, serverIP, 0)
 	defer srv1.Close()
-	srv2 := nettestutil.StartServerTCP(t, serverIP, nonNatPort)
+	natPort, err := nettestutil.ListenerPort(srv1)
+	require.NoError(t, err)
+
+	srv2 := nettestutil.StartServerTCP(t, serverIP, 0)
 	defer srv2.Close()
+	nonNatPort, err := nettestutil.ListenerPort(srv1)
+	require.NoError(t, err)
+
 	srv3 := nettestutil.StartServerUDP(t, serverIP, natPort)
 	defer srv3.Close()
 
