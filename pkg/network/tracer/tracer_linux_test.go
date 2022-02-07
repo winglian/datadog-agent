@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DataDog/datadog-agent/pkg/ebpf/ebpftest"
 	nettestutil "github.com/DataDog/datadog-agent/pkg/network/testutil"
 	tracertest "github.com/DataDog/datadog-agent/pkg/network/tracer/testutil"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
@@ -902,6 +903,10 @@ func TestConnectionAssured(t *testing.T) {
 	var conn *network.ConnectionStats
 	require.Eventually(t, func() bool {
 		conns := getConnections(t, tr)
+		t.Log("---")
+		for _, c := range conns.Conns {
+			t.Log(c)
+		}
 		var ok bool
 		conn, ok = findConnection(c.LocalAddr(), c.RemoteAddr(), conns)
 		return ok && conn.MonotonicSentBytes > 0 && conn.MonotonicRecvBytes > 0
@@ -1086,8 +1091,9 @@ func TestSelfConnect(t *testing.T) {
 }
 
 func TestUDPPeekCount(t *testing.T) {
-	config := testConfig()
-	tr, err := NewTracer(config)
+	cfg := testConfig()
+	ebpftest.StartTracing(t, &cfg.Config)
+	tr, err := NewTracer(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1176,6 +1182,7 @@ func TestUDPPeekCount(t *testing.T) {
 
 func TestUDPPythonReusePort(t *testing.T) {
 	cfg := testConfig()
+	ebpftest.StartTracing(t, &cfg.Config)
 	if !cfg.EnableRuntimeCompiler {
 		t.Skip("reuseport only supported on runtime compilation")
 	}
@@ -1257,9 +1264,17 @@ func TestUDPPythonReusePort(t *testing.T) {
 
 func TestUDPReusePort(t *testing.T) {
 	t.Run("v4", func(t *testing.T) {
+		cfg := testConfig()
+		ebpftest.StartTracing(t, &cfg.Config)
 		testUDPReusePort(t, "udp4", "127.0.0.1")
 	})
 	t.Run("v6", func(t *testing.T) {
+		if !kernel.IsIPv6Enabled() {
+			t.Skip("IPv6 not enabled on host")
+		}
+
+		cfg := testConfig()
+		ebpftest.StartTracing(t, &cfg.Config)
 		testUDPReusePort(t, "udp6", "[::1]")
 	})
 }

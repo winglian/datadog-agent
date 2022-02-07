@@ -432,6 +432,8 @@ func TestUDPSendAndReceive(t *testing.T) {
 
 	// Enable BPF-based system probe
 	cfg := testConfig()
+	ebpftest.StartTracing(t, &cfg.Config)
+
 	tr, err := NewTracer(cfg)
 	require.NoError(t, err)
 	defer tr.Stop()
