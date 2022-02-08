@@ -33,8 +33,8 @@
     - cp $SRC_PATH/pkg/ebpf/c/wrapper.h include/
     - cp $SRC_PATH/pkg/ebpf/c/wrapper.cpp ../llvm/lib/CodeGen/
     - patch -ruN include/llvm/Config/llvm-config.h < $SRC_PATH/pkg/ebpf/c/llvm_config.patch
-    - patch -ruN ../llvm/lib/CodeGen/CMakeLists.txt < $SRC_PATH/pkg/ebpf/c/cmakelists.patch
-    - export CMAKE_EXE_LINKER_FLAGS="-Wl,--wrap=exp -Wl,--wrap=log -Wl,--wrap=pow -Wl,--wrap=log2 -Wl,--wrap=log2f"
+    - patch -ruN ../llvm/CMakeLists.txt < $SRC_PATH/pkg/ebpf/c/llvm_cmakelists.patch
+    - patch -ruN ../llvm/lib/CodeGen/CMakeLists.txt < $SRC_PATH/pkg/ebpf/c/codegen_cmakelists.patch
     - cmake --build . --target install
     - mv $DATADOG_AGENT_EMBEDDED_PATH/bin/clang-11 $DATADOG_AGENT_EMBEDDED_PATH/bin/clang
     - $S3_CP_CMD $DATADOG_AGENT_EMBEDDED_PATH/bin/clang $S3_PERMANENT_ARTIFACTS_URI/clang-11.0.1.${ARCH}
