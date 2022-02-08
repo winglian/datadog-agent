@@ -9,10 +9,14 @@
 package otlp
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"testing"
 
 	"github.com/DataDog/datadog-agent/pkg/otlp/internal/testutil"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
+	"github.com/cihub/seelog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -296,8 +300,16 @@ func TestFromExperimentalEnvironmentVariables(t *testing.T) {
 			},
 		},
 	}
+
 	for _, testInstance := range tests {
 		t.Run(testInstance.name, func(t *testing.T) {
+			// setup logging
+			var b bytes.Buffer
+			w := bufio.NewWriter(&b)
+			l, err := seelog.LoggerFromWriterWithMinLevelAndFormat(w, seelog.DebugLvl, "[%LEVEL] %FuncShort: %Msg\n")
+			require.NoError(t, err)
+			log.SetupLogger(l, "warn")
+
 			for env, val := range testInstance.env {
 				t.Setenv(env, val)
 			}
@@ -309,6 +321,12 @@ func TestFromExperimentalEnvironmentVariables(t *testing.T) {
 			} else {
 				assert.Equal(t, testInstance.cfg, pcfg)
 			}
+
+			assert.Contains(t,
+				b.String(),
+				`OpenTelemetry OTLP receiver configuration is now public beta and has been moved out of the "experimental" section. `+
+					`This section will be deprecated in a future Datadog Agent release. Please use the "otlp_config" section instead.`,
+			)
 		})
 	}
 }
