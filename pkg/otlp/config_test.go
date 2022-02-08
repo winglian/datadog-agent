@@ -11,7 +11,6 @@ package otlp
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/DataDog/datadog-agent/pkg/otlp/internal/testutil"
@@ -303,17 +302,28 @@ func TestFromExperimentalEnvironmentVariables(t *testing.T) {
 
 	for _, testInstance := range tests {
 		t.Run(testInstance.name, func(t *testing.T) {
-			// setup logging
+			// Setup throwaway logger to read any log line created by tests before
+			// this one, that was buffered in the pre-init log buffer.
+			var bta bytes.Buffer
+			wta := bufio.NewWriter(&bta)
+			throwaway, err := seelog.LoggerFromWriterWithMinLevelAndFormat(wta, seelog.DebugLvl, "[%LEVEL] %FuncShort: %Msg\n")
+			require.NoError(t, err)
+			log.SetupLogger(throwaway, "warn")
+
+			// Setup real logger
 			var b bytes.Buffer
 			w := bufio.NewWriter(&b)
 			l, err := seelog.LoggerFromWriterWithMinLevelAndFormat(w, seelog.DebugLvl, "[%LEVEL] %FuncShort: %Msg\n")
 			require.NoError(t, err)
-			log.SetupLogger(l, "warn")
+			log.ReplaceLogger(l)
 
 			for env, val := range testInstance.env {
 				t.Setenv(env, val)
 			}
+
 			cfg, err := testutil.LoadConfig("./testdata/empty.yaml")
+			w.Flush()
+
 			require.NoError(t, err)
 			pcfg, err := FromAgentConfig(cfg)
 			if err != nil || testInstance.err != "" {
