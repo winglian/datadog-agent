@@ -60,7 +60,7 @@ func TestConntrackers(t *testing.T) {
 				defer netlinktestutil.TeardownDNAT6(t)
 				netlinktestutil.SetupDNAT6(t)
 
-				testConntracker(t, net.ParseIP("fd00::1"), net.ParseIP("fd00::2"), ct)
+				testConntracker(t, net.ParseIP("fc00::1:1"), net.ParseIP("fc00::1:2"), ct)
 			})
 			t.Run("cross namespace - NAT rule on test namespace", func(t *testing.T) {
 				cfg := config.New()

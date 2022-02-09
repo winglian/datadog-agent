@@ -55,15 +55,15 @@ func getDefaultInterfaceName(t *testing.T) string {
 	return ""
 }
 
-// SetupDNAT6 sets up a NAT translation from fd00::2 to fd00::1
+// SetupDNAT6 sets up a NAT translation from fc00::1:2 to fc00::1:1
 func SetupDNAT6(t *testing.T) {
 	ifName := getDefaultInterfaceName(t)
 	cmds := []string{
 		"ip link add dummy1 type dummy",
-		"ip address add fd00::1 dev dummy1",
+		"ip address add fc00::1:1 dev dummy1",
 		"ip link set dummy1 up",
-		"ip -6 route add fd00::2 dev " + ifName,
-		"ip6tables -t nat -A OUTPUT --dest fd00::2 -j DNAT --to-destination fd00::1",
+		"ip -6 route add fc00::1:2 dev " + ifName,
+		"ip6tables -t nat -A OUTPUT --dest fc00::1:2 -j DNAT --to-destination fc00::1:1",
 	}
 	nettestutil.RunCommands(t, cmds, false)
 }
@@ -74,9 +74,9 @@ func TeardownDNAT6(t *testing.T) {
 	cmds := []string{
 		// tear down the testing interface, and iptables rule
 		"ip link del dummy1",
-		"ip6tables -t nat -D OUTPUT --dest fd00::2 -j DNAT --to-destination fd00::1",
+		"ip6tables -t nat -D OUTPUT --dest fc00::1:2 -j DNAT --to-destination fc00::1:1",
 
-		"ip -6 r del fd00::2 dev " + ifName,
+		"ip -6 r del fc00::1:2 dev " + ifName,
 
 		// clear out the conntrack table
 		"conntrack -F",

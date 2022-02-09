@@ -95,7 +95,7 @@ func TestMessageDump6(t *testing.T) {
 	defer os.Remove(f.Name())
 	defer f.Close()
 
-	testMessageDump(t, f, net.ParseIP("fd00::1"), net.ParseIP("fd00::2"))
+	testMessageDump(t, f, net.ParseIP("fc00::1:1"), net.ParseIP("fc00::1:2"))
 }
 
 func testMessageDump(t *testing.T, f *os.File, serverIP, clientIP net.IP) {
