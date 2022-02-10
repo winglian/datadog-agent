@@ -137,6 +137,7 @@ variables:
   DATADOG_AGENT_ARMBUILDIMAGES: v6554889-f294eac
   DATADOG_AGENT_SYSPROBE_BUILDIMAGES: v6554889-f294eac
   DATADOG_AGENT_NIKOS_BUILDIMAGES: v6554889-f294eac
+  BCC_VERSION: v0.19.0
   DATADOG_AGENT_EMBEDDED_PATH: /opt/datadog-agent/embedded
   NIKOS_INSTALL_DIR: /opt/datadog-agent/embedded/nikos
   NIKOS_EMBEDDED_PATH: /opt/datadog-agent/embedded/nikos/embedded

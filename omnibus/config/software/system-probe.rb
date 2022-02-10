@@ -5,6 +5,10 @@
 
 name 'system-probe'
 
+if ENV['WITH_BCC'] == 'true'
+  dependency 'libbcc'
+end
+
 source path: '..'
 relative_path 'src/github.com/DataDog/datadog-agent'
 
@@ -32,8 +36,6 @@ build do
     copy "#{ENV['SYSTEM_PROBE_BIN']}/http.c", "#{install_dir}/embedded/share/system-probe/ebpf/runtime/"
     copy "#{ENV['SYSTEM_PROBE_BIN']}/runtime-security.c", "#{install_dir}/embedded/share/system-probe/ebpf/runtime/"
     copy "#{ENV['SYSTEM_PROBE_BIN']}/conntrack.c", "#{install_dir}/embedded/share/system-probe/ebpf/runtime/"
-    copy "#{ENV['SYSTEM_PROBE_BIN']}/oom-kill.c", "#{install_dir}/embedded/share/system-probe/ebpf/runtime/"
-    copy "#{ENV['SYSTEM_PROBE_BIN']}/tcp-queue-length.c", "#{install_dir}/embedded/share/system-probe/ebpf/runtime/"
   end
 
   copy 'pkg/ebpf/c/COPYING', "#{install_dir}/embedded/share/system-probe/ebpf/"
@@ -59,4 +61,11 @@ build do
     copy "#{ENV['NIKOS_PATH']}/lib/libtinfo.so.5.9", "#{install_dir}/embedded/nikos/embedded/lib/"
     copy "#{ENV['NIKOS_PATH']}/ssl", "#{install_dir}/embedded/nikos/embedded/"
   end
+  copy 'pkg/collector/corechecks/ebpf/c/bcc/bpf-common.h', "#{install_dir}/embedded/share/system-probe/ebpf/"
+
+  copy 'pkg/collector/corechecks/ebpf/c/bcc/oom-kill-kern.c', "#{install_dir}/embedded/share/system-probe/ebpf/"
+  copy 'pkg/collector/corechecks/ebpf/c/oom-kill-kern-user.h', "#{install_dir}/embedded/share/system-probe/ebpf/"
+
+  copy 'pkg/collector/corechecks/ebpf/c/bcc/tcp-queue-length-kern.c', "#{install_dir}/embedded/share/system-probe/ebpf/"
+  copy 'pkg/collector/corechecks/ebpf/c/tcp-queue-length-kern-user.h', "#{install_dir}/embedded/share/system-probe/ebpf/"
 end

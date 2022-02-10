@@ -3,112 +3,87 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
-//go:build linux_bpf
-// +build linux_bpf
-
-//go:generate go run ../../../../ebpf/include_headers.go ../c/runtime/oom-kill-kern.c ../../../../ebpf/bytecode/build/runtime/oom-kill.c ../../../../ebpf/c
-//go:generate go run ../../../../ebpf/bytecode/runtime/integrity.go ../../../../ebpf/bytecode/build/runtime/oom-kill.c ../../../../ebpf/bytecode/runtime/oom-kill.go runtime
+//go:build linux_bpf && bcc
+// +build linux_bpf,bcc
 
 package probe
 
 import (
 	"fmt"
-	"math"
 	"unsafe"
 
-	"golang.org/x/sys/unix"
-
-	manager "github.com/DataDog/ebpf-manager"
-	bpflib "github.com/cilium/ebpf"
-
 	"github.com/DataDog/datadog-agent/pkg/ebpf"
-	"github.com/DataDog/datadog-agent/pkg/ebpf/bytecode/runtime"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+
+	bpflib "github.com/iovisor/gobpf/bcc"
 )
 
 /*
 #include <string.h>
-#include "../c/runtime/oom-kill-kern-user.h"
+#include "../c/oom-kill-kern-user.h"
 */
 import "C"
 
-const oomMapName = "oom_stats"
-
 type OOMKillProbe struct {
-	m      *manager.Manager
-	oomMap *bpflib.Map
+	m      *bpflib.Module
+	oomMap *bpflib.Table
 }
 
 func NewOOMKillProbe(cfg *ebpf.Config) (*OOMKillProbe, error) {
-	compiledOutput, err := runtime.OomKill.Compile(cfg, nil)
+	source, err := ebpf.PreprocessFile(cfg.BPFDir, "oom-kill-kern.c")
 	if err != nil {
-		return nil, err
-	}
-	defer compiledOutput.Close()
-
-	probes := []*manager.Probe{
-		{
-			ProbeIdentificationPair: manager.ProbeIdentificationPair{EBPFSection: "kprobe/oom_kill_process", EBPFFuncName: "kprobe__oom_kill_process", UID: "oom"},
-		},
+		return nil, fmt.Errorf("Couldn’t process headers for asset “oom-kill-kern.c”: %v", err)
 	}
 
-	maps := []*manager.Map{
-		{Name: "oom_stats"},
+	m := bpflib.NewModule(source.String(), []string{})
+	if m == nil {
+		return nil, fmt.Errorf("failed to compile “oom-kill-kern.c”")
 	}
 
-	m := &manager.Manager{
-		Probes: probes,
-		Maps:   maps,
-	}
-
-	managerOptions := manager.Options{
-		RLimit: &unix.Rlimit{
-			Cur: math.MaxUint64,
-			Max: math.MaxUint64,
-		},
-	}
-
-	if err := m.InitWithOptions(compiledOutput, managerOptions); err != nil {
-		return nil, fmt.Errorf("failed to init manager: %w", err)
-	}
-
-	if err := m.Start(); err != nil {
-		return nil, fmt.Errorf("failed to start manager: %w", err)
-	}
-
-	oomMap, ok, err := m.GetMap(oomMapName)
+	kprobe, err := m.LoadKprobe("kprobe__oom_kill_process")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get map '%s': %w", oomMapName, err)
-	} else if !ok {
-		return nil, fmt.Errorf("failed to get map '%s'", oomMapName)
+		return nil, fmt.Errorf("failed to load kprobe__oom_kill_process: %s\n", err)
 	}
+
+	if err := m.AttachKprobe("oom_kill_process", kprobe, -1); err != nil {
+		return nil, fmt.Errorf("failed to attach oom_kill_process: %s\n", err)
+	}
+
+	table := bpflib.NewTable(m.TableId("oomStats"), m)
 
 	return &OOMKillProbe{
 		m:      m,
-		oomMap: oomMap,
+		oomMap: table,
 	}, nil
 }
 
 func (k *OOMKillProbe) Close() {
-	k.m.Stop(manager.CleanAll)
+	k.m.Close()
 }
 
-func (k *OOMKillProbe) GetAndFlush() (results []OOMKillStats) {
-	var pid uint32
-	var stat C.struct_oom_stats
-	it := k.oomMap.Iterate()
-	for it.Next(unsafe.Pointer(&pid), unsafe.Pointer(&stat)) {
+func (k *OOMKillProbe) GetAndFlush() []OOMKillStats {
+	results := k.Get()
+	k.oomMap.DeleteAll()
+	return results
+}
+
+func (k *OOMKillProbe) Get() []OOMKillStats {
+	if k == nil {
+		return nil
+	}
+
+	var results []OOMKillStats
+
+	for it := k.oomMap.Iter(); it.Next(); {
+		var stat C.struct_oom_stats
+
+		data := it.Leaf()
+		C.memcpy(unsafe.Pointer(&stat), unsafe.Pointer(&data[0]), C.sizeof_struct_oom_stats)
+
 		results = append(results, convertStats(stat))
-
-		if err := k.oomMap.Delete(unsafe.Pointer(&pid)); err != nil {
-			log.Warnf("failed to delete stat: %s", err)
-		}
 	}
 
-	if err := it.Err(); err != nil {
-		log.Warnf("failed to iterate on OOM stats while flushing: %s", err)
-	}
-
+	log.Debugf("OOM Kill stats gathered from kernel probe: %v", results)
 	return results
 }
 

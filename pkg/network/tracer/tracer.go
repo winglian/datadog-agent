@@ -387,9 +387,7 @@ func (t *Tracer) getRuntimeCompilationTelemetry() map[string]network.RuntimeComp
 	telemetryByAsset := map[string]map[string]int64{
 		"tracer":          runtime.Tracer.GetTelemetry(),
 		"conntrack":       runtime.Conntrack.GetTelemetry(),
-		"oomKill":         runtime.OomKill.GetTelemetry(),
 		"runtimeSecurity": runtime.RuntimeSecurity.GetTelemetry(),
-		"tcpQueueLength":  runtime.TcpQueueLength.GetTelemetry(),
 	}
 
 	result := make(map[string]network.RuntimeCompilationTelemetry)

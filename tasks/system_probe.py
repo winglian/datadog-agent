@@ -18,6 +18,7 @@ BIN_PATH = os.path.join(BIN_DIR, bin_name("system-probe", android=False))
 
 BPF_TAG = "linux_bpf"
 BUNDLE_TAG = "ebpf_bindata"
+BCC_TAG = "bcc"
 NPM_TAG = "npm"
 GIMME_ENV_VARS = ['GOROOT', 'PATH']
 DNF_TAG = "dnf"
@@ -29,7 +30,7 @@ DATADOG_AGENT_EMBEDDED_PATH = '/opt/datadog-agent/embedded'
 
 KITCHEN_DIR = os.getenv('DD_AGENT_TESTING_DIR') or os.path.normpath(os.path.join(os.getcwd(), "test", "kitchen"))
 KITCHEN_ARTIFACT_DIR = os.path.join(KITCHEN_DIR, "site-cookbooks", "dd-system-probe-check", "files", "default", "tests")
-TEST_PACKAGES_LIST = ["./pkg/ebpf/...", "./pkg/network/...", "./pkg/collector/corechecks/ebpf/..."]
+TEST_PACKAGES_LIST = ["./pkg/ebpf/...", "./pkg/network/..."]
 TEST_PACKAGES = " ".join(TEST_PACKAGES_LIST)
 
 is_windows = sys.platform == "win32"
@@ -42,6 +43,7 @@ def build(
     incremental_build=False,
     major_version='7',
     python_runtimes='3',
+    with_bcc=True,
     go_mod="mod",
     windows=is_windows,
     arch="x64",
@@ -88,6 +90,8 @@ def build(
         build_tags.append(BUNDLE_TAG)
     if nikos_embedded_path:
         build_tags.append(DNF_TAG)
+    if with_bcc:
+        build_tags.append(BCC_TAG)
 
     cmd = 'go build -mod={go_mod} {race_opt} {build_type} -tags "{go_build_tags}" '
     cmd += '-o {agent_bin} -gcflags="{gcflags}" -ldflags="{ldflags}" {REPO_PATH}/cmd/system-probe'
@@ -624,6 +628,20 @@ def build_security_ebpf_files(ctx, build_dir, parallel_build=True):
             p.join()
 
 
+def build_bcc_files(ctx, build_dir):
+    corechecks_c_dir = os.path.join(".", "pkg", "collector", "corechecks", "ebpf", "c")
+    corechecks_bcc_dir = os.path.join(corechecks_c_dir, "bcc")
+    bcc_files = [
+        os.path.join(corechecks_bcc_dir, "tcp-queue-length-kern.c"),
+        os.path.join(corechecks_c_dir, "tcp-queue-length-kern-user.h"),
+        os.path.join(corechecks_bcc_dir, "oom-kill-kern.c"),
+        os.path.join(corechecks_c_dir, "oom-kill-kern-user.h"),
+        os.path.join(corechecks_bcc_dir, "bpf-common.h"),
+    ]
+    for f in bcc_files:
+        ctx.run("cp {file} {dest}".format(file=f, dest=build_dir))
+
+
 def build_object_files(ctx, parallel_build):
     """build_object_files builds only the eBPF object"""
 
@@ -638,6 +656,7 @@ def build_object_files(ctx, parallel_build):
     ctx.run(f"mkdir -p {build_dir}")
     ctx.run(f"mkdir -p {build_runtime_dir}")
 
+    build_bcc_files(ctx, build_dir=build_dir)
     build_network_ebpf_files(ctx, build_dir=build_dir, parallel_build=parallel_build)
     build_http_ebpf_files(ctx, build_dir=build_dir)
     build_security_ebpf_files(ctx, build_dir=build_dir, parallel_build=parallel_build)
@@ -648,8 +667,6 @@ def build_object_files(ctx, parallel_build):
 @task
 def generate_runtime_files(ctx):
     runtime_compiler_files = [
-        "./pkg/collector/corechecks/ebpf/probe/oom_kill.go",
-        "./pkg/collector/corechecks/ebpf/probe/tcp_queue_length.go",
         "./pkg/network/http/compile.go",
         "./pkg/network/tracer/compile.go",
         "./pkg/network/tracer/connection/kprobe/compile.go",
