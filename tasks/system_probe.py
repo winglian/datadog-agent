@@ -83,6 +83,7 @@ def build(
         python_runtimes=python_runtimes,
         embedded_path=embedded_path,
         nikos_embedded_path=nikos_embedded_path,
+        bcc_embedded_path=embedded_path if with_bcc else None,
     )
 
     build_tags = get_default_build_tags(build="system-probe", arch=arch)

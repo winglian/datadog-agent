@@ -145,6 +145,7 @@ def get_build_flags(
     major_version='7',
     python_runtimes='3',
     nikos_embedded_path=None,
+    bcc_embedded_path=None,
 ):
     """
     Build the common value for both ldflags and gcflags, and return an env accordingly.
@@ -212,6 +213,10 @@ def get_build_flags(
     if nikos_embedded_path:
         env['PKG_CONFIG_PATH'] = env.get('PKG_CONFIG_PATH', '') + ':' + nikos_embedded_path + '/lib/pkgconfig'
         env["CGO_LDFLAGS"] = env.get('CGO_LDFLAGS', '') + get_nikos_linker_flags(nikos_embedded_path + '/lib')
+
+    if bcc_embedded_path:
+        env['CGO_CFLAGS'] = env.get('CGO_CFLAGS', '') + '-I' + bcc_embedded_path + '/include'
+        env['CGO_LDFLAGS'] = env.get('CGO_LDFLAGS', '') + '-L' + bcc_embedded_path + '/lib'
 
     # if `static` was passed ignore setting rpath, even if `embedded_path` was passed as well
     if static:
