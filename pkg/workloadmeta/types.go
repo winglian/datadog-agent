@@ -90,6 +90,13 @@ const (
 	KindGardenContainer Kind = "garden_container"
 )
 
+var allKinds map[Kind]struct{} = map[Kind]struct{}{
+	KindContainer:       {},
+	KindKubernetesPod:   {},
+	KindECSTask:         {},
+	KindGardenContainer: {},
+}
+
 // Source is the source name of an entity.
 type Source string
 
@@ -498,7 +505,6 @@ func (o KubernetesPodOwner) String(verbose bool) string {
 
 	if verbose {
 		_, _ = fmt.Fprintln(&sb, "ID:", o.ID)
-
 	}
 
 	return sb.String()

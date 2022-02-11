@@ -439,7 +439,6 @@ func (s *store) handleEvents(evs []CollectorEvent) {
 					Type:   EventTypeSet,
 					Entity: entity,
 				})
-
 			} else {
 				// entity has been removed entirely, unsetting
 				// is straight forward too
@@ -477,7 +476,11 @@ func (s *store) listEntitiesByKind(kind Kind) ([]Entity, error) {
 
 	entitiesOfKind, ok := s.store[kind]
 	if !ok {
-		return nil, errors.NewNotFound(string(kind))
+		if _, found := allKinds[kind]; !found {
+			return nil, errors.NewNotFound(string(kind))
+		}
+
+		return nil, nil
 	}
 
 	entities := make([]Entity, 0, len(entitiesOfKind))

@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix error returned by `container` check when container runtimes are running but no container is running.
