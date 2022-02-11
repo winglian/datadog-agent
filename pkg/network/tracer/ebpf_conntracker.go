@@ -114,6 +114,12 @@ func (e *ebpfConntracker) dumpInitialTables(ctx context.Context, cfg *config.Con
 	e.consumer = netlink.NewConsumer(cfg.ProcRoot, cfg.ConntrackRateLimit, true)
 	defer e.consumer.Stop()
 
+	defer func() {
+		// We'll wait a while before detaching the hook in order to give ebpf ample time to finish processing the dump
+		time.Sleep(1 * time.Minute)
+		e.m.DetachHook(manager.ProbeIdentificationPair{EBPFSection: string(probes.ConntrackFillInfo), EBPFFuncName: "kprobe_ctnetlink_fill_info"})
+	}()
+
 	for _, family := range []uint8{unix.AF_INET, unix.AF_INET6} {
 		done, err := e.consumer.DumpAndDiscardTable(family)
 		if err != nil {
