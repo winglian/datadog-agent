@@ -21,6 +21,7 @@ describe 'a Process Agent with Process Collection enabled' do
     end
     it 'is running the process check' do
         sleep 30
+        print_status
         expect(check_enabled?("process")).to be_truthy
     end
 end

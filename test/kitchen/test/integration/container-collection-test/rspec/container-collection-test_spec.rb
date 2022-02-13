@@ -21,6 +21,7 @@ describe 'a Process Agent with Container Collection enabled' do
     end
     it 'is running the container check' do
         sleep 30
+        print_status
         expect(check_enabled?("container")).to be_truthy
     end
 end

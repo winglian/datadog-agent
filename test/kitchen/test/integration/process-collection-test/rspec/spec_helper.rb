@@ -78,3 +78,16 @@ def os
     end
   )
 end
+
+def agent_command
+  if os == :windows
+    '"C:\\Program Files\\Datadog\\Datadog Agent\\bin\\process-agent.exe"'
+  else
+    "sudo process-agent"
+  end
+end
+
+def print_status:
+  print `#{agent_command} status`
+  print `#{agent_command} config`
+end
