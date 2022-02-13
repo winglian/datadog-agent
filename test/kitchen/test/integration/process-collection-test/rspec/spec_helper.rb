@@ -79,7 +79,7 @@ def os
   )
 end
 
-def agent_command:
+def agent_command
   if os == :windows
     '"C:\\Program Files\\Datadog\\Datadog Agent\\bin\\process-agent.exe"'
   else
@@ -87,7 +87,7 @@ def agent_command:
   end
 end
 
-def print_status:
+def print_status
   print `#{agent_command} status`
   print `#{agent_command} config`
 end
