@@ -91,4 +91,5 @@ end
 def print_status
   print `#{agent_command} status`
   print `#{agent_command} config`
+  print Net::HTTP.get('localhost', '/config', 6162)
 end
