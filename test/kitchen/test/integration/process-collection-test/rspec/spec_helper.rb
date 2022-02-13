@@ -57,6 +57,7 @@ end
 
 def check_enabled?(check_name)
   res = Net::HTTP.get('localhost', '/debug/vars', 6062)
+  print res
   JSON.parse(res)["enabled_checks"].include? check_name
 end
 
