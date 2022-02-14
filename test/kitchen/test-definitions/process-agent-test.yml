@@ -10,9 +10,9 @@ suites:
       <%= key %>: "<%= value %>"
       <% end %>
       process_agent_enabled: true
+      enable_process_agent: true
       extra_config:
         process_config:
-          enabled: "true"
           process_collection:
             enabled: true
     dd-agent-install:
@@ -24,9 +24,9 @@ suites:
       windows_agent_filename: "<%= ENV['WINDOWS_AGENT_FILE'] %>"
       <% end %>
       windows_agent_url: <%= windows_agent_url %>
+      enable_process_agent: true
       extra_config:
         process_config:
-          enabled: "true"
           process_collection:
             enabled: true
 - name: "container-collection-test"
