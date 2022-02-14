@@ -10,6 +10,11 @@ suites:
       <%= key %>: "<%= value %>"
       <% end %>
       process_agent_enabled: true
+      extra_config:
+        process_config:
+          enabled: "true"
+          process_collection:
+            enabled: true
     dd-agent-install:
       agent_major_version: <%= agent_major_version %>
       <% if ENV['AGENT_VERSION'] %>
@@ -19,8 +24,11 @@ suites:
       windows_agent_filename: "<%= ENV['WINDOWS_AGENT_FILE'] %>"
       <% end %>
       windows_agent_url: <%= windows_agent_url %>
-      process_agent_enabled: true
-
+      extra_config:
+        process_config:
+          enabled: "true"
+          process_collection:
+            enabled: true
 - name: "container-collection-test"
   run_list:
     - "recipe[dd-agent-install]"
