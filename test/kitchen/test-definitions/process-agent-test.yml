@@ -38,6 +38,7 @@ suites:
       <%= key %>: "<%= value %>"
       <% end %>
       extra_config:
+        enabled: nil
         process_config:
           container_collection:
             enabled: true
@@ -51,6 +52,7 @@ suites:
       <% end %>
       windows_agent_url: <%= windows_agent_url %>
       extra_config:
+        enabled: nil
         process_config:
           container_collection:
             enabled: true
