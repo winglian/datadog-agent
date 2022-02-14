@@ -10,8 +10,8 @@ suites:
       <%= key %>: "<%= value %>"
       <% end %>
       extra_config:
-        enabled: nil
         process_config:
+          enabled: nil
           process_collection:
             enabled: true
     dd-agent-install:
@@ -24,8 +24,8 @@ suites:
       <% end %>
       windows_agent_url: <%= windows_agent_url %>
       extra_config:
-        enabled: nil
         process_config:
+          enabled: nil
           process_collection:
             enabled: true
 
@@ -38,8 +38,8 @@ suites:
       <%= key %>: "<%= value %>"
       <% end %>
       extra_config:
-        enabled: nil
         process_config:
+          senabled: nil
           container_collection:
             enabled: true
     dd-agent-install:
@@ -52,7 +52,7 @@ suites:
       <% end %>
       windows_agent_url: <%= windows_agent_url %>
       extra_config:
-        enabled: nil
         process_config:
+          enabled: nil
           container_collection:
             enabled: true
