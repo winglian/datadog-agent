@@ -9,11 +9,7 @@ suites:
       <% dd_agent_config.each do |key, value| %>
       <%= key %>: "<%= value %>"
       <% end %>
-      extra_config:
-        process_config:
-          enabled: nil
-          process_collection:
-            enabled: true
+      process_agent_enabled: true
     dd-agent-install:
       agent_major_version: <%= agent_major_version %>
       <% if ENV['AGENT_VERSION'] %>
@@ -23,11 +19,7 @@ suites:
       windows_agent_filename: "<%= ENV['WINDOWS_AGENT_FILE'] %>"
       <% end %>
       windows_agent_url: <%= windows_agent_url %>
-      extra_config:
-        process_config:
-          enabled: nil
-          process_collection:
-            enabled: true
+      process_agent_enabled: true
 
 - name: "container-collection-test"
   run_list:
