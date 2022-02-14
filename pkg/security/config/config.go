@@ -138,11 +138,8 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 		EnableRemoteConfig:                 aconfig.Datadog.GetBool("runtime_security_config.enable_remote_configuration"),
 		EnableRuntimeCompiledConstants:     aconfig.Datadog.GetBool("runtime_security_config.enable_runtime_compiled_constants"),
 		RuntimeCompiledConstantsIsSet:      aconfig.Datadog.IsSet("runtime_security_config.enable_runtime_compiled_constants"),
-<<<<<<< HEAD
 		SymlinkResolverEnabled:             aconfig.Datadog.GetBool("runtime_security_config.symlink_resolver_enabled"),
-=======
 		RuntimeMonitor:                     aconfig.Datadog.GetBool("runtime_security_config.runtime_monitor.enabled"),
->>>>>>> 871da32ef7 (add runtime monitor)
 	}
 
 	// if runtime is enabled then we force fim
@@ -174,6 +171,8 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 	if len(serviceName) > 0 {
 		c.HostServiceName = fmt.Sprintf("service:%s", serviceName)
 	}
+
+	c.SymlinkResolverEnabled = true
 
 	return c, nil
 }
