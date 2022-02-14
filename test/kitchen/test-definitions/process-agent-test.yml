@@ -39,7 +39,7 @@ suites:
       <% end %>
       extra_config:
         process_config:
-          senabled: nil
+          enabled: nil
           container_collection:
             enabled: true
     dd-agent-install:
