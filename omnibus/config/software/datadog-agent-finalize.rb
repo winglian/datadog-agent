@@ -71,22 +71,22 @@ build do
             # default to `pip2` if the default Python runtime is Python 2.
             if with_python_runtime? "2"
                 delete "#{install_dir}/embedded/bin/pip"
-                link "#{install_dir}/embedded/bin/pip2", "#{install_dir}/embedded/bin/pip"
+                link "embedded/bin/pip2", "#{install_dir}/embedded/bin/pip"
 
                 delete "#{install_dir}/embedded/bin/2to3"
-                link "#{install_dir}/embedded/bin/2to3-2.7", "#{install_dir}/embedded/bin/2to3"
+                link "embedded/bin/2to3-2.7", "#{install_dir}/embedded/bin/2to3"
             # Setup script aliases, e.g. `/opt/datadog-agent/embedded/bin/pip` will
             # default to `pip3` if the default Python runtime is Python 3 (Agent 7.x).
             # Caution: we don't want to do this for Agent 6.x
             elsif with_python_runtime? "3"
                 delete "#{install_dir}/embedded/bin/pip"
-                link "#{install_dir}/embedded/bin/pip3", "#{install_dir}/embedded/bin/pip"
+                link "embedded/bin/pip3", "#{install_dir}/embedded/bin/pip"
 
                 delete "#{install_dir}/embedded/bin/python"
-                link "#{install_dir}/embedded/bin/python3", "#{install_dir}/embedded/bin/python"
+                link "embedded/bin/python3", "#{install_dir}/embedded/bin/python"
 
                 delete "#{install_dir}/embedded/bin/2to3"
-                link "#{install_dir}/embedded/bin/2to3-3.8", "#{install_dir}/embedded/bin/2to3"
+                link "embedded/bin/2to3-3.8", "#{install_dir}/embedded/bin/2to3"
             end
         end
 
