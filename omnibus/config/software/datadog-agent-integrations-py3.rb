@@ -13,6 +13,9 @@ dependency 'pip3'
 
 dependency 'snowflake-connector-python-py3'
 
+# Include traps db file in snmp.d/traps_db/
+dependency 'snmp-traps'
+
 if arm?
   # psycopg2 doesn't come with pre-built wheel on the arm architecture.
   # to compile from source, it requires the `pg_config` executable present on the $PATH
