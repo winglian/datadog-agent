@@ -16,6 +16,7 @@ require (
 )
 
 require (
+	github.com/go-test/deep v1.0.8 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
