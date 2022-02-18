@@ -143,16 +143,16 @@ func (l *UDSListener) Listen() {
 	log.Infof("dogstatsd-uds: starting to listen on %s", l.conn.LocalAddr())
 
 	var rateLimiter *ratelimit.MemBasedRateLimiter
-	if config.Datadog.GetBool("dogstatsd_mem_based_rate_limiter.enabled") {
-		var err error
-		rateLimiter, err = ratelimit.BuildMemBasedRateLimiter()
-		if err != nil {
-			log.Errorf("Cannot use DogStatsD rate limiter: %v", err)
-			rateLimiter = nil
-		} else {
-			log.Info("DogStatsD rate limiter enabled")
-		}
+	//	if config.Datadog.GetBool("dogstatsd_mem_based_rate_limiter.enabled") {
+	var err error
+	rateLimiter, err = ratelimit.BuildMemBasedRateLimiter()
+	if err != nil {
+		log.Errorf("Cannot use DogStatsD rate limiter: %v", err)
+		rateLimiter = nil
+	} else {
+		log.Info("DogStatsD rate limiter enabled")
 	}
+	//	}
 
 	for {
 		var n int
