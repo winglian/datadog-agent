@@ -411,6 +411,10 @@ require (
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 
+require github.com/zeebo/xxh3 v1.0.1
+
+require github.com/klauspost/cpuid/v2 v2.0.9 // indirect
+
 // Fixing a CVE on a transitive dep of k8s/etcd, should be cleaned-up once k8s.io/apiserver dep is removed (but double-check with `go mod why` that no other dep pulls it)
 replace github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt v3.2.1+incompatible
 

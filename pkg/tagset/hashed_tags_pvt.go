@@ -5,7 +5,7 @@
 
 package tagset
 
-import "github.com/twmb/murmur3"
+import "github.com/zeebo/xxh3"
 
 // hashedTags is the base type for HashingTagsAccumulator and HashedTags
 type hashedTags struct {
@@ -23,7 +23,7 @@ func newHashedTagsWithCapacity(cap int) hashedTags {
 func newHashedTagsFromSlice(tags []string) hashedTags {
 	hash := make([]uint64, 0, len(tags))
 	for _, t := range tags {
-		hash = append(hash, murmur3.StringSum64(t))
+		hash = append(hash, xxh3.HashString(t))
 	}
 	return hashedTags{
 		data: tags,

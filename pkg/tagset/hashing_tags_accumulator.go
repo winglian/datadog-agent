@@ -8,7 +8,7 @@ package tagset
 import (
 	"sort"
 
-	"github.com/twmb/murmur3"
+	"github.com/zeebo/xxh3"
 )
 
 // HashingTagsAccumulator allows to build a slice of tags, including the hashes
@@ -37,7 +37,7 @@ func NewHashingTagsAccumulatorWithTags(tags []string) *HashingTagsAccumulator {
 func (h *HashingTagsAccumulator) Append(tags ...string) {
 	for _, t := range tags {
 		h.data = append(h.data, t)
-		h.hash = append(h.hash, murmur3.StringSum64(t))
+		h.hash = append(h.hash, xxh3.HashString(t))
 	}
 }
 

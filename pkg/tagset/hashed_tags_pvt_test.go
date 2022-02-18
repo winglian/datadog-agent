@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/twmb/murmur3"
+	"github.com/zeebo/xxh3"
 )
 
 func TestPvtNewHashedTagsWithCapacity(t *testing.T) {
@@ -21,7 +21,7 @@ func TestPvtNewHashedTagsWithCapacity(t *testing.T) {
 func TestPvtNewHashedTagsFromSlice(t *testing.T) {
 	ht := newHashedTagsFromSlice([]string{"abc", "def"})
 	assert.Equal(t, []string{"abc", "def"}, ht.data)
-	assert.Equal(t, []uint64{murmur3.StringSum64("abc"), murmur3.StringSum64("def")}, ht.hash)
+	assert.Equal(t, []uint64{xxh3.HashString("abc"), xxh3.HashString("def")}, ht.hash)
 }
 
 func TestPvtHashedTagsCopy(t *testing.T) {

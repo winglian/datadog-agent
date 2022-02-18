@@ -7,7 +7,7 @@ package ckey
 
 import (
 	"github.com/DataDog/datadog-agent/pkg/tagset"
-	"github.com/twmb/murmur3"
+	"github.com/zeebo/xxh3"
 )
 
 // ContextKey is a non-cryptographic hash that allows to
@@ -57,7 +57,7 @@ func (g *KeyGenerator) Generate(name, hostname string, tagsBuf *tagset.HashingTa
 // tagsBuf is re-arranged in place and truncated to only contain unique tags.
 func (g *KeyGenerator) GenerateWithTags(name, hostname string, tagsBuf *tagset.HashingTagsAccumulator) (ContextKey, TagsKey) {
 	tags := g.hg.Hash(tagsBuf)
-	hash := murmur3.StringSum64(name) ^ murmur3.StringSum64(hostname) ^ tags
+	hash := xxh3.HashString(name) ^ xxh3.HashString(hostname) ^ tags
 	return ContextKey(hash), TagsKey(tags)
 }
 
@@ -69,7 +69,7 @@ func (g *KeyGenerator) GenerateWithTags2(name, hostname string, l, r *tagset.Has
 	g.hg.Dedup2(l, r)
 	lHash := l.Hash()
 	rHash := r.Hash()
-	hash := murmur3.StringSum64(name) ^ murmur3.StringSum64(hostname) ^ lHash ^ rHash
+	hash := xxh3.HashString(name) ^ xxh3.HashString(hostname) ^ lHash ^ rHash
 	return ContextKey(hash), TagsKey(lHash), TagsKey(rHash)
 }
 
