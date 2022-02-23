@@ -6,8 +6,8 @@
     },
     "nightly": {
         "INTEGRATIONS_CORE_VERSION": "master",
-        "OMNIBUS_SOFTWARE_VERSION": "master",
-        "OMNIBUS_RUBY_VERSION": "datadog-5.5.0",
+        "OMNIBUS_SOFTWARE_VERSION": "albertvaka/remove-md5",
+        "OMNIBUS_RUBY_VERSION": "albertvaka/remove-insecure-hashes",
         "JMXFETCH_VERSION": "0.44.6",
         "JMXFETCH_HASH": "dbd31f982328a3cf6b44c65b06812a14daf24172a82ab6266be1d208e0f420e9",
         "MACOS_BUILD_VERSION": "master",
@@ -18,8 +18,8 @@
     },
     "nightly-a7": {
         "INTEGRATIONS_CORE_VERSION": "master",
-        "OMNIBUS_SOFTWARE_VERSION": "master",
-        "OMNIBUS_RUBY_VERSION": "datadog-5.5.0",
+        "OMNIBUS_SOFTWARE_VERSION": "albertvaka/remove-md5",
+        "OMNIBUS_RUBY_VERSION": "albertvaka/remove-insecure-hashes",
         "JMXFETCH_VERSION": "0.44.6",
         "JMXFETCH_HASH": "dbd31f982328a3cf6b44c65b06812a14daf24172a82ab6266be1d208e0f420e9",
         "MACOS_BUILD_VERSION": "master",
