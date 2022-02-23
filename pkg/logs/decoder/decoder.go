@@ -86,9 +86,8 @@ func NewMessage(content []byte, status string, rawDataLen int, timestamp string)
 // lines, multiple lines, or auto-detecting the two), and sends the result to its output
 // channel, which is the same channel as decoder.OutputChan.
 type Decoder struct {
-	InputChan     chan *Input
-	lineParserOut chan *Message
-	OutputChan    chan *Message
+	InputChan  chan *Input
+	OutputChan chan *Message
 
 	lineBreaker *LineBreaker
 	lineParser  LineParser
@@ -108,16 +107,17 @@ func InitializeDecoder(source *config.LogSource, parser parsers.Parser) *Decoder
 // NewDecoderWithEndLineMatcher initialize a decoder with given endline strategy.
 func NewDecoderWithEndLineMatcher(source *config.LogSource, parser parsers.Parser, matcher EndLineMatcher, multiLinePattern *regexp.Regexp) *Decoder {
 	inputChan := make(chan *Input)
-	lineParserOut := make(chan *Message)
 	outputChan := make(chan *Message, 10)
 	lineLimit := defaultContentLenLimit
 	detectedPattern := &DetectedPattern{}
+
+	outputFn := func(m *Message) { outputChan <- m }
 
 	// construct the lineHandler actor
 	var lineHandler LineHandler
 	for _, rule := range source.Config.ProcessingRules {
 		if rule.Type == config.MultiLine {
-			lh := NewMultiLineHandler(lineParserOut, outputChan, rule.Regex, config.AggregationTimeout(), lineLimit)
+			lh := NewMultiLineHandler(outputFn, rule.Regex, config.AggregationTimeout(), lineLimit)
 
 			// Since a single source can have multiple file tailers - each with their own decoder instance,
 			// Make sure we keep track of the multiline match count info from all of the decoders so the
@@ -142,32 +142,30 @@ func NewDecoderWithEndLineMatcher(source *config.LogSource, parser parsers.Parse
 				// Save the pattern again for the next rotation
 				detectedPattern.Set(multiLinePattern)
 
-				lineHandler = NewMultiLineHandler(lineParserOut, outputChan, multiLinePattern, config.AggregationTimeout(), lineLimit)
+				lineHandler = NewMultiLineHandler(outputFn, multiLinePattern, config.AggregationTimeout(), lineLimit)
 			} else {
-				lineHandler = buildAutoMultilineHandlerFromConfig(lineParserOut, outputChan, lineLimit, source, detectedPattern)
+				lineHandler = buildAutoMultilineHandlerFromConfig(outputFn, lineLimit, source, detectedPattern)
 			}
 		} else {
-			lineHandler = NewSingleLineHandler(lineParserOut, outputChan, lineLimit)
+			lineHandler = NewSingleLineHandler(outputFn, lineLimit)
 		}
 	}
-
-	outputFn := func(m *Message) { lineParserOut <- m }
 
 	// construct the lineParser actor, wrapping the parser
 	var lineParser LineParser
 	if parser.SupportsPartialLine() {
-		lineParser = NewMultiLineParser(outputFn, config.AggregationTimeout(), parser, lineLimit)
+		lineParser = NewMultiLineParser(lineHandler.process, config.AggregationTimeout(), parser, lineLimit)
 	} else {
-		lineParser = NewSingleLineParser(outputFn, parser)
+		lineParser = NewSingleLineParser(lineHandler.process, parser)
 	}
 
 	// construct the lineBreaker actor, wrapping the matcher
 	lineBreaker := NewLineBreaker(lineParser.process, matcher, lineLimit)
 
-	return New(inputChan, lineParserOut, outputChan, lineBreaker, lineParser, lineHandler, detectedPattern)
+	return New(inputChan, outputChan, lineBreaker, lineParser, lineHandler, detectedPattern)
 }
 
-func buildAutoMultilineHandlerFromConfig(inputChan chan *Message, outputChan chan *Message, lineLimit int, source *config.LogSource, detectedPattern *DetectedPattern) *AutoMultilineHandler {
+func buildAutoMultilineHandlerFromConfig(outputFn func(*Message), lineLimit int, source *config.LogSource, detectedPattern *DetectedPattern) *AutoMultilineHandler {
 	linesToSample := source.Config.AutoMultiLineSampleSize
 	if linesToSample <= 0 {
 		linesToSample = dd_conf.Datadog.GetInt("logs_config.auto_multi_line_default_sample_size")
@@ -189,7 +187,8 @@ func buildAutoMultilineHandlerFromConfig(inputChan chan *Message, outputChan cha
 	}
 
 	matchTimeout := time.Second * dd_conf.Datadog.GetDuration("logs_config.auto_multi_line_default_match_timeout")
-	return NewAutoMultilineHandler(inputChan, outputChan,
+	return NewAutoMultilineHandler(
+		outputFn,
 		lineLimit,
 		linesToSample,
 		matchThreshold,
@@ -201,10 +200,9 @@ func buildAutoMultilineHandlerFromConfig(inputChan chan *Message, outputChan cha
 }
 
 // New returns an initialized Decoder
-func New(InputChan chan *Input, lineParserOut chan *Message, OutputChan chan *Message, lineBreaker *LineBreaker, lineParser LineParser, lineHandler LineHandler, detectedPattern *DetectedPattern) *Decoder {
+func New(InputChan chan *Input, OutputChan chan *Message, lineBreaker *LineBreaker, lineParser LineParser, lineHandler LineHandler, detectedPattern *DetectedPattern) *Decoder {
 	return &Decoder{
 		InputChan:       InputChan,
-		lineParserOut:   lineParserOut,
 		OutputChan:      OutputChan,
 		lineBreaker:     lineBreaker,
 		lineParser:      lineParser,
@@ -216,27 +214,28 @@ func New(InputChan chan *Input, lineParserOut chan *Message, OutputChan chan *Me
 // Start starts the Decoder
 func (d *Decoder) Start() {
 	go d.run()
-	d.lineHandler.Start()
 }
 
 // Stop stops the Decoder
 func (d *Decoder) Stop() {
-	// stop the entire decoder by closing the input.  All of the wrapped actors will detect this
-	// and stop.
+	// stop the entire decoder by closing the input.  This will "bubble" through the
+	// components and eventually cause run() to finish, closing OutputChan.
 	close(d.InputChan)
 }
 
 func (d *Decoder) run() {
 	defer func() {
-		// flush any remaining output, and close the output channel
+		// flush any remaining output in component order, and then close the
+		// output channel
 		d.lineParser.flush()
-		close(d.lineParserOut)
+		d.lineHandler.flush()
+		close(d.OutputChan)
 	}()
 	for {
 		select {
 		case data, isOpen := <-d.InputChan:
 			if !isOpen {
-				// inputChan has been closed, no more lines are expected
+				// InputChan has been closed, no more lines are expected
 				return
 			}
 
@@ -244,6 +243,9 @@ func (d *Decoder) run() {
 
 		case <-d.lineParser.flushChan():
 			d.lineParser.flush()
+
+		case <-d.lineHandler.flushChan():
+			d.lineHandler.flush()
 		}
 	}
 }
