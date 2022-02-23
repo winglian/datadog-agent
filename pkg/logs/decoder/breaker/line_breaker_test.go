@@ -29,36 +29,72 @@ func lineBreakerOutput() (func([]byte, int), chan brokenLine) {
 }
 
 func TestLineBreaking(t *testing.T) {
-	test := func(chunks [][]byte) func(*testing.T) {
+	test := func(matcher EndLineMatcher, chunks [][]byte, lines []string, rawLens []int) func(*testing.T) {
 		return func(t *testing.T) {
-			outputFn, outputChan := lineBreakerOutput()
-			lb := NewLineBreaker(outputFn, &NewLineMatcher{}, contentLenLimit)
+			gotContent := []string{}
+			gotLens := []int{}
+			outputFn := func(content []byte, rawDataLen int) {
+				gotContent = append(gotContent, string(content))
+				gotLens = append(gotLens, rawDataLen)
+			}
+			lb := NewLineBreaker(outputFn, matcher, contentLenLimit)
 			for _, chunk := range chunks {
 				lb.Process(chunk)
 			}
-			require.Equal(t, "line1", string((<-outputChan).content))
-			require.Equal(t, "line2", string((<-outputChan).content))
-			require.Equal(t, "line3", string((<-outputChan).content))
-			require.Equal(t, "line4", string((<-outputChan).content))
+			require.Equal(t, lines, gotContent)
+			require.Equal(t, rawLens, gotLens)
 		}
 	}
 
-	t.Run("with one chunk", test([][]byte{
-		[]byte("line1\nline2\nline3\nline4\n"),
-	}))
-
-	t.Run("with chunk per line", test([][]byte{
-		[]byte("line1\n"),
-		[]byte("line2\n"),
-		[]byte("line3\n"),
-		[]byte("line4\n"),
-	}))
-
-	var bytes [][]byte
-	for _, b := range []byte("line1\nline2\nline3\nline4\n") {
-		bytes = append(bytes, []byte{b})
+	chunk := func(input []byte, size int) [][]byte {
+		rv := [][]byte{}
+		iter := input
+		for len(iter) > 0 {
+			if size <= len(iter) {
+				rv = append(rv, iter)
+				break
+			} else {
+				rv = append(rv, iter[:size])
+				iter = iter[size:]
+			}
+		}
+		return rv
 	}
-	t.Run("with chunk per byte", test(bytes))
+
+	t.Run("NewLineMatcher", func(t *testing.T) {
+		utf8 := []byte("line1\nline2\nline3\nline4\n")
+		lines := []string{"line1", "line2", "line3", "line4"}
+		lens := []int{6, 6, 6, 6}
+		matcher := &NewLineMatcher{}
+		t.Run("one chunk", test(matcher, chunk(utf8, len(utf8)), lines, lens))
+		t.Run("one-line chunks", test(matcher, chunk(utf8, 6), lines, lens))
+		t.Run("two-line chunks", test(matcher, chunk(utf8, 12), lines, lens))
+		t.Run("one-byte chunks", test(matcher, chunk(utf8, 1), lines, lens))
+	})
+
+	t.Run("BytesSequenceMatcher-UTF-16-LE", func(t *testing.T) {
+		utf16 := []byte("l\x00i\x00n\x00e\x001\x00\n\x00l\x00i\x00n\x00e\x002\x00\n\x00l\x00i\x00n\x00e\x003\x00\n\x00l\x00i\x00n\x00e\x004\x00\n\x00")
+		lines := []string{"l\x00i\x00n\x00e\x001\x00", "l\x00i\x00n\x00e\x002\x00", "l\x00i\x00n\x00e\x003\x00", "l\x00i\x00n\x00e\x004\x00"}
+		lens := []int{12, 12, 12, 12}
+		matcher := NewBytesSequenceMatcher(Utf16leEOL, 2)
+		t.Run("one chunk", test(matcher, chunk(utf16, len(utf16)), lines, lens))
+		t.Run("one-line chunks", test(matcher, chunk(utf16, 12), lines, lens))
+		t.Run("three-byte chunks", test(matcher, chunk(utf16, 3), lines, lens))
+		t.Run("two-byte chunks", test(matcher, chunk(utf16, 2), lines, lens))
+		t.Run("one-byte chunks", test(matcher, chunk(utf16, 1), lines, lens))
+	})
+
+	t.Run("BytesSequenceMatcher-UTF-16-BE", func(t *testing.T) {
+		utf16 := []byte("\x00l\x00i\x00n\x00e\x001\x00\n\x00l\x00i\x00n\x00e\x002\x00\n\x00l\x00i\x00n\x00e\x003\x00\n\x00l\x00i\x00n\x00e\x004\x00\n")
+		lines := []string{"\x00l\x00i\x00n\x00e\x001", "\x00l\x00i\x00n\x00e\x002", "\x00l\x00i\x00n\x00e\x003", "\x00l\x00i\x00n\x00e\x004"}
+		lens := []int{12, 12, 12, 12}
+		matcher := NewBytesSequenceMatcher(Utf16beEOL, 2)
+		t.Run("one chunk", test(matcher, chunk(utf16, len(utf16)), lines, lens))
+		t.Run("one-line chunks", test(matcher, chunk(utf16, 12), lines, lens))
+		t.Run("three-byte chunks", test(matcher, chunk(utf16, 3), lines, lens))
+		t.Run("two-byte chunks", test(matcher, chunk(utf16, 2), lines, lens))
+		t.Run("one-byte chunks", test(matcher, chunk(utf16, 1), lines, lens))
+	})
 }
 
 func TestLineBreakIncomingData(t *testing.T) {
