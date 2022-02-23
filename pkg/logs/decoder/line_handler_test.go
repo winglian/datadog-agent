@@ -17,6 +17,7 @@ import (
 
 // All valid whitespace characters
 const whitespace = "\t\n\v\f\r\u0085\u00a0 "
+const contentLenLimit = 100
 
 func getDummyMessage(content string) *Message {
 	return NewMessage([]byte(content), "info", len(content), "2018-06-14T18:27:03.246999277Z")

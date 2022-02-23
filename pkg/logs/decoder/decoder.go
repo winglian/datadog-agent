@@ -7,11 +7,11 @@ package decoder
 
 import (
 	"regexp"
-	"sync/atomic"
 	"time"
 
 	dd_conf "github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/logs/config"
+	"github.com/DataDog/datadog-agent/pkg/logs/decoder/breaker"
 	"github.com/DataDog/datadog-agent/pkg/logs/internal/parsers"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
@@ -29,20 +29,6 @@ type Input struct {
 func NewInput(content []byte) *Input {
 	return &Input{
 		content: content,
-	}
-}
-
-// DecodedInput represents a decoded line and the raw length
-type DecodedInput struct {
-	content    []byte
-	rawDataLen int
-}
-
-// NewDecodedInput returns a new decoded input.
-func NewDecodedInput(content []byte, rawDataLen int) *DecodedInput {
-	return &DecodedInput{
-		content:    content,
-		rawDataLen: rawDataLen,
 	}
 }
 
@@ -89,7 +75,7 @@ type Decoder struct {
 	InputChan  chan *Input
 	OutputChan chan *Message
 
-	lineBreaker *LineBreaker
+	lineBreaker *breaker.LineBreaker
 	lineParser  LineParser
 	lineHandler LineHandler
 
@@ -101,11 +87,11 @@ type Decoder struct {
 
 // InitializeDecoder returns a properly initialized Decoder
 func InitializeDecoder(source *config.LogSource, parser parsers.Parser) *Decoder {
-	return NewDecoderWithEndLineMatcher(source, parser, &NewLineMatcher{}, nil)
+	return NewDecoderWithEndLineMatcher(source, parser, &breaker.NewLineMatcher{}, nil)
 }
 
 // NewDecoderWithEndLineMatcher initialize a decoder with given endline strategy.
-func NewDecoderWithEndLineMatcher(source *config.LogSource, parser parsers.Parser, matcher EndLineMatcher, multiLinePattern *regexp.Regexp) *Decoder {
+func NewDecoderWithEndLineMatcher(source *config.LogSource, parser parsers.Parser, matcher breaker.EndLineMatcher, multiLinePattern *regexp.Regexp) *Decoder {
 	inputChan := make(chan *Input)
 	outputChan := make(chan *Message, 10)
 	lineLimit := defaultContentLenLimit
@@ -160,7 +146,7 @@ func NewDecoderWithEndLineMatcher(source *config.LogSource, parser parsers.Parse
 	}
 
 	// construct the lineBreaker actor, wrapping the matcher
-	lineBreaker := NewLineBreaker(lineParser.process, matcher, lineLimit)
+	lineBreaker := breaker.NewLineBreaker(lineParser.process, matcher, lineLimit)
 
 	return New(inputChan, outputChan, lineBreaker, lineParser, lineHandler, detectedPattern)
 }
@@ -200,7 +186,7 @@ func buildAutoMultilineHandlerFromConfig(outputFn func(*Message), lineLimit int,
 }
 
 // New returns an initialized Decoder
-func New(InputChan chan *Input, OutputChan chan *Message, lineBreaker *LineBreaker, lineParser LineParser, lineHandler LineHandler, detectedPattern *DetectedPattern) *Decoder {
+func New(InputChan chan *Input, OutputChan chan *Message, lineBreaker *breaker.LineBreaker, lineParser LineParser, lineHandler LineHandler, detectedPattern *DetectedPattern) *Decoder {
 	return &Decoder{
 		InputChan:       InputChan,
 		OutputChan:      OutputChan,
@@ -239,7 +225,7 @@ func (d *Decoder) run() {
 				return
 			}
 
-			d.lineBreaker.process(data.content)
+			d.lineBreaker.Process(data.content)
 
 		case <-d.lineParser.flushChan():
 			d.lineParser.flush()
@@ -252,7 +238,7 @@ func (d *Decoder) run() {
 
 // GetLineCount returns the number of decoded lines
 func (d *Decoder) GetLineCount() int64 {
-	return atomic.LoadInt64(&d.lineBreaker.linesDecoded)
+	return d.lineBreaker.GetLineCount()
 }
 
 // GetDetectedPattern returns a detected pattern (if any)
