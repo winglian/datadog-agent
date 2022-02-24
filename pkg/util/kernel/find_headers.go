@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/DataDog/datadog-agent/pkg/metadata/host"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
@@ -66,11 +67,13 @@ func GetKernelHeaders(downloadEnabled bool, headerDirs []string, headerDownloadD
 
 	if len(headerDirs) > 0 {
 		if dirs := validateHeaderDirs(hv, headerDirs, true); len(dirs) > 0 {
+			log.Debugf("found kernel headers in %s", strings.Join(dirs, ","))
 			return headerDirs, customHeadersFound, nil
 		}
 		log.Debugf("unable to find configured kernel headers: no valid headers found")
 	} else {
 		if dirs := validateHeaderDirs(hv, getDefaultHeaderDirs(), true); len(dirs) > 0 {
+			log.Debugf("found kernel headers in %s", strings.Join(dirs, ","))
 			return dirs, defaultHeadersFound, nil
 		}
 		log.Debugf("unable to find default kernel headers: no valid headers found")
@@ -81,6 +84,7 @@ func GetKernelHeaders(downloadEnabled bool, headerDirs []string, headerDownloadD
 		var err error
 		var dirs []string
 		if dirs, err = getSysfsHeaderDirs(hv); err == nil {
+			log.Debugf("found sysfs headers")
 			return dirs, sysfsHeadersFound, nil
 		}
 		log.Debugf("unable to find system kernel headers: %w", err)
