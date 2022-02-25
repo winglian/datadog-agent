@@ -38,6 +38,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/metadata"
 	"github.com/DataDog/datadog-agent/pkg/metadata/host"
 	"github.com/DataDog/datadog-agent/pkg/metadata/inventories"
+	"github.com/DataDog/datadog-agent/pkg/netflow"
 	"github.com/DataDog/datadog-agent/pkg/otlp"
 	"github.com/DataDog/datadog-agent/pkg/pidfile"
 	"github.com/DataDog/datadog-agent/pkg/snmp/traps"
@@ -417,6 +418,14 @@ func StartAgent() error {
 		}
 	}
 
+	// Start NetFlow server
+	if netflow.IsEnabled() {
+		err = netflow.StartServer(demux)
+		if err != nil {
+			log.Errorf("Failed to start NetFlow server: %s", err)
+		}
+	}
+
 	// start logs-agent
 	if config.Datadog.GetBool("logs_enabled") || config.Datadog.GetBool("log_enabled") {
 		if config.Datadog.GetBool("log_enabled") {
@@ -492,6 +501,7 @@ func StopAgent() {
 		common.MetadataScheduler.Stop()
 	}
 	traps.StopServer()
+	netflow.StopServer()
 	api.StopServer()
 	clcrunnerapi.StopCLCRunnerServer()
 	jmx.StopJmxfetch()

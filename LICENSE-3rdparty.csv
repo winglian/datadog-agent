@@ -485,6 +485,7 @@ core,github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/dynamicmapper,Apach
 core,github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/provider,Apache-2.0,The Kubernetes Authors
 core,github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/registry/custom_metrics,Apache-2.0,The Kubernetes Authors
 core,github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/registry/external_metrics,Apache-2.0,The Kubernetes Authors
+core,github.com/libp2p/go-reuseport,ISC,Conformal Systems LLC
 core,github.com/lufia/plan9stats,BSD-3-Clause,"KADOTA, Kyohei"
 core,github.com/lxn/walk,BSD-3-Clause,The walk authors
 core,github.com/lxn/win,BSD-3-Clause,The win authors
@@ -519,6 +520,16 @@ core,github.com/mostynb/go-grpc-compression/snappy,Apache-2.0,gRPC authors
 core,github.com/mostynb/go-grpc-compression/zstd,Apache-2.0,Mostyn Bramley-Moore
 core,github.com/munnerz/goautoneg,BSD-3-Clause,Open Knowledge Foundation Ltd
 core,github.com/mxk/go-flowrate/flowrate,BSD-3-Clause,The Go-FlowRate Authors
+core,github.com/netsampler/goflow2/decoders,BSD-3-Clause,NetSampler
+core,github.com/netsampler/goflow2/decoders/netflow,BSD-3-Clause,NetSampler
+core,github.com/netsampler/goflow2/decoders/netflowlegacy,BSD-3-Clause,NetSampler
+core,github.com/netsampler/goflow2/decoders/sflow,BSD-3-Clause,NetSampler
+core,github.com/netsampler/goflow2/decoders/utils,BSD-3-Clause,NetSampler
+core,github.com/netsampler/goflow2/format,BSD-3-Clause,NetSampler
+core,github.com/netsampler/goflow2/pb,BSD-3-Clause,NetSampler
+core,github.com/netsampler/goflow2/producer,BSD-3-Clause,NetSampler
+core,github.com/netsampler/goflow2/transport,BSD-3-Clause,NetSampler
+core,github.com/netsampler/goflow2/utils,BSD-3-Clause,NetSampler
 core,github.com/nwaples/rardecode,BSD-2-Clause,Nicholas Waples
 core,github.com/olekukonko/tablewriter,MIT,Oleku Konko
 core,github.com/open-policy-agent/opa/ast,Apache-2.0,The OPA Authors

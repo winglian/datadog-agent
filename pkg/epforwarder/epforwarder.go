@@ -78,8 +78,8 @@ var passthroughPipelineDescs = []passthroughPipelineDesc{
 	{
 		eventType:                     EventTypeNetworkDevicesNetFlow,
 		endpointsConfigPrefix:         "network_devices.netflow.forwarder.",
-		hostnameEndpointPrefix:        "ndmnetflow-intake.",
-		intakeTrackType:               "ndmnetflow",
+		hostnameEndpointPrefix:        "all-http-intake.logs.", // TODO: Update to ndmnetflow-intake
+		intakeTrackType:               "logs",                  // TODO: Update to ndmnetflow
 		defaultBatchMaxConcurrentSend: 10,
 		defaultBatchMaxContentSize:    20e6,  // max 20Mb uncompressed size per payload
 		defaultBatchMaxSize:           10000, // max 10k events per payload
