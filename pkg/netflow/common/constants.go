@@ -8,6 +8,12 @@ package common
 const (
 	// DefaultStopTimeout is the default stop timeout
 	DefaultStopTimeout = 5
+
+	// DefaultAggregatorFlushInterval is the default flush interval
+	DefaultAggregatorFlushInterval = 10
+
+	// DefaultAggregatorBufferSize is the default aggregator buffer size interval
+	DefaultAggregatorBufferSize = 100
 )
 
 // Default ports

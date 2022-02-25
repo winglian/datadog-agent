@@ -32,7 +32,7 @@ func NewFlowAggregator(sender aggregator.Sender, config *config.NetflowConfig) *
 	return &FlowAggregator{
 		flowIn:        make(chan *common.Flow, config.AggregatorBufferSize),
 		flowStore:     newFlowStore(),
-		flushInterval: time.Duration(config.FlushInterval) * time.Second,
+		flushInterval: time.Duration(config.AggregatorFlushInterval) * time.Second,
 		sender:        sender,
 		stopChan:      make(chan struct{}),
 		logPayload:    config.LogPayloads,
