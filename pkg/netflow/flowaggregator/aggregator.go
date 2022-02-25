@@ -41,6 +41,7 @@ func NewFlowAggregator(sender aggregator.Sender, config *config.NetflowConfig) *
 
 func (agg *FlowAggregator) flush(flushTime time.Time) {
 	flows := agg.flowStore.getFlows()
+	log.Debugf("Flushing %d flows to the forwarder", len(flows))
 	if len(flows) == 0 {
 		return
 	}
