@@ -42,15 +42,15 @@ func (f *flowStore) addFlow(flowToAdd *common.Flow) {
 	// TODO: ignore ephemeral ports
 
 	aggFlow, ok := f.flows[flowToAdd.AggregationHash()]
+	log.Tracef("New Flow (digest=%s): %+v", flowToAdd.AggregationHash(), flowToAdd)
 	if !ok {
-		log.Debugf("Add New Flow (digest=%s): %+v", flowToAdd.AggregationHash(), flowToAdd)
 		f.flows[flowToAdd.AggregationHash()] = flowToAdd
 	} else {
-		newFlow := *aggFlow
-		newFlow.Bytes += flowToAdd.Bytes
-		newFlow.Packets += flowToAdd.Packets
-		log.Debugf("Add To Existing Flow (digest=%s): newFlow: %+v", flowToAdd.AggregationHash(), newFlow)
-		log.Debugf("flowToAdd (digest=%s): %+v", flowToAdd.AggregationHash(), flowToAdd)
-		f.flows[flowToAdd.AggregationHash()] = &newFlow
+		newAggFlow := *aggFlow
+		newAggFlow.Bytes += flowToAdd.Bytes
+		newAggFlow.Packets += flowToAdd.Packets
+		log.Tracef("Existing Aggregated Flow (digest=%s): %+v", flowToAdd.AggregationHash(), aggFlow)
+		log.Tracef("New Aggregated Flow (digest=%s): %+v", flowToAdd.AggregationHash(), newAggFlow)
+		f.flows[flowToAdd.AggregationHash()] = &newAggFlow
 	}
 }
