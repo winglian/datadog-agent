@@ -82,7 +82,6 @@ func (agg *FlowAggregator) run() {
 			log.Info("Stopping aggregator")
 			return
 		case flow := <-agg.flowIn:
-			log.Debugf("Received new flow")
 			agg.flowStore.addFlow(flow)
 		}
 	}

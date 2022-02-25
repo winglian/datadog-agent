@@ -6,8 +6,6 @@ import (
 
 	flowpb "github.com/netsampler/goflow2/pb"
 
-	"github.com/DataDog/datadog-agent/pkg/util/log"
-
 	"github.com/DataDog/datadog-agent/pkg/netflow/common"
 )
 
@@ -37,7 +35,6 @@ func (d *AggregatorFormatDriver) Format(data interface{}) ([]byte, []byte, error
 	if !ok {
 		return nil, nil, fmt.Errorf("message is not flowpb.FlowMessage")
 	}
-	log.Debugf("flow message received: %v", flow)
 	d.flowAggIn <- ConvertFlow(flow)
 	return nil, nil, nil
 }
