@@ -413,7 +413,7 @@ type ProfileRule struct {
 // NewProfileRule returns a new ProfileRule
 func NewProfileRule(expression string, ruleIDPrefix string) ProfileRule {
 	return ProfileRule{
-		ID:         ruleIDPrefix + "_" + utils.RandID(5),
+		ID:         ruleIDPrefix + "_" + utils.RandomID(5),
 		Expression: expression,
 	}
 }
@@ -482,7 +482,7 @@ func (ad *ActivityDump) generateRules(node *ProcessActivityNode, ancestors []*Pr
 // GenerateProfileData generates a Profile from the activity dump
 func (ad *ActivityDump) GenerateProfileData() Profile {
 	p := Profile{
-		Name: "profile_" + utils.RandID(5),
+		Name: "profile_" + utils.RandomID(5),
 	}
 
 	// generate selector
