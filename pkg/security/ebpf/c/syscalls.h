@@ -274,8 +274,9 @@ int __attribute__((always_inline)) mark_as_discarded(struct syscall_cache_t *sys
 }
 
 int __attribute__((always_inline)) filter_syscall(struct syscall_cache_t *syscall, int (*check_approvers)(struct syscall_cache_t *syscall)) {
-    if (syscall->policy.mode == NO_FILTER)
+    if (syscall->policy.mode == NO_FILTER) {
         return 0;
+    }
 
     char pass_to_userspace = syscall->policy.mode == ACCEPT ? 1 : 0;
 
