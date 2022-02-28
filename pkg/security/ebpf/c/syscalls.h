@@ -178,7 +178,7 @@ struct syscall_cache_t {
         } init_module;
 
         struct {
-            char *name;
+            const char *name;
         } delete_module;
 
         struct {
@@ -202,7 +202,7 @@ struct policy_t __attribute__((always_inline)) fetch_policy(u64 event_type) {
     if (policy) {
         return *policy;
     }
-    struct policy_t empty_policy = { };
+    struct policy_t empty_policy = {};
     return empty_policy;
 }
 
@@ -212,9 +212,9 @@ void __attribute__((always_inline)) cache_syscall(struct syscall_cache_t *syscal
     bpf_map_update_elem(&syscalls, &key, syscall, BPF_ANY);
 }
 
-struct syscall_cache_t * __attribute__((always_inline)) peek_syscall(u64 type) {
+struct syscall_cache_t *__attribute__((always_inline)) peek_syscall(u64 type) {
     u64 key = bpf_get_current_pid_tgid();
-    struct syscall_cache_t *syscall = (struct syscall_cache_t *) bpf_map_lookup_elem(&syscalls, &key);
+    struct syscall_cache_t *syscall = (struct syscall_cache_t *)bpf_map_lookup_elem(&syscalls, &key);
     if (!syscall) {
         return NULL;
     }
@@ -224,9 +224,9 @@ struct syscall_cache_t * __attribute__((always_inline)) peek_syscall(u64 type) {
     return NULL;
 }
 
-struct syscall_cache_t * __attribute__((always_inline)) peek_syscall_with(int (*predicate)(u64 type)) {
+struct syscall_cache_t *__attribute__((always_inline)) peek_syscall_with(int (*predicate)(u64 type)) {
     u64 key = bpf_get_current_pid_tgid();
-    struct syscall_cache_t *syscall = (struct syscall_cache_t *) bpf_map_lookup_elem(&syscalls, &key);
+    struct syscall_cache_t *syscall = (struct syscall_cache_t *)bpf_map_lookup_elem(&syscalls, &key);
     if (!syscall) {
         return NULL;
     }
@@ -236,9 +236,9 @@ struct syscall_cache_t * __attribute__((always_inline)) peek_syscall_with(int (*
     return NULL;
 }
 
-struct syscall_cache_t * __attribute__((always_inline)) pop_syscall_with(int (*predicate)(u64 type)) {
+struct syscall_cache_t *__attribute__((always_inline)) pop_syscall_with(int (*predicate)(u64 type)) {
     u64 key = bpf_get_current_pid_tgid();
-    struct syscall_cache_t *syscall = (struct syscall_cache_t *) bpf_map_lookup_elem(&syscalls, &key);
+    struct syscall_cache_t *syscall = (struct syscall_cache_t *)bpf_map_lookup_elem(&syscalls, &key);
     if (!syscall) {
         return NULL;
     }
@@ -249,9 +249,9 @@ struct syscall_cache_t * __attribute__((always_inline)) pop_syscall_with(int (*p
     return NULL;
 }
 
-struct syscall_cache_t * __attribute__((always_inline)) pop_syscall(u64 type) {
+struct syscall_cache_t *__attribute__((always_inline)) pop_syscall(u64 type) {
     u64 key = bpf_get_current_pid_tgid();
-    struct syscall_cache_t *syscall = (struct syscall_cache_t *) bpf_map_lookup_elem(&syscalls, &key);
+    struct syscall_cache_t *syscall = (struct syscall_cache_t *)bpf_map_lookup_elem(&syscalls, &key);
     if (!syscall) {
         return NULL;
     }
