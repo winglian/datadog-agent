@@ -10,9 +10,10 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/aggregator"
 	coreconfig "github.com/DataDog/datadog-agent/pkg/config"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
+
 	"github.com/DataDog/datadog-agent/pkg/netflow/config"
 	"github.com/DataDog/datadog-agent/pkg/netflow/flowaggregator"
-	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 var serverInstance *Server

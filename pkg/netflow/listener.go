@@ -2,6 +2,7 @@ package netflow
 
 import (
 	"fmt"
+
 	"github.com/DataDog/datadog-agent/pkg/netflow/common"
 	"github.com/DataDog/datadog-agent/pkg/netflow/config"
 	"github.com/DataDog/datadog-agent/pkg/netflow/flowaggregator"
