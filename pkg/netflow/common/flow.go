@@ -30,22 +30,19 @@ type Flow struct {
 // AggregationHash return a hash used as aggregation key
 func (f *Flow) AggregationHash() string {
 	h := fnv.New64()
-	h.Write([]byte(f.SrcAddr)) //nolint:errcheck
-	h.Write([]byte(f.DstAddr)) //nolint:errcheck
-
-	// TODO: Use more efficient way than converting to int->string->[]bytes
+	h.Write([]byte(f.SrcAddr))                           //nolint:errcheck
+	h.Write([]byte(f.DstAddr))                           //nolint:errcheck
 	h.Write([]byte(strconv.Itoa(int(f.SrcPort))))        //nolint:errcheck
 	h.Write([]byte(strconv.Itoa(int(f.DstPort))))        //nolint:errcheck
 	h.Write([]byte(strconv.Itoa(int(f.Proto))))          //nolint:errcheck
 	h.Write([]byte(strconv.Itoa(int(f.Tos))))            //nolint:errcheck
 	h.Write([]byte(strconv.Itoa(int(f.InputInterface)))) //nolint:errcheck
-
 	return strconv.FormatUint(h.Sum64(), 16)
 }
 
-// AsJsonString returns a JSON string or "" in case of error during the Marshaling
+// AsJSONString returns a JSON string or "" in case of error during the Marshaling
 // Used in debug logs. Marshalling to json can be costly if called in critical path.
-func (f *Flow) AsJsonString() string {
+func (f *Flow) AsJSONString() string {
 	s, err := json.Marshal(f)
 	if err != nil {
 		return ""

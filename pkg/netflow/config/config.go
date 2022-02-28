@@ -27,10 +27,6 @@ type ListenerConfig struct {
 	FlowType common.FlowType `mapstructure:"flow_type"`
 	Port     uint16          `mapstructure:"port"`
 	BindHost string          `mapstructure:"bind_host"`
-
-	// TODO: remove after dev stage
-	SendEvents  bool `mapstructure:"send_events"`
-	SendMetrics bool `mapstructure:"send_metrics"`
 }
 
 // ReadConfig builds and returns configuration from Agent configuration.

@@ -109,7 +109,7 @@ func (agg *FlowAggregator) flush(flushTime time.Time) {
 	if agg.logPayload {
 		log.Debug("Flushing the following Events:")
 		for _, flow := range flows {
-			log.Debugf("flow: %s", flow.AsJsonString())
+			log.Debugf("flow: %s", flow.AsJSONString())
 		}
 	}
 	agg.sendFlows(flows)
