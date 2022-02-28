@@ -43,8 +43,9 @@ func (f *Flow) AggregationHash() string {
 	return strconv.FormatUint(h.Sum64(), 16)
 }
 
-// Return a JSON string or "" in case of error during the Marshaling
-func (f *Flow) String() string {
+// AsJsonString returns a JSON string or "" in case of error during the Marshaling
+// Used in debug logs. Marshalling to json can be costly if called in critical path.
+func (f *Flow) AsJsonString() string {
 	s, err := json.Marshal(f)
 	if err != nil {
 		return ""

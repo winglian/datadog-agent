@@ -22,11 +22,6 @@ type FlowAggregator struct {
 	logPayload    bool
 }
 
-// GetFlowInChan returns flow input chan
-func (agg *FlowAggregator) GetFlowInChan() chan *common.Flow {
-	return agg.flowIn
-}
-
 // NewFlowAggregator returns a new FlowAggregator
 func NewFlowAggregator(sender aggregator.Sender, config *config.NetflowConfig) *FlowAggregator {
 	return &FlowAggregator{
@@ -39,41 +34,21 @@ func NewFlowAggregator(sender aggregator.Sender, config *config.NetflowConfig) *
 	}
 }
 
-func (agg *FlowAggregator) flush(flushTime time.Time) {
-	flows := agg.flowStore.getFlows()
-	log.Debugf("Flushing %d flows to the forwarder", len(flows))
-	if len(flows) == 0 {
-		return
-	}
-	// TODO: Add flush count telemetry e.g. aggregator newFlushCountStats()
-
-	// For debug purposes print out all flows
-	if agg.logPayload {
-		log.Debug("Flushing the following Events:")
-		for _, flow := range flows {
-			log.Debugf("%s", flow)
-		}
-	}
-	agg.sendFlows(flows)
-}
-
-func (agg *FlowAggregator) sendFlows(flows []*common.Flow) {
-	for _, flow := range flows {
-		flowPayload := buildPayload(flow)
-		payloadBytes, err := json.Marshal(flowPayload)
-		if err != nil {
-			log.Errorf("Error marshalling device metadata: %s", err)
-			continue
-		}
-		agg.sender.EventPlatformEvent(string(payloadBytes), epforwarder.EventTypeNetworkDevicesNetFlow)
-	}
-}
-
 // Start will start the FlowAggregator worker
 func (agg *FlowAggregator) Start() {
 	log.Info("Flow Aggregator started")
 	go agg.run()
 	agg.flushLoop() // blocking call
+}
+
+// Stop will stop running FlowAggregator
+func (agg *FlowAggregator) Stop() {
+	agg.stopChan <- struct{}{}
+}
+
+// GetFlowInChan returns flow input chan
+func (agg *FlowAggregator) GetFlowInChan() chan *common.Flow {
+	return agg.flowIn
 }
 
 func (agg *FlowAggregator) run() {
@@ -88,9 +63,16 @@ func (agg *FlowAggregator) run() {
 	}
 }
 
-// Stop will stop running FlowAggregator
-func (agg *FlowAggregator) Stop() {
-	agg.stopChan <- struct{}{}
+func (agg *FlowAggregator) sendFlows(flows []*common.Flow) {
+	for _, flow := range flows {
+		flowPayload := buildPayload(flow)
+		payloadBytes, err := json.Marshal(flowPayload)
+		if err != nil {
+			log.Errorf("Error marshalling device metadata: %s", err)
+			continue
+		}
+		agg.sender.EventPlatformEvent(string(payloadBytes), epforwarder.EventTypeNetworkDevicesNetFlow)
+	}
 }
 
 func (agg *FlowAggregator) flushLoop() {
@@ -113,4 +95,22 @@ func (agg *FlowAggregator) flushLoop() {
 			agg.flush(t)
 		}
 	}
+}
+
+func (agg *FlowAggregator) flush(flushTime time.Time) {
+	flows := agg.flowStore.getFlows()
+	log.Debugf("Flushing %d flows to the forwarder", len(flows))
+	if len(flows) == 0 {
+		return
+	}
+	// TODO: Add flush count telemetry e.g. aggregator newFlushCountStats()
+
+	// For debug purposes print out all flows
+	if agg.logPayload {
+		log.Debug("Flushing the following Events:")
+		for _, flow := range flows {
+			log.Debugf("flow: %s", flow.AsJsonString())
+		}
+	}
+	agg.sendFlows(flows)
 }
