@@ -329,9 +329,6 @@ core,github.com/fatih/color,MIT,Fatih Arslan
 core,github.com/felixge/httpsnoop,MIT,Felix Geisendörfer (felix@debuggable.com)
 core,github.com/florianl/go-conntrack,MIT,Florian Lehner <dev@der-flo.net>
 core,github.com/florianl/go-conntrack/internal/unix,MIT,Florian Lehner <dev@der-flo.net>
-core,github.com/florianl/go-tc,MIT,Florian Lehner <dev@der-flo.net>
-core,github.com/florianl/go-tc/core,MIT,Florian Lehner <dev@der-flo.net>
-core,github.com/florianl/go-tc/internal/unix,MIT,Florian Lehner <dev@der-flo.net>
 core,github.com/freddierice/go-losetup,MIT,Freddie Rice
 core,github.com/fsnotify/fsnotify,BSD-3-Clause,The fsnotify authors
 core,github.com/ghodss/yaml,MIT,Sam Ghods | The Go Authors
