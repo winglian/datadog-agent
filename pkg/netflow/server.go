@@ -26,6 +26,41 @@ type Server struct {
 	flowAgg       *flowaggregator.FlowAggregator
 }
 
+// NewNetflowServer configures and returns a running SNMP traps server.
+func NewNetflowServer(demultiplexer aggregator.Demultiplexer) (*Server, error) {
+	var listeners []*netflowListener
+
+	mainConfig, err := config.ReadConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	sender, err := demultiplexer.GetDefaultSender()
+	if err != nil {
+		return nil, err
+	}
+
+	flowAgg := flowaggregator.NewFlowAggregator(sender, mainConfig)
+	go flowAgg.Start()
+
+	for _, listenerConfig := range mainConfig.Listeners {
+		log.Infof("Starting Netflow listener for flow type %s on %s", listenerConfig.FlowType, listenerConfig.Addr())
+		listener, err := startFlowListener(listenerConfig, flowAgg)
+		if err != nil {
+			log.Warnf("Error starting listener for config (flow_type:%s, bind_Host:%s, port:%d)", listenerConfig.FlowType, listenerConfig.BindHost, listenerConfig.Port)
+			continue
+		}
+		listeners = append(listeners, listener)
+	}
+
+	return &Server{
+		listeners:     listeners,
+		demultiplexer: demultiplexer,
+		config:        mainConfig,
+		flowAgg:       flowAgg,
+	}, nil
+}
+
 // Stop stops the Server.
 func (s *Server) Stop() {
 	log.Infof("Stop NetFlow Server")
@@ -65,41 +100,6 @@ func StopServer() {
 		serverInstance.Stop()
 		serverInstance = nil
 	}
-}
-
-// NewNetflowServer configures and returns a running SNMP traps server.
-func NewNetflowServer(demultiplexer aggregator.Demultiplexer) (*Server, error) {
-	var listeners []*netflowListener
-
-	mainConfig, err := config.ReadConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	sender, err := demultiplexer.GetDefaultSender()
-	if err != nil {
-		return nil, err
-	}
-
-	flowAgg := flowaggregator.NewFlowAggregator(sender, mainConfig)
-	go flowAgg.Start()
-
-	for _, listenerConfig := range mainConfig.Listeners {
-		log.Infof("Starting Netflow listener for flow type %s on %s", listenerConfig.FlowType, listenerConfig.Addr())
-		listener, err := startFlowListener(listenerConfig, flowAgg)
-		if err != nil {
-			log.Warnf("Error starting listener for config (flow_type:%s, bind_Host:%s, port:%d)", listenerConfig.FlowType, listenerConfig.BindHost, listenerConfig.Port)
-			continue
-		}
-		listeners = append(listeners, listener)
-	}
-
-	return &Server{
-		listeners:     listeners,
-		demultiplexer: demultiplexer,
-		config:        mainConfig,
-		flowAgg:       flowAgg,
-	}, nil
 }
 
 // IsEnabled returns whether NetFlow collection is enabled in the Agent configuration.
