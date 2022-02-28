@@ -77,6 +77,7 @@ type Probe struct {
 	approvers          map[eval.EventType]activeApprovers
 
 	inodeDiscardersCounters map[model.EventType]*int64
+	constantOffsets         map[string]uint64
 }
 
 // GetResolvers returns the resolvers of Probe
@@ -892,7 +893,7 @@ func (p *Probe) NewRuleSet(opts *rules.Opts) *rules.RuleSet {
 	}
 	opts.WithLogger(&seclog.PatternLogger{})
 
-	return rules.NewRuleSet(&Model{}, eventCtor, opts)
+	return rules.NewRuleSet(&Model{probe: p}, eventCtor, opts)
 }
 
 // NewProbe instantiates a new runtime security agent probe
@@ -949,13 +950,13 @@ func NewProbe(config *config.Config, client *statsd.Client) (*Probe, error) {
 		p.managerOptions.ActivatedProbes = append(p.managerOptions.ActivatedProbes, probes.SyscallMonitorSelectors...)
 	}
 
-	constants, err := GetOffsetConstants(config, p)
+	p.constantOffsets, err = GetOffsetConstants(config, p)
 	if err != nil {
 		log.Warnf("constant fetcher failed: %v", err)
 		return nil, err
 	}
 
-	p.managerOptions.ConstantEditors = append(p.managerOptions.ConstantEditors, constantfetch.CreateConstantEditors(constants)...)
+	p.managerOptions.ConstantEditors = append(p.managerOptions.ConstantEditors, constantfetch.CreateConstantEditors(p.constantOffsets)...)
 
 	// Add global constant editors
 	p.managerOptions.ConstantEditors = append(p.managerOptions.ConstantEditors,
