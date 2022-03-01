@@ -634,7 +634,7 @@ func (tkn *SQLTokenizer) scanNumber(seenDecimalPoint bool) (TokenKind, []byte) {
 			}
 			// octal int
 			if seenDecimalDigit {
-				// tkn.setErr called in caller
+				tkn.setErr("invalid number")
 				return LexError, tkn.bytes()
 			}
 		}
@@ -662,6 +662,7 @@ exponent:
 exit:
 	t := tkn.bytes()
 	if len(t) == 0 {
+		tkn.setErr("invalid number")
 		return LexError, nil
 	}
 	return Number, t
