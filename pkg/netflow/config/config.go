@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	coreconfig "github.com/DataDog/datadog-agent/pkg/config"
-
 	"github.com/DataDog/datadog-agent/pkg/netflow/common"
 )
 
@@ -24,9 +23,10 @@ type NetflowConfig struct {
 
 // ListenerConfig contains configuration for a single flow listener
 type ListenerConfig struct {
-	FlowType common.FlowType `mapstructure:"flow_type"`
-	Port     uint16          `mapstructure:"port"`
-	BindHost string          `mapstructure:"bind_host"`
+	FlowType       common.FlowType       `mapstructure:"flow_type"`
+	Port           uint16                `mapstructure:"port"`
+	BindHost       string                `mapstructure:"bind_host"`
+	FlowTypeDetail common.FlowTypeDetail `mapstructure:"-"`
 }
 
 // ReadConfig builds and returns configuration from Agent configuration.
@@ -37,9 +37,17 @@ func ReadConfig() (*NetflowConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, listenerConfig := range mainConfig.Listeners {
+	for i := range mainConfig.Listeners {
+		listenerConfig := &mainConfig.Listeners[i]
+
+		flowType, err := common.GetFlowTypeByName(listenerConfig.FlowType)
+		if err != nil {
+			return nil, fmt.Errorf("the provided flow type `%s` is not valid (valid flow types: %v)", listenerConfig.FlowType, common.GetAllFlowTypes())
+		}
+		listenerConfig.FlowTypeDetail = flowType
+
 		if listenerConfig.Port == 0 {
-			listenerConfig.Port = getDefaultPort(listenerConfig.FlowType)
+			listenerConfig.Port = flowType.DefaultPort()
 			if listenerConfig.Port == 0 {
 				return nil, fmt.Errorf("no default port found for `%s`, a valid port must be set", listenerConfig.FlowType)
 			}

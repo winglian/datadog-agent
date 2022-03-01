@@ -1,9 +1,6 @@
 package netflow
 
 import (
-	"fmt"
-
-	"github.com/DataDog/datadog-agent/pkg/netflow/common"
 	"github.com/DataDog/datadog-agent/pkg/netflow/config"
 	"github.com/DataDog/datadog-agent/pkg/netflow/flowaggregator"
 	"github.com/DataDog/datadog-agent/pkg/netflow/goflowlib"
@@ -22,21 +19,10 @@ func (l *netflowListener) shutdown() {
 }
 
 func startFlowListener(listenerConfig config.ListenerConfig, flowAgg *flowaggregator.FlowAggregator) (*netflowListener, error) {
-	var flowState *goflowlib.FlowRoutineState
-
-	formatDriver := goflowlib.NewAggregatorFormatDriver(flowAgg.GetFlowInChan())
-
-	switch listenerConfig.FlowType {
-	case common.TypeNetFlow9, common.TypeIPFIX:
-		flowState = goflowlib.StartNetFlowRoutine(formatDriver, listenerConfig.BindHost, listenerConfig.Port)
-	case common.TypeSFlow5:
-		flowState = goflowlib.StartSFlowRoutine(formatDriver, listenerConfig.BindHost, listenerConfig.Port)
-	case common.TypeNetFlow5:
-		flowState = goflowlib.StartNFLegacyRoutine(formatDriver, listenerConfig.BindHost, listenerConfig.Port)
-	default:
-		return nil, fmt.Errorf("unknown flow type: %s", listenerConfig.FlowType)
+	flowState, err := goflowlib.StartFlowRoutine(listenerConfig.FlowTypeDetail.Name(), listenerConfig.BindHost, listenerConfig.Port, flowAgg.GetFlowInChan())
+	if err != nil {
+		return nil, err
 	}
-
 	return &netflowListener{
 		flowState: flowState,
 		config:    listenerConfig,

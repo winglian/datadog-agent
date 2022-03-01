@@ -18,7 +18,7 @@ func buildPayload(aggFlow *common.Flow) payload.FlowPayload {
 
 		// Non-Keys
 		SamplerAddr:     aggFlow.SamplerAddr,
-		FlowType:        aggFlow.FlowType,
+		FlowType:        string(aggFlow.FlowType),
 		OutputInterface: aggFlow.OutputInterface,
 		Direction:       aggFlow.Direction,
 		Bytes:           aggFlow.Bytes,

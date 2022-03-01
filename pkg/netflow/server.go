@@ -89,9 +89,7 @@ func (s *Server) Stop() {
 // StartServer starts the global NetFlow collector.
 func StartServer(demultiplexer aggregator.Demultiplexer) error {
 	server, err := NewNetflowServer(demultiplexer)
-	if err != nil {
-		serverInstance = server
-	}
+	serverInstance = server
 	return err
 }
 

@@ -5,8 +5,6 @@
 
 package payload
 
-import "github.com/DataDog/datadog-agent/pkg/netflow/common"
-
 // FlowPayload contains network devices flows
 type FlowPayload struct {
 	// Keys
@@ -19,10 +17,10 @@ type FlowPayload struct {
 	InputInterface uint32 `json:"input_interface"`
 
 	// Non-Keys
-	SamplerAddr     string          `json:"sampler_addr"`
-	FlowType        common.FlowType `json:"flow_type"`
-	OutputInterface uint32          `json:"output_interface"`
-	Direction       uint32          `json:"direction"`
-	Bytes           uint64          `json:"bytes"`
-	Packets         uint64          `json:"packets"`
+	SamplerAddr     string `json:"sampler_addr"`
+	FlowType        string `json:"flow_type"`
+	OutputInterface uint32 `json:"output_interface"`
+	Direction       uint32 `json:"direction"`
+	Bytes           uint64 `json:"bytes"`
+	Packets         uint64 `json:"packets"`
 }

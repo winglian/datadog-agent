@@ -1,10 +1,14 @@
 package goflowlib
 
 import (
+	"fmt"
+
 	"github.com/netsampler/goflow2/format"
 	"github.com/netsampler/goflow2/utils"
 
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+
+	"github.com/DataDog/datadog-agent/pkg/netflow/common"
 )
 
 // setting reusePort to false since not expected to be useful
@@ -16,6 +20,24 @@ type FlowRoutineState struct {
 	state    interface{}
 	hostname string
 	port     uint16
+}
+
+// StartFlowRoutine starts one of the goflow flow routine depending on the flow type
+func StartFlowRoutine(flowType common.FlowType, bindHost string, port uint16, flowInChan chan *common.Flow) (*FlowRoutineState, error) {
+	var flowState *FlowRoutineState
+	formatDriver := NewAggregatorFormatDriver(flowInChan)
+
+	switch flowType {
+	case common.TypeNetFlow9, common.TypeIPFIX:
+		flowState = startNetFlowRoutine(formatDriver, bindHost, port)
+	case common.TypeSFlow5:
+		flowState = startSFlowRoutine(formatDriver, bindHost, port)
+	case common.TypeNetFlow5:
+		flowState = startNFLegacyRoutine(formatDriver, bindHost, port)
+	default:
+		return nil, fmt.Errorf("unknown flow type: %s", flowType)
+	}
+	return flowState, nil
 }
 
 // Shutdown is a wrapper for StateNetFlow/StateSFlow/StateNFLegacy Shutdown method
@@ -35,8 +57,8 @@ func (s *FlowRoutineState) Shutdown() {
 	}
 }
 
-// StartNetFlowRoutine returns a FlowRoutineState for StateNetFlow
-func StartNetFlowRoutine(formatDriver format.FormatInterface, hostname string, port uint16) *FlowRoutineState {
+// startNetFlowRoutine returns a FlowRoutineState for StateNetFlow
+func startNetFlowRoutine(formatDriver format.FormatInterface, hostname string, port uint16) *FlowRoutineState {
 	log.Info("Starting NetFlow9/ipfix listener...")
 	state := &utils.StateNetFlow{
 		Format: formatDriver,
@@ -55,8 +77,8 @@ func StartNetFlowRoutine(formatDriver format.FormatInterface, hostname string, p
 	}
 }
 
-// StartSFlowRoutine returns a FlowRoutineState for StateSFlow
-func StartSFlowRoutine(formatDriver format.FormatInterface, hostname string, port uint16) *FlowRoutineState {
+// startSFlowRoutine returns a FlowRoutineState for StateSFlow
+func startSFlowRoutine(formatDriver format.FormatInterface, hostname string, port uint16) *FlowRoutineState {
 	log.Info("Starting sFlow listener ...")
 	state := &utils.StateSFlow{
 		Format: formatDriver,
@@ -75,8 +97,8 @@ func StartSFlowRoutine(formatDriver format.FormatInterface, hostname string, por
 	}
 }
 
-// StartNFLegacyRoutine returns a FlowRoutineState for StateNFLegacy
-func StartNFLegacyRoutine(formatDriver format.FormatInterface, hostname string, port uint16) *FlowRoutineState {
+// startNFLegacyRoutine returns a FlowRoutineState for StateNFLegacy
+func startNFLegacyRoutine(formatDriver format.FormatInterface, hostname string, port uint16) *FlowRoutineState {
 	log.Info("Starting NetFlow5 listener...")
 	state := &utils.StateNFLegacy{
 		Format: formatDriver,
