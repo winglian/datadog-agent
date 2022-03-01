@@ -16,7 +16,7 @@ import (
 type FlowAggregator struct {
 	flowIn        chan *common.Flow // TODO: change to lighter struct than flowpb.FlowMessage ?
 	flushInterval time.Duration
-	flowStore     *flowStore
+	flowStore     *flowAccumulator
 	sender        aggregator.Sender
 	stopChan      chan struct{}
 	logPayload    bool
@@ -26,7 +26,7 @@ type FlowAggregator struct {
 func NewFlowAggregator(sender aggregator.Sender, config *config.NetflowConfig) *FlowAggregator {
 	return &FlowAggregator{
 		flowIn:        make(chan *common.Flow, config.AggregatorBufferSize),
-		flowStore:     newFlowStore(),
+		flowStore:     newFlowAccumulator(),
 		flushInterval: time.Duration(config.AggregatorFlushInterval) * time.Second,
 		sender:        sender,
 		stopChan:      make(chan struct{}),
@@ -59,7 +59,7 @@ func (agg *FlowAggregator) run() {
 			return
 		case flow := <-agg.flowIn:
 			agg.sender.Count("datadog.newflow.aggregator.flows_received", 1, "", flow.TelemetryTags())
-			agg.flowStore.addFlow(flow)
+			agg.flowStore.add(flow)
 		}
 	}
 }
@@ -100,7 +100,7 @@ func (agg *FlowAggregator) flushLoop() {
 }
 
 func (agg *FlowAggregator) flush(flushTime time.Time) {
-	flows := agg.flowStore.getFlows()
+	flows := agg.flowStore.flush()
 	log.Debugf("Flushing %d flows to the forwarder", len(flows))
 	if len(flows) == 0 {
 		return

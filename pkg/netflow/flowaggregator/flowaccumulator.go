@@ -8,18 +8,19 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/netflow/common"
 )
 
-type flowStore struct {
+// flowAccumulator is used to accumulate aggregated flows
+type flowAccumulator struct {
 	flows map[string]*common.Flow
 	mu    sync.Mutex
 }
 
-func newFlowStore() *flowStore {
-	return &flowStore{
+func newFlowAccumulator() *flowAccumulator {
+	return &flowAccumulator{
 		flows: make(map[string]*common.Flow),
 	}
 }
 
-func (f *flowStore) getFlows() []*common.Flow {
+func (f *flowAccumulator) flush() []*common.Flow {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -34,7 +35,7 @@ func (f *flowStore) getFlows() []*common.Flow {
 	return flows
 }
 
-func (f *flowStore) addFlow(flowToAdd *common.Flow) {
+func (f *flowAccumulator) add(flowToAdd *common.Flow) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
