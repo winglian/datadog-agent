@@ -67,9 +67,9 @@ func GetFlowTypeByName(name FlowType) (FlowTypeDetail, error) {
 
 // GetAllFlowTypes returns all flow names
 func GetAllFlowTypes() []FlowType {
-	var flowTypesStr []FlowType
+	var flowTypes []FlowType
 	for _, flowType := range FlowTypeDetails {
-		flowTypesStr = append(flowTypesStr, flowType.name)
+		flowTypes = append(flowTypes, flowType.name)
 	}
-	return flowTypesStr
+	return flowTypes
 }
