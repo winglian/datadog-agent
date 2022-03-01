@@ -58,6 +58,7 @@ func (agg *FlowAggregator) run() {
 			log.Info("Stopping aggregator")
 			return
 		case flow := <-agg.flowIn:
+			agg.sender.Count("datadog.newflow.aggregator.flows_received", 1, "", flow.TelemetryTags())
 			agg.flowStore.addFlow(flow)
 		}
 	}
@@ -65,6 +66,7 @@ func (agg *FlowAggregator) run() {
 
 func (agg *FlowAggregator) sendFlows(flows []*common.Flow) {
 	for _, flow := range flows {
+		agg.sender.Count("datadog.newflow.aggregator.flows_flushed", 1, "", flow.TelemetryTags())
 		flowPayload := buildPayload(flow)
 		payloadBytes, err := json.Marshal(flowPayload)
 		if err != nil {
