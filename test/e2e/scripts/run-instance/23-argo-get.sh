@@ -41,11 +41,19 @@ done
 # CWS & CSPM e2e output
 for workflow in $(./argo list -o name); do
     if [ "$ARGO_WORKFLOW" = "cws" ]; then
-        kubectl logs $(./argo get "$workflow" -o json | jq -r '.status.nodes[] | select(.displayName=="test-cws-e2e").id') -c main
+        pod=$(./argo get "$workflow" -o json | jq -r '.status.nodes[] | select(.displayName=="test-cws-e2e").id')
+        if [ -n "$pod" ]; then
+            kubectl logs "$pod" -c main
+        fi
+        # kubectl logs $(./argo get "$workflow" -o json | jq -r '.status.nodes[] | select(.displayName=="test-cws-e2e").id') -c main
     fi
 
     if [ "$ARGO_WORKFLOW" = "cspm" ]; then
-        kubectl logs $(./argo get $workflow -o json | jq -r '.status.nodes[] | select(.displayName=="test-cspm-e2e").id') -c main
+        pod=$(./argo get "$workflow" -o json | jq -r '.status.nodes[] | select(.displayName=="test-cspm-e2e").id')
+        if [ -n "$pod" ]; then
+            kubectl logs "$pod" -c main
+        fi
+        # kubectl logs $(./argo get "$workflow" -o json | jq -r '.status.nodes[] | select(.displayName=="test-cspm-e2e").id') -c main
     fi
 done
 
