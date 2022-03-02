@@ -28,3 +28,4 @@ cookbook 'dd-agent-rhel-workaround', path: './site-cookbooks/dd-agent-rhel-worka
 cookbook 'dd-agent-system-files-check', path: './site-cookbooks/dd-agent-system-files-check'
 cookbook 'dd-security-agent-check', path: './site-cookbooks/dd-security-agent-check'
 cookbook 'dd-system-probe-check', path: './site-cookbooks/dd-system-probe-check'
+cookbook 'dd-agent-system-repo-mirrors', path: './site-cookbooks/dd-agent-system-repo-mirrors'

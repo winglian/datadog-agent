@@ -1,0 +1,2 @@
+deb mirror+file:/etc/apt/mirrorlist <%= node['lsb']['codename'] %> main
+deb mirror+file:/etc/apt/mirrorlist <%= node['lsb']['codename'] %>-updates main
