@@ -9,7 +9,7 @@ import (
 // netflowListener contains state of goflow listener and the related netflow config
 // flowState can be of type *utils.StateNetFlow/StateSFlow/StateNFLegacy
 type netflowListener struct {
-	flowState *goflowlib.FlowRoutineState
+	flowState *goflowlib.FlowStateWrapper
 	config    config.ListenerConfig
 }
 
