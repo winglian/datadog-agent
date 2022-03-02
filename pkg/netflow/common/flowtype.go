@@ -2,8 +2,6 @@ package common
 
 import (
 	"fmt"
-
-	flowpb "github.com/netsampler/goflow2/pb"
 )
 
 // FlowType represent the flow protocol (netflow5,netflow9,ipfix, sflow, etc)
@@ -40,9 +38,8 @@ var FlowTypeDetails = []FlowTypeDetail{
 
 // FlowTypeDetail represent the flow protocol (netflow5,netflow9,ipfix, sflow, etc)
 type FlowTypeDetail struct {
-	name           FlowType
-	defaultPort    uint16
-	goflowFlowType flowpb.FlowMessage_FlowType
+	name        FlowType
+	defaultPort uint16
 }
 
 // Name returns the flow type name
