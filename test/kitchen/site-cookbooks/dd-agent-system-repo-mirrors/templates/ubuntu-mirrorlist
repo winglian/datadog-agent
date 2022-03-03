@@ -1,4 +1,4 @@
-<% if arm? %>
+<% if node[:cpu][:architecture] == 'aarch64' %>
 http://ports.ubuntu.com/ubuntu-ports	priority:1
 http://us-east-1.ec2.ports.ubuntu.com/ubuntu-ports
 <% else %>
