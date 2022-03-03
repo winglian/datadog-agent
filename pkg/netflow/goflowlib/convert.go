@@ -11,22 +11,24 @@ import (
 // ConvertFlow convert goflow flow structure to internal flow structure
 func ConvertFlow(srcFlow *flowpb.FlowMessage) *common.Flow {
 	return &common.Flow{
+		FlowType:          convertFlowType(srcFlow.Type),
 		ReceivedTimestamp: srcFlow.TimeReceived,
+		SamplingRate:      srcFlow.SamplingRate,
+		Direction:         srcFlow.FlowDirection,
+		SamplerAddr:       net.IP(srcFlow.SamplerAddress).String(),
 		StartTimestamp:    srcFlow.TimeFlowStart,
 		EndTimestamp:      srcFlow.TimeFlowEnd,
-		SrcAddr:           net.IP(srcFlow.SrcAddr).String(),
-		DstAddr:           net.IP(srcFlow.DstAddr).String(),
-		SrcPort:           srcFlow.SrcPort,
-		DstPort:           srcFlow.DstPort,
-		Proto:             srcFlow.Proto,
-		Tos:               srcFlow.IPTos,
-		InputInterface:    srcFlow.InIf,
-		FlowType:          convertFlowType(srcFlow.Type),
-		SamplerAddr:       net.IP(srcFlow.SamplerAddress).String(),
-		OutputInterface:   srcFlow.OutIf,
-		Direction:         srcFlow.FlowDirection,
 		Bytes:             srcFlow.Bytes,
 		Packets:           srcFlow.Packets,
+		SrcAddr:           net.IP(srcFlow.SrcAddr).String(),
+		DstAddr:           net.IP(srcFlow.DstAddr).String(),
+		EtherType:         srcFlow.Etype,
+		Proto:             srcFlow.Proto,
+		SrcPort:           srcFlow.SrcPort,
+		DstPort:           srcFlow.DstPort,
+		InputInterface:    srcFlow.InIf,
+		OutputInterface:   srcFlow.OutIf,
+		Tos:               srcFlow.IPTos,
 	}
 }
 

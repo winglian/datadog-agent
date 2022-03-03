@@ -8,25 +8,43 @@ import (
 
 // Flow contains flow info used for aggreagtion
 type Flow struct {
-	// Flow Keys
-	SrcAddr        string `json:"src_addr"`
-	DstAddr        string `json:"dst_addr"`
-	SrcPort        uint32 `json:"src_port"`
-	DstPort        uint32 `json:"dst_port"`
-	Proto          uint32 `json:"proto"`
-	Tos            uint32 `json:"tos"`
-	InputInterface uint32 `json:"input_interface"`
-
-	// Non Keys
-	ReceivedTimestamp uint64   `json:"received_timestamp"`
-	StartTimestamp    uint64   `json:"start_timestamp"`
-	EndTimestamp      uint64   `json:"end_timestamp"`
 	FlowType          FlowType `json:"flow_type"`
-	SamplerAddr       string   `json:"sampler_addr"`
-	OutputInterface   uint32   `json:"output_interface"`
+	ReceivedTimestamp uint64   `json:"received_timestamp"`
+	SamplingRate      uint64   `json:"sampling_rate"`
 	Direction         uint32   `json:"direction"`
-	Bytes             uint64   `json:"bytes"`
-	Packets           uint64   `json:"packets"`
+
+	// Sampler information
+	SamplerAddr string `json:"sampler_addr"`
+
+	// Flow time
+	StartTimestamp uint64 `json:"start_timestamp"`
+	EndTimestamp   uint64 `json:"end_timestamp"`
+
+	// Size of the sampled packet
+	Bytes   uint64 `json:"bytes"`
+	Packets uint64 `json:"packets"`
+
+	// Source/destination addresses
+	SrcAddr string `json:"src_addr"` // FLOW KEY
+	DstAddr string `json:"dst_addr"` // FLOW KEY
+
+	// Layer 3 protocol (IPv4/IPv6/ARP/MPLS...)
+	EtherType uint32 `json:"ether_type,omitempty"`
+
+	// Layer 4 protocol
+	Proto uint32 `json:"proto"` // FLOW KEY
+
+	// Ports for UDP and TCP
+	SrcPort uint32 `json:"src_port"` // FLOW KEY
+	DstPort uint32 `json:"dst_port"` // FLOW KEY
+
+	// SNMP Interface Index
+	InputInterface  uint32 `json:"input_interface"` // FLOW KEY
+	OutputInterface uint32 `json:"output_interface"`
+
+	// Ethernet information
+
+	Tos uint32 `json:"tos"` // FLOW KEY
 }
 
 // AggregationHash return a hash used as aggregation key

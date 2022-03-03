@@ -7,24 +7,23 @@ import (
 
 func buildPayload(aggFlow *common.Flow) payload.FlowPayload {
 	return payload.FlowPayload{
-		// Keys
-		SrcAddr:        aggFlow.SrcAddr,
-		SrcPort:        aggFlow.SrcPort,
-		DstAddr:        aggFlow.DstAddr,
-		DstPort:        aggFlow.DstPort,
-		Proto:          aggFlow.Proto,
-		Tos:            aggFlow.Tos,
-		InputInterface: aggFlow.InputInterface,
-
-		// Non-Keys
+		FlowType:          string(aggFlow.FlowType),
 		ReceivedTimestamp: aggFlow.ReceivedTimestamp,
+		SamplingRate:      aggFlow.SamplingRate,
+		Direction:         aggFlow.Direction,
+		SamplerAddr:       aggFlow.SamplerAddr,
 		StartTimestamp:    aggFlow.StartTimestamp,
 		EndTimestamp:      aggFlow.EndTimestamp,
-		SamplerAddr:       aggFlow.SamplerAddr,
-		FlowType:          string(aggFlow.FlowType),
-		OutputInterface:   aggFlow.OutputInterface,
-		Direction:         aggFlow.Direction,
 		Bytes:             aggFlow.Bytes,
 		Packets:           aggFlow.Packets,
+		SrcAddr:           aggFlow.SrcAddr,
+		DstAddr:           aggFlow.DstAddr,
+		EtherType:         aggFlow.EtherType,
+		Proto:             aggFlow.Proto,
+		SrcPort:           aggFlow.SrcPort,
+		DstPort:           aggFlow.DstPort,
+		InputInterface:    aggFlow.InputInterface,
+		OutputInterface:   aggFlow.OutputInterface,
+		Tos:               aggFlow.Tos,
 	}
 }
