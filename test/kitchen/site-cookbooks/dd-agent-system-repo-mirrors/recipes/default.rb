@@ -12,6 +12,8 @@
 # NOTE: apt only supports mirrorlist on Debian >= 10 and Ubuntu >= 18
 if (node[:platform] == 'debian' && node['lsb']['release'].to_f >= 10.0 ) ||
     (node[:platform] == 'ubuntu' && node['lsb']['release'].to_f >= 18.0 )
+  # chef < 15.5 doesn't have arm? defined, but that's ok, since we use chef > 15.5 for arm tests
+  is_arm = defined?(arm?) ? arm? : false
   # NOTE about APT mirrorlists:
   # It seems that this feature could use some improvement. If you just get mirrorlist
   # from mirrors.ubuntu.com/mirrors.txt, it might contain faulty mirrors that either
@@ -24,8 +26,21 @@ if (node[:platform] == 'debian' && node['lsb']['release'].to_f >= 10.0 ) ||
     owner 'root'
     group 'root'
     variables(
-      'is_arm': arm?
+      'is_arm': is_arm
     )
+  end
+
+  # some of our tests require packages from Debian's "security" repos
+  if node[:platform] == 'debian'
+    template '/etc/apt/mirrorlist-security' do
+      source "#{node[:platform]}-mirrorlist-security"
+      mode '0644'
+      owner 'root'
+      group 'root'
+      variables(
+        'is_arm': is_arm
+      )
+    end
   end
 
   template '/etc/apt/sources.list' do

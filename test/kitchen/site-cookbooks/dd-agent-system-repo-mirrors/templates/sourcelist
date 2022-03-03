@@ -1,2 +1,5 @@
 deb mirror+file:/etc/apt/mirrorlist <%= node['lsb']['codename'] %> main
 deb mirror+file:/etc/apt/mirrorlist <%= node['lsb']['codename'] %>-updates main
+<% if node[:platform] == 'debian' %>
+deb mirror+file:/etc/apt/mirrorlist-security <%= node['lsb']['codename'] %>/updates main
+<% end %>
