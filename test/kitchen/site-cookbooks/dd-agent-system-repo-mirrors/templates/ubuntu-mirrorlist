@@ -1,2 +1,7 @@
+<% if arm? %>
+http://ports.ubuntu.com/ubuntu-ports	priority:1
+http://us-east-1.ec2.ports.ubuntu.com/ubuntu-ports
+<% else %>
 http://archive.ubuntu.com/ubuntu	priority:1
 http://us-east-1.ec2.archive.ubuntu.com/ubuntu
+<% end %>
