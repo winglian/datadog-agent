@@ -181,7 +181,7 @@ func (k *KubeletConfigProvider) generateConfigs() ([]integration.Config, error) 
 			containerNames[podContainer.Name] = struct{}{}
 
 			containerEntity := containers.BuildEntityName(string(container.Runtime), container.ID)
-			c, errors := extractTemplatesFromMap(
+			c, errors := utils.ExtractTemplatesFromMap(
 				containerEntity,
 				pod.Annotations,
 				fmt.Sprintf(adExtractFormat, adIdentifier),
