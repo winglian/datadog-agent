@@ -23,11 +23,10 @@ if (node[:platform] == 'debian' && node['lsb']['release'].to_f >= 10.0 ) ||
     mode '0644'
     owner 'root'
     group 'root'
+    variables(
+      'is_arm': arm?
+    )
   end
-
-  puts node
-  puts node[:cpu]
-  puts node[:cpu][:architecture]
 
   template '/etc/apt/sources.list' do
     source "sourcelist"
