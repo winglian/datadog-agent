@@ -50,8 +50,28 @@ func (f *flowAccumulator) add(flowToAdd *common.Flow) {
 		newAggFlow := *aggFlow
 		newAggFlow.Bytes += flowToAdd.Bytes
 		newAggFlow.Packets += flowToAdd.Packets
+		newAggFlow.ReceivedTimestamp = minUint64(newAggFlow.ReceivedTimestamp, flowToAdd.ReceivedTimestamp)
+		newAggFlow.StartTimestamp = minUint64(newAggFlow.StartTimestamp, flowToAdd.StartTimestamp)
+		newAggFlow.EndTimestamp = maxUint64(newAggFlow.EndTimestamp, flowToAdd.EndTimestamp)
+
 		log.Tracef("Existing Aggregated Flow (digest=%s): %+v", flowToAdd.AggregationHash(), aggFlow)
 		log.Tracef("New Aggregated Flow (digest=%s): %+v", flowToAdd.AggregationHash(), newAggFlow)
 		f.flows[flowToAdd.AggregationHash()] = &newAggFlow
 	}
+}
+
+func minUint64(a uint64, b uint64) uint64 {
+	// TODO: TESTME
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func maxUint64(a uint64, b uint64) uint64 {
+	// TODO: TESTME
+	if a > b {
+		return a
+	}
+	return b
 }

@@ -12,6 +12,8 @@ import (
 func ConvertFlow(srcFlow *flowpb.FlowMessage) *common.Flow {
 	return &common.Flow{
 		ReceivedTimestamp: srcFlow.TimeReceived,
+		StartTimestamp:    srcFlow.TimeFlowStart,
+		EndTimestamp:      srcFlow.TimeFlowEnd,
 		SrcAddr:           net.IP(srcFlow.SrcAddr).String(),
 		DstAddr:           net.IP(srcFlow.DstAddr).String(),
 		SrcPort:           srcFlow.SrcPort,

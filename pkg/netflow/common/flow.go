@@ -19,6 +19,8 @@ type Flow struct {
 
 	// Non Keys
 	ReceivedTimestamp uint64   `json:"received_timestamp"`
+	StartTimestamp    uint64   `json:"start_timestamp"`
+	EndTimestamp      uint64   `json:"end_timestamp"`
 	FlowType          FlowType `json:"flow_type"`
 	SamplerAddr       string   `json:"sampler_addr"`
 	OutputInterface   uint32   `json:"output_interface"`

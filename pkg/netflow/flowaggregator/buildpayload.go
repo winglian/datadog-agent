@@ -17,11 +17,14 @@ func buildPayload(aggFlow *common.Flow) payload.FlowPayload {
 		InputInterface: aggFlow.InputInterface,
 
 		// Non-Keys
-		SamplerAddr:     aggFlow.SamplerAddr,
-		FlowType:        string(aggFlow.FlowType),
-		OutputInterface: aggFlow.OutputInterface,
-		Direction:       aggFlow.Direction,
-		Bytes:           aggFlow.Bytes,
-		Packets:         aggFlow.Packets,
+		ReceivedTimestamp: aggFlow.ReceivedTimestamp,
+		StartTimestamp:    aggFlow.StartTimestamp,
+		EndTimestamp:      aggFlow.EndTimestamp,
+		SamplerAddr:       aggFlow.SamplerAddr,
+		FlowType:          string(aggFlow.FlowType),
+		OutputInterface:   aggFlow.OutputInterface,
+		Direction:         aggFlow.Direction,
+		Bytes:             aggFlow.Bytes,
+		Packets:           aggFlow.Packets,
 	}
 }

@@ -17,10 +17,13 @@ type FlowPayload struct {
 	InputInterface uint32 `json:"input_interface"`
 
 	// Non-Keys
-	SamplerAddr     string `json:"sampler_addr"`
-	FlowType        string `json:"flow_type"`
-	OutputInterface uint32 `json:"output_interface"`
-	Direction       uint32 `json:"direction"`
-	Bytes           uint64 `json:"bytes"`
-	Packets         uint64 `json:"packets"`
+	ReceivedTimestamp uint64 `json:"received_timestamp"`
+	StartTimestamp    uint64 `json:"start_timestamp"`
+	EndTimestamp      uint64 `json:"end_timestamp"`
+	SamplerAddr       string `json:"sampler_addr"`
+	FlowType          string `json:"flow_type"`
+	OutputInterface   uint32 `json:"output_interface"`
+	Direction         uint32 `json:"direction"`
+	Bytes             uint64 `json:"bytes"`
+	Packets           uint64 `json:"packets"`
 }
